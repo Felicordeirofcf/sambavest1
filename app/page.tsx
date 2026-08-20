@@ -1,13 +1,29 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import ProductCard from '../components/product/ProductCard';
-import { getAllProducts, categories } from '../lib/products';
+import { getAllProducts } from '../lib/products';
 import HeroCarousel from '../components/home/HeroCarousel';
 import AboutAtelie from '../components/home/AboutAtelie';
 import { FREE_SHIPPING_THRESHOLD } from '../lib/shipping';
 
+// Categorias em destaque exibidas como banners retangulares na home.
+// (as demais categorias continuam acessíveis pelo menu e por /categoria/[slug])
+const featuredCategories = [
+  {
+    name: 'Lançamentos',
+    slug: 'lancamentos',
+    image: '/products/beija-flor-2027-zeneida.webp',
+  },
+  {
+    name: 'Campeãs do Carnaval',
+    slug: 'campeas-do-carnaval',
+    image: '/products/beija-flor-2025-laila.webp',
+  },
+];
+
 export default async function HomePage() {
   const products = await getAllProducts();
-  const lancamentos = products.slice(0, 4);
+  const lancamentos = products.filter((p) => p.categories.includes('lancamentos'));
 
   return (
     <div className="w-full bg-white">
@@ -21,16 +37,24 @@ export default async function HomePage() {
       {/* Carrossel Principal */}
       <HeroCarousel />
 
-      {/* Grade de Categorias */}
+      {/* Categorias em Destaque */}
       <section className="w-full px-2 md:px-4 py-6 md:py-10 max-w-7xl mx-auto">
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
-          {categories.map((cat) => (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+          {featuredCategories.map((cat) => (
             <Link
               key={cat.slug}
               href={`/categoria/${cat.slug}`}
-              className="aspect-square border-[2px] border-[#0B1B34] flex items-center justify-center p-1 md:p-2 text-center transition-colors hover:bg-[#F0DFA8]/40 bg-white shadow-sm"
+              className="group relative flex aspect-[16/7] w-full items-center justify-center overflow-hidden border-[2px] border-[#0B1B34] shadow-sm md:aspect-[21/9]"
             >
-              <span className="font-heading text-[8px] md:text-[10px] lg:text-xs uppercase tracking-widest text-[#0B1B34] whitespace-pre-line leading-relaxed">
+              <Image
+                src={cat.image}
+                alt={cat.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B34]/85 via-[#0B1B34]/25 to-transparent" />
+              <span className="relative z-10 px-4 pb-4 pt-10 text-center font-heading text-lg font-extrabold uppercase tracking-widest text-white drop-shadow-md md:text-2xl">
                 {cat.name}
               </span>
             </Link>
@@ -52,7 +76,7 @@ export default async function HomePage() {
             Nenhum produto encontrado. Cadastre itens em lib/products.ts.
           </p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-10">
+          <div className="mx-auto grid max-w-xs grid-cols-1 gap-x-4 gap-y-10 sm:max-w-sm">
             {lancamentos.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}

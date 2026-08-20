@@ -35,6 +35,16 @@ export default function AboutAtelie() {
               Conheça Nossa História
             </button>
           </Link>
+
+          <div className="relative mt-10 h-24 w-24 md:h-28 md:w-28">
+            <Image
+              src="/samba-vest-logo-colorido.png"
+              alt="Logo Samba Vest"
+              fill
+              sizes="112px"
+              className="object-contain"
+            />
+          </div>
         </div>
       </div>
     </section>

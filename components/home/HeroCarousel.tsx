@@ -48,6 +48,15 @@ type Slide = {
 
 const slides: Slide[] = [
   {
+    badge: 'Samba Vest',
+    title: 'A Paixão que Veste a Sua Escola!',
+    subtitle: '',
+    image: '/products/hero-paixao-carnaval.webp',
+    ctaText: 'Ver Lançamento',
+    ctaHref: '/categoria/lancamentos',
+    fullImage: true,
+  },
+  {
     badge: 'Lançamento 2027',
     title: 'Pré-Reserva Beija-Flor 2027 — Zeneida, O Sopro do Pó de Louro',
     subtitle: '',
@@ -70,6 +79,15 @@ const slides: Slide[] = [
     title: 'Confira o Guia de Tamanhos Beija-Flor 2027',
     subtitle: '',
     image: '/products/guia-tamanhos-beija-flor-2027.webp',
+    ctaText: 'Ver Lançamento',
+    ctaHref: '/categoria/lancamentos',
+    fullImage: true,
+  },
+  {
+    badge: 'Beija-Flor 2027',
+    title: 'Beija-Flor 2027 — Garanta Já a Sua',
+    subtitle: '',
+    image: '/products/beija-flor-2027-garanta-ja.webp',
     ctaText: 'Ver Lançamento',
     ctaHref: '/categoria/lancamentos',
     fullImage: true,
