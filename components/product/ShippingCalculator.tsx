@@ -97,7 +97,7 @@ export default function ShippingCalculator({
           </p>
           {quote.price > 0 && (
             <p className="mt-1 text-[11px] text-gray-500">
-              Frete grátis em compras acima de R$ {FREE_SHIPPING_THRESHOLD.toFixed(2).replace('.', ',')}.
+              
             </p>
           )}
         </div>

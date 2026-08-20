@@ -11,7 +11,7 @@ export default function AboutAtelie() {
         <div className="relative w-full md:w-1/2 h-[360px] md:h-[440px] flex items-center justify-center">
           <div className="absolute inset-0 rounded-full bg-[#C9A227]/10 blur-3xl" />
           <Image
-            src="/products/beija-flor-2025-laila.webp"
+            src="/products/samba-vest-logo-colorido.png"
             alt="Camisa oficial de enredo Samba Vest"
             fill
             sizes="(max-width: 768px) 90vw, 480px"
@@ -37,13 +37,7 @@ export default function AboutAtelie() {
           </Link>
 
           <div className="relative mt-10 h-24 w-24 md:h-28 md:w-28">
-            <Image
-              src="/samba-vest-logo-colorido.png"
-              alt="Logo Samba Vest"
-              fill
-              sizes="112px"
-              className="object-contain"
-            />
+            
           </div>
         </div>
       </div>

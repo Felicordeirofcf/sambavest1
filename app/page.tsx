@@ -7,7 +7,6 @@ import AboutAtelie from '../components/home/AboutAtelie';
 import { FREE_SHIPPING_THRESHOLD } from '../lib/shipping';
 
 // Categorias em destaque exibidas como banners retangulares na home.
-// (as demais categorias continuam acessíveis pelo menu e por /categoria/[slug])
 const featuredCategories = [
   {
     name: 'Lançamentos',
@@ -26,14 +25,7 @@ export default async function HomePage() {
   const lancamentos = products.filter((p) => p.categories.includes('lancamentos'));
 
   return (
-    <div className="w-full bg-white">
-      {/* Barra de Frete Grátis */}
-      <div className="w-full bg-[#0B1B34] py-2 md:py-2.5 flex justify-center items-center">
-        <p className="text-[8px] md:text-[10px] lg:text-xs font-sans tracking-[0.15em] uppercase text-[#C9A227] font-medium text-center px-2 md:px-4">
-           • FRETE GRÁTIS EM COMPRAS ACIMA DE R$ {FREE_SHIPPING_THRESHOLD.toFixed(2).replace('.', ',')} •
-        </p>
-      </div>
-
+    <div className="w-full bg-[#F9F9F9]">
       {/* Carrossel Principal */}
       <HeroCarousel />
 
@@ -44,17 +36,17 @@ export default async function HomePage() {
             <Link
               key={cat.slug}
               href={`/categoria/${cat.slug}`}
-              className="group relative flex aspect-[16/7] w-full items-center justify-center overflow-hidden border-[2px] border-[#0B1B34] shadow-sm md:aspect-[21/9]"
+              className="group relative flex aspect-[16/7] w-full items-center justify-center overflow-hidden border-[2px] border-[#0B1B34] bg-white shadow-sm md:aspect-[21/9]"
             >
               <Image
                 src={cat.image}
                 alt={cat.name}
                 fill
                 sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className="object-contain p-4 transition-transform duration-700 group-hover:scale-110"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B34]/85 via-[#0B1B34]/25 to-transparent" />
-              <span className="relative z-10 px-4 pb-4 pt-10 text-center font-heading text-lg font-extrabold uppercase tracking-widest text-white drop-shadow-md md:text-2xl">
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B34] via-[#0B1B34]/40 to-transparent opacity-90 transition-opacity duration-500 group-hover:opacity-100" />
+              <span className="relative z-10 px-4 pb-4 pt-12 text-center font-heading text-xl md:text-3xl font-black uppercase tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-b from-[#F0DFA8] via-[#C9A227] to-[#8A6D1C] drop-shadow-[0_4px_6px_rgba(0,0,0,0.9)] transition-transform duration-500 group-hover:scale-105">
                 {cat.name}
               </span>
             </Link>
@@ -76,7 +68,8 @@ export default async function HomePage() {
             Nenhum produto encontrado. Cadastre itens em lib/products.ts.
           </p>
         ) : (
-          <div className="mx-auto grid max-w-xs grid-cols-1 gap-x-4 gap-y-10 sm:max-w-sm">
+          /* AQUI ESTÁ A MUDANÇA PRINCIPAL: grid-cols adaptável para celular, tablet e desktop */
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 w-full">
             {lancamentos.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -86,9 +79,17 @@ export default async function HomePage() {
         <div className="mt-16 flex w-full justify-center">
           <Link
             href="/categoria/todos"
-            className="border-b border-[#0B1B34] pb-1 text-xs md:text-sm font-bold uppercase tracking-widest text-[#0B1B34] transition-colors hover:border-[#C9A227] hover:text-[#C9A227]"
+            className="group relative flex items-center justify-center gap-3 overflow-hidden bg-[#C9A227] px-10 py-4 font-heading text-sm font-extrabold uppercase tracking-widest text-[#0B1B34] shadow-[0_5px_15px_rgba(201,162,39,0.4)] transition-all duration-300 hover:scale-105 hover:bg-[#0B1B34] hover:text-[#C9A227] hover:shadow-[0_8px_25px_rgba(11,27,52,0.4)]"
           >
-            Ver Toda a Coleção
+            VER TODA A COLEÇÃO
+            <svg
+              className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
           </Link>
         </div>
       </section>

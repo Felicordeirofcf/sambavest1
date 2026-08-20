@@ -39,11 +39,10 @@ type Slide = {
   image: string;
   ctaText: string;
   ctaHref: string;
-  /** Quando true, a imagem já vem pronta (arte com texto/infos embutidos) e
-   * ocupa o slide inteiro, sem o texto sobreposto do layout padrão. */
   fullImage?: boolean;
-  /** Selo "estilo cartaz" (título + chamada), desenhado por cima da imagem cheia. */
   poster?: { title: string; cta: string };
+  // Nova propriedade adicionada para controlar o botão extra em imagens cheias
+  overlayButtonText?: string;
 };
 
 const slides: Slide[] = [
@@ -57,56 +56,15 @@ const slides: Slide[] = [
     fullImage: true,
   },
   {
-    badge: 'Lançamento 2027',
-    title: 'Pré-Reserva Beija-Flor 2027 — Zeneida, O Sopro do Pó de Louro',
-    subtitle: '',
-    image: '/products/pre-reserva-beija-flor-2027.webp',
-    ctaText: 'Ver Lançamento',
-    ctaHref: '/categoria/lancamentos',
-    fullImage: true,
-  },
-  {
-    badge: 'Lançamento 2027',
-    title: 'Zeneida, O Sopro do Pó de Louro',
-    subtitle: 'A nova camisa oficial do enredo do Beija-Flor de Nilópolis já está na Samba Vest.',
-    image: '/products/beija-flor-2027-zeneida.webp',
-    ctaText: 'Ver Lançamento',
-    ctaHref: '/categoria/lancamentos',
-    poster: { title: 'Beija-Flor 2027', cta: 'Garanta já!' },
-  },
-  {
-    badge: 'Guia de Tamanhos',
-    title: 'Confira o Guia de Tamanhos Beija-Flor 2027',
-    subtitle: '',
-    image: '/products/guia-tamanhos-beija-flor-2027.webp',
-    ctaText: 'Ver Lançamento',
-    ctaHref: '/categoria/lancamentos',
-    fullImage: true,
-  },
-  {
     badge: 'Beija-Flor 2027',
     title: 'Beija-Flor 2027 — Garanta Já a Sua',
     subtitle: '',
-    image: '/products/beija-flor-2027-garanta-ja.webp',
+    image: '/products/beija-flor-2027-garanta-ja.jfif',
     ctaText: 'Ver Lançamento',
     ctaHref: '/categoria/lancamentos',
     fullImage: true,
-  },
-  {
-    badge: 'Promoção das Campeãs',
-    title: '2 Camisas por R$ 149,90',
-    subtitle: 'Beija-Flor 2025 e Viradouro 2024: leve as duas últimas campeãs do carnaval por um preço especial.',
-    image: '/products/kit-campeas-promo.webp',
-    ctaText: 'Ver Promoção',
-    ctaHref: '/categoria/kits-promocionais',
-  },
-  {
-    badge: 'Camisas Oficiais de Enredo',
-    title: 'Vista a Emoção do Carnaval',
-    subtitle: 'Estampas exclusivas, tecido leve e de secagem rápida, do P ao EXG.',
-    image: '/products/viradouro-2024-malunguinho.webp',
-    ctaText: 'Ver Coleção',
-    ctaHref: '/categoria/camisas-de-enredo',
+    // Texto do botão que aparecerá por cima do banner
+    overlayButtonText: 'Clique Aqui',
   },
 ];
 
@@ -139,12 +97,28 @@ export default function HeroCarousel() {
                 />
 
                 {slide.poster && <PosterOverlay title={slide.poster.title} cta={slide.poster.cta} />}
+
+                {/* Renderização do botão dourado caso a propriedade overlayButtonText exista */}
+                {slide.overlayButtonText && (
+                  <div className="absolute bottom-10 right-4 z-20 md:bottom-20 md:right-16 lg:right-28">
+                    <span className="group inline-flex items-center gap-3 bg-[#C9A227] px-6 py-3 text-[10px] font-bold uppercase tracking-[0.25em] text-[#0B1B34] shadow-[0_5px_15px_rgba(0,0,0,0.5)] transition-all duration-300 hover:bg-white hover:scale-105 md:px-8 md:py-4 md:text-[11px]">
+                      {slide.overlayButtonText}
+                      <svg
+                        className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      </svg>
+                    </span>
+                  </div>
+                )}
               </Link>
             </SwiperSlide>
           ) : (
             <SwiperSlide key={i}>
               <div className="relative flex min-h-[560px] w-full flex-col-reverse items-center justify-center gap-6 px-6 py-12 md:min-h-[640px] md:flex-row md:justify-between md:gap-10 md:px-16 lg:px-24">
-                {/* Radial glow decor */}
                 <div
                   aria-hidden
                   className="pointer-events-none absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full bg-[#C9A227]/20 blur-3xl md:h-[520px] md:w-[520px]"
@@ -154,7 +128,6 @@ export default function HeroCarousel() {
                   className="pointer-events-none absolute -left-24 bottom-0 h-[300px] w-[300px] rounded-full bg-[#C9A227]/10 blur-3xl"
                 />
 
-                {/* Texto */}
                 <div className="relative z-10 flex w-full max-w-md flex-col items-center text-center md:items-start md:text-left">
                   <span className="mb-4 inline-flex items-center rounded-full border border-[#C9A227]/50 bg-[#C9A227]/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.25em] text-[#C9A227]">
                     {slide.badge}
@@ -184,7 +157,6 @@ export default function HeroCarousel() {
                   </Link>
                 </div>
 
-                {/* Imagem do produto */}
                 <div className="relative z-10 flex h-[280px] w-[240px] items-center justify-center md:h-[420px] md:w-[380px]">
                   <div className="absolute inset-0 rounded-full bg-white/5 blur-2xl" />
                   {slide.poster && <PosterOverlay title={slide.poster.title} cta={slide.poster.cta} />}

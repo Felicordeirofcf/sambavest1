@@ -1,14 +1,4 @@
 // Catálogo estático da Samba Vest.
-//
-// Como a loja ainda não está conectada a uma Nuvemshop real (veja lib/nuvemshop.ts
-// para a integração opcional), a vitrine usa estes produtos fixos, montados a partir
-// das artes que você já tem prontas. Para editar nome, preço, imagem ou tamanhos,
-// basta mexer neste arquivo — nenhum outro componente precisa mudar.
-//
-// Quando você tiver uma loja Nuvemshop configurada (NEXT_PUBLIC_NUVEMSHOP_STORE_ID e
-// NUVEMSHOP_ACCESS_TOKEN no .env.local) e quiser puxar produtos reais de lá, é só
-// trocar as chamadas a getAllProducts()/getProductsByCategory()/getProductByHandle()
-// nas páginas por lib/nuvemshop.ts -> getProducts().
 
 export type ProductVariant = {
   id: number;
@@ -46,78 +36,77 @@ function variantsFor(baseId: number): ProductVariant[] {
   }));
 }
 
+// 1. CATEGORIAS LIMPAS (Apenas Lançamentos. "Todos os produtos" já é nativo da URL /categoria/todos)
 export const categories: Category[] = [
-  { name: 'Lançamentos', slug: 'lancamentos' },
-  { name: 'Camisas de Enredo', slug: 'camisas-de-enredo' },
-  { name: 'Campeãs do Carnaval', slug: 'campeas-do-carnaval' },
-  { name: 'Kits Promocionais', slug: 'kits-promocionais' },
-  { name: 'Tamanho Grande', slug: 'tamanho-grande' },
-  { name: 'Acessórios', slug: 'acessorios' },
+  { name: 'Lançamentos', slug: 'lancamentos' }
 ];
 
+// 2. PRODUTOS (Apenas as 4 camisas novas)
 export const products: Product[] = [
   {
-    id: 1,
-    name: 'Beija-Flor 2027 — Zeneida, O Sopro do Pó de Louro',
-    price: 149.9,
+    id: 5,
+    name: 'Camisa Tradicional Zeneida - Beija-Flor 2027',
+    price: 149.90, 
     originalPrice: null,
-    image: '/products/beija-flor-2027-zeneida.webp',
+    image: '/products/camisa1.png',
     images: [
-      '/products/beija-flor-2027-zeneida.webp',
-      '/products/guia-tamanhos-beija-flor-2027.webp',
-      '/products/pre-reserva-beija-flor-2027.webp',
+      '/products/camisa1.png',
+      '/products/tabela-tamanhos.jpg'
     ],
-    handle: 'beija-flor-2027-zeneida',
-    categories: ['lancamentos', 'camisas-de-enredo', 'tamanho-grande'],
+    handle: 'camisa-tradicional-zeneida-2027',
+    categories: ['lancamentos'],
     badge: 'Lançamento',
-    description:
-      'Camisa oficial do enredo "Zeneida, O Sopro do Pó de Louro" do Beija-Flor de Nilópolis para o Carnaval 2027. Estampa exclusiva em poliéster leve, respirável e de secagem rápida — ideal para ensaios, festas e desfiles. Disponível do P ao EXG.',
-    variants: variantsFor(1001),
+    description: 'Camisa oficial do enredo Zeneida, O Sopro do Pó de Louro. Material premium 100% Poliéster, super leve e confortável para o carnaval.',
+    variants: variantsFor(5001),
   },
   {
-    id: 2,
-    name: 'Beija-Flor 2025 — Laíla de Todos os Santos, Laíla de Todos os Sambas',
-    price: 99.9,
-    originalPrice: 129.9,
-    image: '/products/beija-flor-2025-laila.webp',
-    handle: 'beija-flor-2025-laila',
-    categories: ['camisas-de-enredo', 'campeas-do-carnaval', 'tamanho-grande'],
-    badge: 'Campeã 2025',
-    description:
-      'Camisa em homenagem ao enredo campeão "Laíla de Todos os Santos, Laíla de Todos os Sambas" do Beija-Flor de Nilópolis. Estampa exclusiva e de alta qualidade, para quem quer vestir a história dessa conquista.',
-    variants: variantsFor(2001),
-  },
-  {
-    id: 3,
-    name: 'Viradouro 2024 — Malunguinho, O Mensageiro de Três Mundos',
-    price: 99.9,
-    originalPrice: 129.9,
-    image: '/products/viradouro-2024-malunguinho.webp',
-    handle: 'viradouro-2024-malunguinho',
-    categories: ['camisas-de-enredo', 'campeas-do-carnaval', 'tamanho-grande'],
-    badge: 'Campeã 2024',
-    description:
-      'Camisa oficial do enredo campeão "Malunguinho, O Mensageiro de Três Mundos" da G.R.E.S. Unidos do Viradouro. Estampa vibrante em poliéster premium, feita para durar do ensaio técnico ao desfile.',
-    variants: variantsFor(3001),
-  },
-  {
-    id: 4,
-    name: 'Kit 2 Camisas Campeãs — Beija-Flor + Viradouro',
-    price: 149.9,
-    originalPrice: 239.9,
-    image: '/products/kit-campeas-promo.webp',
+    id: 6,
+    name: 'Regata Zeneida - Beija-Flor 2027',
+    price: 139.90,
+    originalPrice: null,
+    image: '/products/camisa2.png',
     images: [
-      '/products/kit-campeas-promo.webp',
-      '/products/beija-flor-2025-laila.webp',
-      '/products/viradouro-2024-malunguinho.webp',
+      '/products/camisa2.png',
+      '/products/tabela-tamanhos1.jpg'
     ],
-    handle: 'kit-2-camisas-campeas',
-    categories: ['kits-promocionais', 'campeas-do-carnaval', 'tamanho-grande'],
-    badge: 'Promoção',
-    description:
-      'Leve as duas últimas campeãs por um preço especial: a camisa "Laíla de Todos os Santos, Laíla de Todos os Sambas" (Beija-Flor 2025) e a camisa "Malunguinho, O Mensageiro de Três Mundos" (Viradouro 2024). Escolha o tamanho principal do kit — em caso de tamanhos diferentes entre as duas camisas, é só avisar pelo WhatsApp após o pedido.',
-    variants: variantsFor(4001),
+    handle: 'regata-zeneida-2027',
+    categories: ['lancamentos'],
+    badge: 'Lançamento',
+    description: 'Regata oficial do enredo Zeneida, O Sopro do Pó de Louro. Modelagem cavada, ideal para os dias mais quentes e para os ensaios de quadra.',
+    variants: variantsFor(6001),
   },
+  {
+    id: 7,
+    name: 'Baby Look Zeneida - Beija-Flor 2027',
+    price: 149.90,
+    originalPrice: null,
+    image: '/products/camisa3.png',
+    images: [
+      '/products/camisa3.png',
+      '/products/tabela-tamanhos2.jpg'
+    ],
+    handle: 'baby-look-zeneida-2027',
+    categories: ['lancamentos'],
+    badge: 'Lançamento',
+    description: 'Baby Look oficial do enredo Zeneida. Modelagem mais acinturada e ajustada ao corpo. Material leve: 100% Poliéster.',
+    variants: variantsFor(7001),
+  },
+  {
+    id: 8,
+    name: 'Vestido Zeneida - Beija-Flor 2027',
+    price: 159.90,
+    originalPrice: null,
+    image: '/products/camisa4.png',
+    images: [
+      '/products/camisa4.png',
+      '/products/tabela-tamanhos3.jpg'
+    ],
+    handle: 'vestido-zeneida-2027',
+    categories: ['lancamentos'],
+    badge: 'Lançamento',
+    description: 'Vestido estilo batinha oficial do enredo Zeneida. A junção perfeita entre a paixão pela escola e o estilo para pular o carnaval com muito conforto.',
+    variants: variantsFor(8001),
+  }
 ];
 
 export async function getAllProducts(): Promise<Product[]> {
