@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1e2233;
+
+  /* Paleta Samba Vest — extraída das artes oficiais (guia de tamanhos e camisas) */
+  --brand-navy: #0b1b34;
+  --brand-navy-deep: #060f22;
+  --brand-gold: #c9a227;
+  --brand-gold-light: #f0dfa8;
+  --brand-cream: #faf7ef;
+  --brand-red: #c0392b;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-poppins);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Usado nos títulos com pegada de carnaval/samba (substitui o antigo font-serif) */
+.font-heading {
+  font-family: var(--font-heading), var(--font-sans), sans-serif;
+}
