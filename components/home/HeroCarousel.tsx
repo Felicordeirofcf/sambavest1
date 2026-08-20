@@ -59,7 +59,7 @@ const slides: Slide[] = [
     badge: 'Beija-Flor 2027',
     title: 'Beija-Flor 2027 — Garanta Já a Sua',
     subtitle: '',
-    image: '/products/beija-flor-2027-garanta-ja.jfif',
+    image: '/products/beija-flor-2027-garanta-ja.PNG',
     ctaText: 'Ver Lançamento',
     ctaHref: '/categoria/lancamentos',
     fullImage: true,
