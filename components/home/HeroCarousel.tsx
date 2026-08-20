@@ -41,7 +41,6 @@ type Slide = {
   ctaHref: string;
   fullImage?: boolean;
   poster?: { title: string; cta: string };
-  // Nova propriedade adicionada para controlar o botão extra em imagens cheias
   overlayButtonText?: string;
 };
 
@@ -59,11 +58,11 @@ const slides: Slide[] = [
     badge: 'Beija-Flor 2027',
     title: 'Beija-Flor 2027 — Garanta Já a Sua',
     subtitle: '',
-    image: '/products/beija-flor-2027-garanta-ja.PNG',
+    // MUDANÇA AQUI: Alterado para minúsculo para garantir compatibilidade com o servidor
+    image: '/products/beija-flor-2027-garanta-ja.png',
     ctaText: 'Ver Lançamento',
     ctaHref: '/categoria/lancamentos',
     fullImage: true,
-    // Texto do botão que aparecerá por cima do banner
     overlayButtonText: 'Clique Aqui',
   },
 ];
@@ -98,7 +97,6 @@ export default function HeroCarousel() {
 
                 {slide.poster && <PosterOverlay title={slide.poster.title} cta={slide.poster.cta} />}
 
-                {/* Renderização do botão dourado caso a propriedade overlayButtonText exista */}
                 {slide.overlayButtonText && (
                   <div className="absolute bottom-10 right-4 z-20 md:bottom-20 md:right-16 lg:right-28">
                     <span className="group inline-flex items-center gap-3 bg-[#C9A227] px-6 py-3 text-[10px] font-bold uppercase tracking-[0.25em] text-[#0B1B34] shadow-[0_5px_15px_rgba(0,0,0,0.5)] transition-all duration-300 hover:bg-white hover:scale-105 md:px-8 md:py-4 md:text-[11px]">
