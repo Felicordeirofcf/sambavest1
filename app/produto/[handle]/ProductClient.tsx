@@ -11,7 +11,6 @@ export default function ProductClient({ product }: { product: Product }) {
   const availableVariants = product.variants.filter((v) => v.stock === null || v.stock > 0);
   const gallery = product.images && product.images.length > 0 ? product.images : [product.image];
   
-  // AQUI FOI ALTERADO: Agora ele busca por "tabela" ou "guia" no nome do arquivo
   const sizeGuideIndex = gallery.findIndex((img) => img.toLowerCase().includes('tabela') || img.toLowerCase().includes('guia'));
 
   const [selectedVariant, setSelectedVariant] = useState(availableVariants[0] || null);
@@ -50,7 +49,6 @@ export default function ProductClient({ product }: { product: Product }) {
             />
           </div>
 
-          {/* Miniaturas da Galeria (já estava perfeito no seu código) */}
           {gallery.length > 1 && (
             <div className="mt-3 flex gap-3">
               {gallery.map((img, i) => (

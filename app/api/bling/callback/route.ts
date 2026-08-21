@@ -1,42 +1,45 @@
+// app/api/checkout/route.ts
 import { NextResponse } from 'next/server';
+import { criarPedidoBling } from '../../../lib/bling';
 
-export async function GET(request: Request) {
-  // Pega o código de autorização que o Bling envia na URL
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get('code');
-
-  if (!code) {
-    return NextResponse.json({ error: 'Código de autorização não encontrado na URL' }, { status: 400 });
-  }
-
-  // Prepara as credenciais em Base64 (exigência do Bling)
-  const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
-
+export async function POST(request: Request) {
   try {
-    // Pede o Token Oficial pro Bling
-    const response = await fetch('https://www.bling.com.br/Api/v3/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${credentials}`,
-        'Accept': '1.0'
+    const body = await request.json();
+    const { cliente, itens } = body;
+
+    // Validação básica
+    if (!cliente || !itens || itens.length === 0) {
+      return NextResponse.json(
+        { error: 'Dados do cliente ou itens do carrinho ausentes.' },
+        { status: 400 }
+      );
+    }
+
+    // Chama a função que criamos no bling.ts para registrar o pedido no ERP
+    const pedidoCriado = await criarPedidoBling({
+      cliente: {
+        nome: cliente.nome,
+        email: cliente.email,
+        telefone: cliente.telefone,
+        numeroDocumento: cliente.numeroDocumento,
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-      })
+      itens: itens.map((item: any) => ({
+        idProdutoBling: Number(item.id),
+        quantidade: item.quantity,
+        valorUnitario: item.price,
+      })),
     });
 
-    const data = await response.json();
-
-    // Mostra o token na tela para você copiar!
     return NextResponse.json({
-      mensagem: 'SUCESSO! Copie o access_token e o refresh_token abaixo:',
-      tokens: data
+      success: true,
+      message: 'Pedido gerado com sucesso no Bling!',
+      pedido: pedidoCriado,
     });
-
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Falha ao se comunicar com o Bling' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Erro na API de Checkout:', error);
+    return NextResponse.json(
+      { error: error.message || 'Erro interno ao processar o pedido.' },
+      { status: 500 }
+    );
   }
 }

@@ -121,3 +121,87 @@ export async function getProdutosBlingMapeados(): Promise<Product[]> {
     return []; 
   }
 }
+
+// Busca um produto específico pelo ID para a página de detalhes
+export async function getProdutoBlingPorId(id: string): Promise<Product | null> {
+  const produtos = await getProdutosBlingMapeados();
+  const produtoEncontrado = produtos.find((p) => p.id.toString() === id);
+  return produtoEncontrado || null;
+}
+
+// NOVO: Cria o pedido de venda diretamente no Bling com tratamento automático de token expirado
+export async function criarPedidoBling(dadosCheckout: {
+  cliente: {
+    nome: string;
+    email: string;
+    telefone: string;
+    numeroDocumento: string;
+  };
+  itens: {
+    idProdutoBling: number;
+    quantidade: number;
+    valorUnitario: number;
+  }[];
+}) {
+  if (!accessToken) {
+    const renovou = await atualizarTokenBling();
+    if (!renovou) throw new Error("Não foi possível autenticar com o Bling.");
+  }
+
+  const payload = {
+    contato: {
+      nome: dadosCheckout.cliente.nome,
+      email: dadosCheckout.cliente.email,
+      telefone: dadosCheckout.cliente.telefone,
+      numeroDocumento: dadosCheckout.cliente.numeroDocumento,
+    },
+    itens: dadosCheckout.itens.map((item) => ({
+      produto: {
+        id: item.idProdutoBling,
+      },
+      quantidade: item.quantidade,
+      valor: item.valorUnitario,
+    })),
+  };
+
+  try {
+    let response = await fetch('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    // Se expirar o token na hora de criar o pedido, tenta renovar uma vez e reenviar
+    if (response.status === 401) {
+      const renovou = await atualizarTokenBling();
+      if (renovou) {
+        response = await fetch('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+    }
+
+    if (!response.ok) {
+      const erroJson = await response.json();
+      console.error("❌ Erro ao criar pedido no Bling:", erroJson);
+      throw new Error("Falha ao registrar pedido no Bling.");
+    }
+
+    const resultado = await response.json();
+    console.log("✅ Pedido criado com sucesso no Bling!", resultado);
+    return resultado.data;
+  } catch (error) {
+    console.error("❌ Erro na requisição de criação de pedido:", error);
+    throw error;
+  }
+}
