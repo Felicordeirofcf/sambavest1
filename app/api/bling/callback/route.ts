@@ -1,6 +1,6 @@
 // app/api/checkout/route.ts
 import { NextResponse } from 'next/server';
-import { criarPedidoBling } from '../../../lib/bling';
+import { criarPedidoBling } from '@/lib/bling'; // 🚀 O atalho @/ resolve qualquer erro de pasta!
 
 export async function POST(request: Request) {
   try {
