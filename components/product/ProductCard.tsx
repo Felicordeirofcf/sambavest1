@@ -38,8 +38,9 @@ export default function ProductCard({ product }: { product: Product }) {
   const imageBack = product.images?.[1] || product.image;
 
   return (
-    <div className="group relative flex cursor-pointer flex-col bg-[#F2F2F2]">
-      {/* Container da Imagem sem bordas e mais alto (aspect-[4/5]) */}
+    // 🚀 ESTILO BOUTIQUE: Borda arredondada, sombra suave e efeito dourado no hover
+    <div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_2px_15px_rgba(0,0,0,0.05)] transition-all duration-500 hover:border-[#C9A227] hover:shadow-2xl">
+      
       <Link
         href={`/produto/${product.handle}`}
         className="relative aspect-[4/5] w-full overflow-hidden bg-[#F2F2F2]"
@@ -58,14 +59,14 @@ export default function ProductCard({ product }: { product: Product }) {
           className="absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out group-hover:opacity-0"
         />
 
-        {/* IMAGEM VERSO (Aparece suavemente e dá um micro zoom) */}
+        {/* IMAGEM VERSO */}
         <img
           src={imageBack}
           alt={`${product.name} Verso`}
           className="absolute inset-0 h-full w-full object-cover opacity-0 transition-all duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-100"
         />
 
-        {/* Menu de Tamanhos */}
+        {/* Menu de Tamanhos (Aparece ao passar o mouse) */}
         <div className="absolute bottom-0 left-0 flex w-full translate-y-full flex-col gap-4 bg-white/95 p-6 backdrop-blur-md transition-all duration-500 ease-out group-hover:translate-y-0">
           <span className="text-center text-[11px] font-bold uppercase tracking-[0.2em] text-[#0B1B34]">
             Adicionar à Sacola
@@ -91,9 +92,9 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
       </Link>
 
-      {/* Informações de Texto Centralizadas (Estilo Boutique) */}
-      <Link href={`/produto/${product.handle}`} className="flex flex-col items-center justify-center p-6 text-center">
-        <h3 className="text-[13px] font-bold uppercase tracking-[0.15em] text-[#0B1B34] transition-colors duration-300 hover:text-[#C9A227] md:text-sm">
+      {/* Informações de Texto */}
+      <Link href={`/produto/${product.handle}`} className="flex flex-col items-center justify-center p-6 text-center bg-white">
+        <h3 className="text-[13px] font-bold uppercase tracking-[0.15em] text-[#0B1B34] transition-colors duration-300 group-hover:text-[#C9A227] md:text-sm">
           {product.name}
         </h3>
 
