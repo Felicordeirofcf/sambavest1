@@ -72,7 +72,8 @@ export async function getProdutosBlingMapeados(): Promise<Product[]> {
         const partes = splitModelo.split(";");
         nomeModelo = partes[0].trim(); 
 
-        const parteTamanho = partes.find(pt => pt.includes("Tamanho:"));
+        // 👇 CORREÇÃO APLICADA AQUI (pt: string) 👇
+        const parteTamanho = partes.find((pt: string) => pt.includes("Tamanho:"));
         if (parteTamanho) {
           tamanho = parteTamanho.replace("Tamanho:", "").trim(); 
         }

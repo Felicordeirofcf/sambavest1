@@ -1,6 +1,7 @@
-// app/api/checkout/route.ts
+// Substitua tudo no seu arquivo por este código:
+
 import { NextResponse } from 'next/server';
-import { criarPedidoBling } from '@/lib/bling'; // 🚀 O atalho @/ resolve qualquer erro de pasta!
+import { criarPedidoBling } from '@/lib/bling'; // Certifique-se de usar o atalho @/
 
 export async function POST(request: Request) {
   try {
@@ -22,6 +23,13 @@ export async function POST(request: Request) {
         email: cliente.email,
         telefone: cliente.telefone,
         numeroDocumento: cliente.numeroDocumento,
+        // 👇 ADICIONANDO OS CAMPOS QUE O TYPESCRIPT EXIGIU 👇
+        endereco: cliente.endereco || 'Endereço não informado',
+        numero: cliente.numero || 'S/N',
+        bairro: cliente.bairro || 'Bairro não informado',
+        cidade: cliente.cidade || 'Cidade não informada',
+        cep: cliente.cep || '00000000',
+        uf: cliente.uf || 'RJ',
       },
       itens: itens.map((item: any) => ({
         idProdutoBling: Number(item.id),

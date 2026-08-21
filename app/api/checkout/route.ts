@@ -1,72 +1,52 @@
-// app/api/checkout/route.ts
+// Substitua tudo no seu arquivo por este código:
+
 import { NextResponse } from 'next/server';
-import { criarPedidoBling } from '../../../lib/bling';
+import { criarPedidoBling } from '@/lib/bling'; // Certifique-se de usar o atalho @/
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
-    const items = Array.isArray(body?.items) ? body.items : [];
-    const cliente = body?.cliente; // Dados do cliente vindo do formulário de checkout
+    const body = await request.json();
+    const { cliente, itens } = body;
 
-    if (items.length === 0) {
+    // Validação básica
+    if (!cliente || !itens || itens.length === 0) {
       return NextResponse.json(
-        { error: 'Carrinho vazio.' },
+        { error: 'Dados do cliente ou itens do carrinho ausentes.' },
         { status: 400 }
       );
     }
 
-    // Validação e normalização dos itens do carrinho
-    const normalizedItems = items.map((item: any) => {
-      // Como mapeamos o id do Bling para o produto, extraímos o ID base ou usamos o ID numérico
-      const produtoId = Number(item.id);
-      const quantity = Number(item.quantity || 1);
-      const price = Number(item.price || 0);
-
-      if (!produtoId || Number.isNaN(produtoId)) {
-        throw new Error(`ID de produto inválido: ${item.id}`);
-      }
-
-      if (!quantity || Number.isNaN(quantity) || quantity < 1) {
-        throw new Error(`Quantidade inválida para o item ${item.id}`);
-      }
-
-      return {
-        idProdutoBling: produtoId,
-        quantidade: quantity,
-        valorUnitario: price,
-      };
-    });
-
-    // Se o frontend ainda não estiver enviando os dados do cliente, criamos um contato padrão temporário para o Bling aceitar o pedido
-    const dadosCliente = cliente || {
-      nome: 'Cliente Samba Vest',
-      email: 'contato@sambavest.com',
-      telefone: '21999999999',
-      numeroDocumento: '00000000000',
-    };
-
-    // Cria o pedido de venda diretamente no Bling
-    const pedidoBling = await criarPedidoBling({
-      cliente: dadosCliente,
-      itens: normalizedItems,
+    // Chama a função que criamos no bling.ts para registrar o pedido no ERP
+    const pedidoCriado = await criarPedidoBling({
+      cliente: {
+        nome: cliente.nome,
+        email: cliente.email,
+        telefone: cliente.telefone,
+        numeroDocumento: cliente.numeroDocumento,
+        // 👇 ADICIONANDO OS CAMPOS QUE O TYPESCRIPT EXIGIU 👇
+        endereco: cliente.endereco || 'Endereço não informado',
+        numero: cliente.numero || 'S/N',
+        bairro: cliente.bairro || 'Bairro não informado',
+        cidade: cliente.cidade || 'Cidade não informada',
+        cep: cliente.cep || '00000000',
+        uf: cliente.uf || 'RJ',
+      },
+      itens: itens.map((item: any) => ({
+        idProdutoBling: Number(item.id),
+        quantidade: item.quantity,
+        valorUnitario: item.price,
+      })),
     });
 
     return NextResponse.json({
       success: true,
       message: 'Pedido gerado com sucesso no Bling!',
-      pedidoId: pedidoBling?.id,
+      pedido: pedidoCriado,
     });
-
-  } catch (error) {
-    console.error('Erro ao processar checkout para o Bling:', error);
-
+  } catch (error: any) {
+    console.error('Erro na API de Checkout:', error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível registrar o pedido no Bling.',
-      },
+      { error: error.message || 'Erro interno ao processar o pedido.' },
       { status: 500 }
     );
   }
