@@ -28,7 +28,8 @@ async function fetchRealBlingProducts(tentativa = 1): Promise<any[]> {
   const response = await fetch('https://www.bling.com.br/Api/v3/produtos', {
     method: 'GET',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' },
-    cache: 'no-store' 
+    // 👇 CORREÇÃO APLICADA AQUI: Sai o cache: 'no-store', entra a revalidação a cada 60 segundos 👇
+    next: { revalidate: 60 } 
   });
   if (response.status === 401 && tentativa === 1) {
     const renovou = await atualizarTokenBling();
@@ -47,11 +48,11 @@ export async function getProdutosBlingMapeados(): Promise<Product[]> {
 
     // 🏆 DICIONÁRIO DE IMAGENS: Tudo padronizado para .jpg
     const dicionarioImagens: Record<string, string> = {
-      "Baby Look (feminina)": "/products/babylook.jpg", 
-      "Vestido": "/products/vestido.jpg",               
-      "Regata": "/products/regata.jpg",                 
-      "Básica (unissex)": "/products/basica.jpg",       
-      "Básica": "/products/basica.jpg"                  
+      "Baby Look (feminina)": "/products/babylook.jpeg", 
+      "Vestido": "/products/vestido.png",               
+      "Regata": "/products/regata.jpeg",                 
+      "Básica (unissex)": "/products/basica.jpeg",       
+      "Básica": "/products/basica.jpeg"                  
     };
 
     produtosBlingRaw.forEach((p: any) => {
@@ -72,7 +73,6 @@ export async function getProdutosBlingMapeados(): Promise<Product[]> {
         const partes = splitModelo.split(";");
         nomeModelo = partes[0].trim(); 
 
-        // 👇 CORREÇÃO APLICADA AQUI (pt: string) 👇
         const parteTamanho = partes.find((pt: string) => pt.includes("Tamanho:"));
         if (parteTamanho) {
           tamanho = parteTamanho.replace("Tamanho:", "").trim(); 

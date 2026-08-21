@@ -23,6 +23,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.sambavest.com.br'), // 🚀 Linha adicionada para resolver o aviso do Vercel!
   title: {
     default: 'Samba Vest | Camisas Oficiais de Enredo',
     template: '%s | Samba Vest',
