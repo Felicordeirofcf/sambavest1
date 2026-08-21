@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-// 1. Atualizamos a interface para exigir o ID real e a quantidade
 export interface CartItem {
-  id: number | string; // Aceita o ID numérico da Nuvemshop
+  id: number | string;
   name: string;
   price: number;
   image: string;
@@ -13,13 +12,13 @@ export interface CartItem {
 
 interface CartStore {
   items: CartItem[];
-  isCartOpen: boolean;
+  isOpen: boolean; // Corrigido para "isOpen" para bater com o Minicart.tsx
   isMenuOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
   openMenu: () => void;
   closeMenu: () => void;
-  addItem: (item: CartItem) => void; // 2. Agora o addItem exige o item completo
+  addItem: (item: CartItem) => void;
   removeItem: (id: number | string) => void;
   clearCart: () => void;
 }
@@ -28,23 +27,21 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set) => ({
       items: [],
-      isCartOpen: false,
+      isOpen: false, // Corrigido para "isOpen"
       isMenuOpen: false,
       
-      openCart: () => set({ isCartOpen: true }),
-      closeCart: () => set({ isCartOpen: false }),
+      openCart: () => set({ isOpen: true }), // Corrigido para "isOpen"
+      closeCart: () => set({ isOpen: false }), // Corrigido para "isOpen"
       openMenu: () => set({ isMenuOpen: true }),
       closeMenu: () => set({ isMenuOpen: false }),
       
       addItem: (newItem) =>
         set((state) => {
-          // Verifica se já existe um item com o mesmo ID E mesmo tamanho no carrinho
           const existingItem = state.items.find(
             (item) => item.id === newItem.id && item.size === newItem.size
           );
 
           if (existingItem) {
-            // Se existir, apenas soma a quantidade
             return {
               items: state.items.map((item) =>
                 item.id === newItem.id && item.size === newItem.size
@@ -54,7 +51,6 @@ export const useCartStore = create<CartStore>()(
             };
           }
           
-          // Se não existir, adiciona o novo item à lista
           return { items: [...state.items, newItem] };
         }),
         
@@ -66,7 +62,7 @@ export const useCartStore = create<CartStore>()(
       clearCart: () => set({ items: [] }),
     }),
     {
-      name: 'samba-vest-cart', // Nome que fica salvo no LocalStorage do navegador
+      name: 'samba-vest-cart',
     }
   )
 );

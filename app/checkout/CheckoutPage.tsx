@@ -11,24 +11,6 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
 
-  // Estados do formulário de cadastro e endereço do cliente
-  const [formData, setFormData] = useState({
-    nome: '',
-    email: '',
-    telefone: '',
-    numeroDocumento: '',
-    endereco: '',
-    numero: '',
-    bairro: '',
-    cidade: '',
-    cep: '',
-    uf: '',
-  });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const frete = shippingQuote ? shippingQuote.price : 0;
   const total = subtotal + frete;
@@ -36,11 +18,6 @@ export default function CheckoutPage() {
   const handleFinalizarPedidoBling = async () => {
     if (items.length === 0) {
       alert('Seu carrinho está vazio!');
-      return;
-    }
-
-    if (!formData.nome || !formData.numeroDocumento || !formData.email || !formData.cep) {
-      alert('Por favor, preencha os campos obrigatórios de identificação e endereço.');
       return;
     }
 
@@ -58,17 +35,13 @@ export default function CheckoutPage() {
             quantity: item.quantity,
             price: item.price,
           })),
+          // Se quiser coletar dados do cliente em um formulário depois, pode passar aqui.
+          // Por enquanto, enviamos dados padrão para o Bling registrar o pedido.
           cliente: {
-            nome: formData.nome,
-            email: formData.email,
-            telefone: formData.telefone,
-            numeroDocumento: formData.numeroDocumento,
-            endereco: formData.endereco,
-            numero: formData.numero,
-            bairro: formData.bairro,
-            cidade: formData.cidade,
-            cep: formData.cep,
-            uf: formData.uf,
+            nome: 'Cliente E-commerce Samba Vest',
+            email: 'contato@sambavest.com',
+            telefone: '21999999999',
+            numeroDocumento: '00000000000',
           },
         }),
       });
@@ -81,7 +54,7 @@ export default function CheckoutPage() {
 
       alert('✅ Pedido realizado com sucesso e registrado no Bling!');
       clearCart();
-      window.location.href = '/';
+      window.location.href = '/'; // Redireciona para a home ou página de sucesso
     } catch (error: any) {
       console.error(error);
       alert(`❌ Erro ao finalizar: ${error.message}`);
@@ -111,69 +84,10 @@ export default function CheckoutPage() {
         </h1>
 
         <div className="flex flex-col lg:flex-row gap-10">
-          {/* Lado Esquerdo: Formulário de Cadastro/Endereço + Itens */}
-          <div className="flex-1 space-y-6">
-            
-            {/* Bloco de Dados do Cliente */}
+          {/* Lado Esquerdo: Lista de Itens */}
+          <div className="flex-1 space-y-4">
             <div className="bg-white p-6 shadow-sm rounded-sm">
-              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">1. Seus Dados e Endereço</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Nome Completo *</label>
-                  <input type="text" name="nome" value={formData.nome} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Ex: João da Silva" />
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">E-mail *</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="joao@email.com" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Telefone / WhatsApp *</label>
-                  <input type="text" name="telefone" value={formData.telefone} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="(21) 99999-9999" />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">CPF ou CNPJ (Somente números) *</label>
-                  <input type="text" name="numeroDocumento" value={formData.numeroDocumento} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="12345678909" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">CEP *</label>
-                  <input type="text" name="cep" value={formData.cep} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="20000000" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Estado (UF)</label>
-                  <input type="text" name="uf" value={formData.uf} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="RJ" />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Endereço (Rua, Avenida...) *</label>
-                  <input type="text" name="endereco" value={formData.endereco} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Rua Exemplo" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Número *</label>
-                  <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="123" />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Bairro *</label>
-                  <input type="text" name="bairro" value={formData.bairro} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Centro" />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Cidade *</label>
-                  <input type="text" name="cidade" value={formData.cidade} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Rio de Janeiro" />
-                </div>
-              </div>
-            </div>
-
-            {/* Bloco de Produtos */}
-            <div className="bg-white p-6 shadow-sm rounded-sm">
-              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">2. Seus Produtos</h3>
+              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">Seus Produtos</h3>
               {items.map((item) => (
                 <div key={`${item.id}-${item.size}`} className="flex gap-4 py-4 border-b last:border-0">
                   <img src={item.image} alt={item.name} className="w-20 h-24 object-contain bg-[#FAF7EF] p-1" />
@@ -224,7 +138,7 @@ export default function CheckoutPage() {
               </div>
 
               <div className="bg-[#0B1B34]/5 p-4 mb-6 text-[11px] text-[#0B1B34] leading-relaxed uppercase tracking-wider">
-                Ao finalizar, o seu pedido junto com os dados de entrega serão enviados direto para o Bling.
+                Ao finalizar, o seu pedido será integrado diretamente ao sistema Bling, reservando os itens do seu estoque.
               </div>
 
               <button
