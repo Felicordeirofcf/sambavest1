@@ -26,26 +26,34 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* 🚀 O TRUQUE MÁGICO DAS ANIMAÇÕES EM CASCATA FICA AQUI */}
       <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+        @keyframes revealUp {
+          0% { opacity: 0; transform: translateY(40px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
-        .animate-on-load {
-          animation: fadeInUp 0.8s ease-out forwards;
+        .animate-reveal {
+          opacity: 0;
+          animation: revealUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
 
-      <div className="w-full bg-[#F9F9F9] animate-on-load">
-        <HeroCarousel />
+      <div className="w-full bg-[#F9F9F9]">
+        
+        {/* Hero sem atraso para carregar instantaneamente */}
+        <div className="animate-reveal" style={{ animationDelay: '0s' }}>
+          <HeroCarousel />
+        </div>
 
-        <section className="w-full px-2 md:px-4 py-6 md:py-10 max-w-7xl mx-auto">
+        <section className="w-full max-w-7xl mx-auto px-2 py-6 md:px-4 md:py-10">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
-            {featuredCategories.map((cat) => (
+            {featuredCategories.map((cat, index) => (
               <Link
                 key={cat.slug}
                 href={`/categoria/${cat.slug}`}
-                className="group relative flex aspect-[16/7] w-full items-center justify-center overflow-hidden border-[2px] border-[#0B1B34] bg-white shadow-sm md:aspect-[21/9]"
+                // Adicionando a classe de revelação com atraso
+                className="animate-reveal group relative flex aspect-[16/7] w-full items-center justify-center overflow-hidden border-[2px] border-[#0B1B34] bg-white shadow-sm md:aspect-[21/9]"
+                style={{ animationDelay: `${0.2 + (index * 0.15)}s` }}
               >
                 <Image
                   src={cat.image}
@@ -55,7 +63,7 @@ export default async function HomePage() {
                   className="object-contain p-4 transition-transform duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0B1B34] via-[#0B1B34]/40 to-transparent opacity-90 transition-opacity duration-500 group-hover:opacity-100" />
-                <span className="relative z-10 px-4 pb-4 pt-12 text-center font-heading text-xl md:text-3xl font-black uppercase tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-b from-[#F0DFA8] via-[#C9A227] to-[#8A6D1C] drop-shadow-[0_4px_6px_rgba(0,0,0,0.9)] transition-transform duration-500 group-hover:scale-105">
+                <span className="relative z-10 px-4 pb-4 pt-12 text-center font-heading text-xl font-black uppercase tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-b from-[#F0DFA8] via-[#C9A227] to-[#8A6D1C] drop-shadow-[0_4px_6px_rgba(0,0,0,0.9)] transition-transform duration-500 group-hover:scale-105 md:text-3xl">
                   {cat.name}
                 </span>
               </Link>
@@ -63,27 +71,37 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 pt-4">
-          <div className="text-center mb-12">
-            <h2 className="font-heading text-2xl md:text-3xl font-extrabold uppercase tracking-widest text-[#0B1B34]">
+        {/* 🚀 REMOVIDO o max-w-7xl e paddings laterais PARA FICAR FULL BLEED (GIGANTE) */}
+        <section className="w-full max-w-[1600px] mx-auto px-4 pb-20 pt-8">
+          {/* Título da seção animado */}
+          <div className="animate-reveal mb-12 text-center" style={{ animationDelay: '0.4s' }}>
+            <h2 className="font-heading text-2xl font-extrabold uppercase tracking-widest text-[#0B1B34] md:text-3xl">
               Lançamentos
             </h2>
             <div className="mx-auto mt-4 h-[3px] w-16 bg-[#C9A227]" />
           </div>
 
           {lancamentos.length === 0 ? (
-            <p className="text-center text-gray-500 italic">
+            <p className="animate-reveal text-center italic text-gray-500" style={{ animationDelay: '0.5s' }}>
               Nenhum produto cadastrado no momento.
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 w-full">
-              {lancamentos.map((product) => (
-                <ProductCard key={product.id} product={product} />
+            <div className="grid w-full grid-cols-1 gap-1 md:grid-cols-2">
+              {/* 🚀 MUDANÇA DA GRADE: 2 colunas gigantes com gap mínimo */}
+              {lancamentos.map((product, index) => (
+                <div 
+                  key={product.id} 
+                  className="animate-reveal w-full"
+                  style={{ animationDelay: `${0.5 + (index * 0.15)}s` }}
+                >
+                  <ProductCard product={product} />
+                </div>
               ))}
             </div>
           )}
 
-          <div className="mt-16 flex w-full justify-center">
+          {/* Botão animado */}
+          <div className="animate-reveal mt-16 flex w-full justify-center" style={{ animationDelay: '1.2s' }}>
             <Link
               href="/categoria/todos"
               className="group relative flex items-center justify-center gap-3 overflow-hidden bg-[#C9A227] px-10 py-4 font-heading text-sm font-extrabold uppercase tracking-widest text-[#0B1B34] shadow-[0_5px_15px_rgba(201,162,39,0.4)] transition-all duration-300 hover:scale-105 hover:bg-[#0B1B34] hover:text-[#C9A227] hover:shadow-[0_8px_25px_rgba(11,27,52,0.4)]"

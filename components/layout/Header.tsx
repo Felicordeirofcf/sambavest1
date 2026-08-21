@@ -10,12 +10,16 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
   return (
     <Link
       href={href}
-      className={`group relative py-2 transition-colors ${active ? 'text-[#C9A227]' : 'text-white/90 hover:text-[#C9A227]'}`}
+      // 🚀 EFEITO CARNAVALESCO: Transição suave com leve escala e mudança para tom dourado festivo
+      className={`group relative py-2 font-bold transition-all duration-300 hover:scale-105 ${
+        active ? 'text-[#C9A227] drop-shadow-[0_0_8px_rgba(201,162,39,0.5)]' : 'text-white/90 hover:text-[#F0DFA8]'
+      }`}
     >
       {children}
+      {/* Linha de destaque com gradiente carnavalesco */}
       <span
-        className={`absolute -bottom-0.5 left-0 h-[2px] bg-[#C9A227] transition-all duration-300 ${
-          active ? 'w-full' : 'w-0 group-hover:w-full'
+        className={`absolute -bottom-0.5 left-0 h-[2.5px] bg-gradient-to-r from-[#C9A227] via-[#F0DFA8] to-[#C9A227] transition-all duration-300 ${
+          active ? 'w-full shadow-[0_0_10px_#C9A227]' : 'w-0 group-hover:w-full'
         }`}
       />
     </Link>
@@ -30,31 +34,31 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 w-full border-b border-[#C9A227]/20 bg-[#0B1B34]/97 px-4 py-2 backdrop-blur-md md:px-6">
+      <header className="sticky top-0 z-35 w-full border-b border-[#C9A227]/30 bg-[#0B1B34]/95 px-4 py-2.5 backdrop-blur-md md:px-6 shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
         {/* MOBILE */}
         <div className="relative flex items-center justify-between xl:hidden min-h-[68px]">
           {/* Menu */}
           <div className="w-[40px] flex justify-start shrink-0">
             <button
               onClick={openMenu}
-              className="flex flex-col justify-center items-center w-8 h-8 space-y-1 focus:outline-none hover:opacity-70 transition-opacity"
+              className="group flex flex-col justify-center items-center w-9 h-9 space-y-1.5 focus:outline-none transition-transform active:scale-95"
               aria-label="Abrir menu"
             >
-              <span className="block w-6 h-0.5 bg-[#C9A227]"></span>
-              <span className="block w-6 h-0.5 bg-[#C9A227]"></span>
-              <span className="block w-6 h-0.5 bg-[#C9A227]"></span>
+              <span className="block w-6 h-0.5 bg-[#C9A227] transition-all group-hover:w-7 group-hover:bg-[#F0DFA8]"></span>
+              <span className="block w-6 h-0.5 bg-[#C9A227] transition-all group-hover:w-5 group-hover:bg-[#F0DFA8]"></span>
+              <span className="block w-6 h-0.5 bg-[#C9A227] transition-all group-hover:w-7 group-hover:bg-[#F0DFA8]"></span>
             </button>
           </div>
 
-          {/* Logo mobile centralizada */}
+          {/* Logo mobile centralizada com brilho suave */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
-            <Link href="/" aria-label="Ir para a página inicial">
+            <Link href="/" aria-label="Ir para a página inicial" className="transition-transform duration-300 hover:scale-105">
               <Image
                 src="/logo-wordmark.png"
                 alt="Samba Vest"
                 width={148}
                 height={60}
-                className="object-contain h-[40px] w-auto"
+                className="object-contain h-[40px] w-auto drop-shadow-[0_2px_8px_rgba(201,162,39,0.3)]"
                 priority
               />
             </Link>
@@ -64,7 +68,7 @@ export default function Header() {
           <div className="w-[40px] flex justify-end shrink-0">
             <button
               onClick={openCart}
-              className="relative text-[#C9A227] hover:opacity-70 transition-opacity"
+              className={`relative text-[#C9A227] hover:text-[#F0DFA8] transition-all ${totalItems > 0 ? 'animate-bounce' : ''}`}
               aria-label="Abrir carrinho"
             >
               <svg
@@ -83,7 +87,7 @@ export default function Header() {
               </svg>
 
               {totalItems > 0 && (
-                <span className="absolute -top-2 -right-2 bg-[#C9A227] text-[#0B1B34] text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-sm">
+                <span className="absolute -top-2 -right-2 bg-gradient-to-r from-[#C9A227] to-[#F0DFA8] text-[#0B1B34] text-[10px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-[0_0_8px_#C9A227]">
                   {totalItems}
                 </span>
               )}
@@ -92,9 +96,9 @@ export default function Header() {
         </div>
 
         {/* DESKTOP */}
-        <div className="hidden xl:flex justify-between items-center">
+        <div className="hidden xl:flex justify-between items-center max-w-[1600px] mx-auto">
           <div className="flex-1 flex items-center justify-start">
-            <nav className="flex gap-6 text-[11px] uppercase tracking-wider font-bold">
+            <nav className="flex gap-8 text-[12px] uppercase tracking-wider font-bold">
               <NavLink href="/" active={pathname === '/'}>
                 Início
               </NavLink>
@@ -111,13 +115,13 @@ export default function Header() {
           </div>
 
           <div className="flex-1 flex justify-center">
-            <Link href="/" aria-label="Ir para a página inicial">
+            <Link href="/" aria-label="Ir para a página inicial" className="group">
               <Image
                 src="/logo-wordmark.png"
                 alt="Samba Vest"
                 width={210}
                 height={85}
-                className="object-contain h-[58px] w-auto"
+                className="object-contain h-[58px] w-auto transition-all duration-500 group-hover:scale-105 group-hover:drop-shadow-[0_0_15px_rgba(201,162,39,0.5)]"
                 priority
               />
             </Link>
@@ -126,14 +130,14 @@ export default function Header() {
           <div className="flex-1 flex justify-end">
             <button
               onClick={openCart}
-              className="text-xs md:text-sm uppercase font-bold flex items-center gap-2 text-white/90 hover:text-[#C9A227] transition-colors"
+              className="group text-xs md:text-sm uppercase font-bold flex items-center gap-2.5 text-white/90 hover:text-[#C9A227] transition-all duration-300"
               aria-label="Abrir carrinho"
             >
-              <span className="text-xs uppercase tracking-wide">Carrinho</span>
+              <span className="text-xs uppercase tracking-widest group-hover:translate-x-[-2px] transition-transform">Sacola</span>
 
-              <div className="relative">
+              <div className="relative p-2 rounded-full bg-white/5 border border-white/10 group-hover:border-[#C9A227] transition-colors">
                 <svg
-                  className="w-5 h-5"
+                  className="w-5 h-5 text-[#C9A227] transition-transform group-hover:scale-110"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -148,7 +152,7 @@ export default function Header() {
                 </svg>
 
                 {totalItems > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-[#C9A227] text-[#0B1B34] text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center shadow-sm">
+                  <span className="absolute -top-1.5 -right-1.5 bg-gradient-to-r from-[#C9A227] to-[#F0DFA8] text-[#0B1B34] text-[10px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shadow-[0_0_10px_#C9A227] animate-pulse">
                     {totalItems}
                   </span>
                 )}
@@ -161,63 +165,66 @@ export default function Header() {
       {/* Overlay */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 xl:hidden transition-opacity"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 xl:hidden transition-opacity"
           onClick={closeMenu}
         />
       )}
 
       {/* Menu mobile */}
       <div
-        className={`fixed top-0 left-0 h-full w-[85%] max-w-[350px] bg-[#0B1B34] z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col xl:hidden ${
+        className={`fixed top-0 left-0 h-full w-[85%] max-w-[350px] bg-[#0B1B34] z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col xl:hidden border-r border-[#C9A227]/30 ${
           isMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-4 flex items-center border-b border-white/10">
+        <div className="p-4 flex items-center border-b border-white/10 bg-black/20">
           <button
             onClick={closeMenu}
-            className="text-[#C9A227] hover:opacity-70 transition-opacity"
+            className="text-[#C9A227] hover:text-white transition-colors p-1"
             aria-label="Fechar menu"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="1.5"
-                d="M15 19l-7-7 7-7"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
               />
             </svg>
           </button>
 
-          <h2 className="text-[15px] font-bold text-center flex-1 pr-5 text-[#C9A227]">
-            Menu
+          <h2 className="text-[15px] font-bold text-center flex-1 pr-6 text-[#C9A227] tracking-widest uppercase">
+            Menu Samba Vest
           </h2>
         </div>
 
-        <nav className="flex-1 flex flex-col pt-2 overflow-y-auto text-[14px] font-bold text-white/90 uppercase tracking-wider">
-          <Link href="/" onClick={closeMenu} className="px-5 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5">
-            Início
+        <nav className="flex-1 flex flex-col pt-3 overflow-y-auto text-[13px] font-bold text-white/90 uppercase tracking-wider">
+          <Link href="/" onClick={closeMenu} className="px-6 py-4 hover:bg-white/5 hover:text-[#C9A227] transition-colors border-b border-white/5 flex items-center justify-between">
+            <span>Início</span>
+            <span className="text-[#C9A227]">→</span>
           </Link>
-          <Link href="/categoria/todos" onClick={closeMenu} className="px-5 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5">
-            Ver todos os produtos
+          <Link href="/categoria/todos" onClick={closeMenu} className="px-6 py-4 hover:bg-white/5 hover:text-[#C9A227] transition-colors border-b border-white/5 flex items-center justify-between">
+            <span>Ver todos os produtos</span>
+            <span className="text-[#C9A227]">→</span>
           </Link>
           {categories.map((cat) => (
             <Link
               key={cat.slug}
               href={`/categoria/${cat.slug}`}
               onClick={closeMenu}
-              className="px-5 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5"
+              className="px-6 py-4 hover:bg-white/5 hover:text-[#C9A227] transition-colors border-b border-white/5 flex items-center justify-between"
             >
-              {cat.name}
+              <span>{cat.name}</span>
+              <span className="text-[#C9A227]">→</span>
             </Link>
           ))}
         </nav>
 
-        <div className="p-5 border-t border-white/10 flex items-center gap-3 text-[14px] text-white/90 font-bold">
+        <div className="p-5 border-t border-white/10 flex items-center gap-3 text-[13px] text-white/90 font-bold bg-black/20">
           <svg className="w-5 h-5 text-[#C9A227]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth="1.5"
+              strokeWidth="2"
               d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
             />
           </svg>
