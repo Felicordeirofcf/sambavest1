@@ -39,8 +39,18 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!formData.nome || !formData.numeroDocumento || !formData.email || !formData.cep) {
-      alert('Por favor, preencha os campos obrigatórios de identificação e endereço.');
+    // 🔍 Validação rigorosa de todos os campos obrigatórios do cliente e endereço
+    if (
+      !formData.nome || 
+      !formData.numeroDocumento || 
+      !formData.email || 
+      !formData.cep || 
+      !formData.endereco || 
+      !formData.numero || 
+      !formData.bairro || 
+      !formData.cidade
+    ) {
+      alert('Por favor, preencha todos os campos obrigatórios de identificação e endereço completo.');
       return;
     }
 
@@ -68,14 +78,14 @@ export default function CheckoutPage() {
             bairro: formData.bairro,
             cidade: formData.cidade,
             cep: formData.cep,
-            uf: formData.uf,
+            uf: formData.uf || 'RJ',
           },
         }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.success) {
         throw new Error(data.error || 'Erro ao registrar pedido.');
       }
 
@@ -151,22 +161,22 @@ export default function CheckoutPage() {
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Endereço (Rua, Avenida...) *</label>
-                  <input type="text" name="endereco" value={formData.endereco} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Rua Exemplo" />
+                  <input type="text" name="endereco" value={formData.endereco} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Rua Exemplo" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Número *</label>
-                  <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="123" />
+                  <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="123" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Bairro *</label>
-                  <input type="text" name="bairro" value={formData.bairro} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Centro" />
+                  <input type="text" name="bairro" value={formData.bairro} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Centro" />
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Cidade *</label>
-                  <input type="text" name="cidade" value={formData.cidade} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Rio de Janeiro" />
+                  <input type="text" name="cidade" value={formData.cidade} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Rio de Janeiro" />
                 </div>
               </div>
             </div>
