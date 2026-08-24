@@ -1,4 +1,7 @@
 // app/page.tsx
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import Link from 'next/link';
 import Image from 'next/image';
 import ProductCard from '../components/product/ProductCard';
@@ -59,8 +62,6 @@ async function getProdutosWooCommerce() {
           if (resVar.ok) {
             const variations = await resVar.json();
             
-            // Vamos agrupar por "Modelo" (ex: Baby Look, Regata, Vestido, Unissex)
-            // para exibir opções claras na vitrine se desejar, ou manter o produto pai com suas variantes
             listaExibicao.push({
               id: prod.id,
               name: prod.name,
