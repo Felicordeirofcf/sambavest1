@@ -33,8 +33,6 @@ async function atualizarTokenBling(): Promise<string | null> {
     });
     if (!response.ok) return null;
     const data = await response.json();
-    
-    // Nota: Em produção ideal, você deve salvar isso em banco ou KV. Como estamos usando env do Vercel, retornamos o novo token para uso imediato.
     return data.access_token || null;
   } catch { 
     return null; 
@@ -45,7 +43,6 @@ async function fetchRealBlingProducts(tentativa = 1): Promise<any[]> {
   let accessToken = await getValidAccessToken();
   if (!accessToken) return [];
 
-  // 🚀 ADICIONADO LIMIT=100 PARA TRAZER MAIS PRODUTOS DE UMA SÓ VEZ
   const response = await fetch('https://www.bling.com.br/Api/v3/produtos?limite=100', {
     method: 'GET',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' },
@@ -55,7 +52,6 @@ async function fetchRealBlingProducts(tentativa = 1): Promise<any[]> {
   if (response.status === 401 && tentativa === 1) {
     const novoToken = await atualizarTokenBling();
     if (novoToken) {
-      // Tenta novamente com o token renovado
       const retryResponse = await fetch('https://www.bling.com.br/Api/v3/produtos?limite=100', {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${novoToken}`, 'Accept': 'application/json' },
@@ -108,7 +104,6 @@ export async function getProdutosBlingMapeados(): Promise<Product[]> {
       let nomeModelo = "Tradicional";
       let tamanho = "U";
 
-      // Puxa dinamicamente qual é o Modelo e o Tamanho
       if (nomeCompleto.includes("Modelo:")) {
         const splitModelo = nomeCompleto.split("Modelo:")[1]; 
         const partes = splitModelo.split(";");
@@ -192,26 +187,30 @@ async function obterOuCriarIdContatoBling(cliente: {
   const accessToken = await getValidAccessToken();
   if (!accessToken) throw new Error("Token de acesso inválido.");
 
-  const buscaRes = await fetch(`https://www.bling.com.br/Api/v3/contatos?numeroDocumento=${cliente.numeroDocumento}`, {
+  // Remove caracteres não numéricos do documento para busca precisa
+  const docLimpo = cliente.numeroDocumento.replace(/\D/g, '');
+
+  const buscaRes = await fetch(`https://www.bling.com.br/Api/v3/contatos?numeroDocumento=${docLimpo}`, {
     method: 'GET',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
   });
 
+  let contatoExistenteId: number | null = null;
+
   if (buscaRes.ok) {
     const buscaJson = await buscaRes.json();
     if (buscaJson.data && buscaJson.data.length > 0) {
-      console.log(`✅ Contato já existe no Bling: ID ${buscaJson.data[0].id}`);
-      return buscaJson.data[0].id;
+      contatoExistenteId = buscaJson.data[0].id;
+      console.log(`✅ Contato já existe no Bling: ID ${contatoExistenteId} - ${buscaJson.data[0].nome}`);
     }
   }
 
-  console.log(`👤 Criando novo contato no Bling para: ${cliente.nome}...`);
   const contatoPayload = {
     nome: cliente.nome,
     fantasia: cliente.nome,
     tipo: "F",
     situacao: "A",
-    numeroDocumento: cliente.numeroDocumento,
+    numeroDocumento: docLimpo,
     email: cliente.email,
     telefone: cliente.telefone,
     endereco: {
@@ -219,27 +218,48 @@ async function obterOuCriarIdContatoBling(cliente: {
       numero: cliente.numero,
       bairro: cliente.bairro,
       cidade: cliente.cidade,
-      cep: cliente.cep,
-      uf: cliente.uf
+      cep: cliente.cep.replace(/\D/g, ''),
+      uf: cliente.uf.toUpperCase()
     }
   };
 
+  // Se o contato já existe no Bling (ex: "Client Web"), atualiza ele com os dados reais do comprador
+  if (contatoExistenteId) {
+    console.log(`🔄 Atualizando o contato existente ID ${contatoExistenteId} para: ${cliente.nome}...`);
+    const atualizaRes = await fetch(`https://www.bling.com.br/Api/v3/contatos/${contatoExistenteId}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(contatoPayload)
+    });
+
+    if (atualizaRes.ok) {
+      console.log(`✅ Contato atualizado com sucesso para ${cliente.nome}!`);
+      return contatoExistenteId;
+    } else {
+      const erroAtualizacao = await atualizaRes.json();
+      console.warn("⚠️ Falha ao atualizar via PUT, mas prosseguindo com o ID existente:", erroAtualizacao);
+      return contatoExistenteId;
+    }
+  }
+
+  // Caso contrário, cria um novo contato do zero
+  console.log(`👤 Cadastrando novo cliente no Bling: ${cliente.nome}...`);
   const criaRes = await fetch('https://www.bling.com.br/Api/v3/contatos', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(contatoPayload)
   });
 
+  const criaJson = await criaRes.json();
+
   if (!criaRes.ok) {
-    const erroContato = await criaRes.json();
-    console.error("❌ ERRO AO CRIAR CONTATO NO BLING:", JSON.stringify(erroContato, null, 2));
-    return 18342484482; 
+    console.error("❌ ERRO AO CRIAR CONTATO NO BLING:", JSON.stringify(criaJson, null, 2));
+    throw new Error(criaJson.error?.message || "Erro ao criar contato no Bling.");
   }
 
-  const criaJson = await criaRes.json();
   const novoId = criaJson.data?.id;
-  console.log(`✅ Novo contato criado com sucesso! ID: ${novoId}`);
-  return novoId || 18342484482;
+  console.log(`✅ Novo cliente cadastrado com sucesso no Bling! ID: ${novoId}`);
+  return novoId;
 }
 
 export async function criarPedidoBling(dadosCheckout: {
@@ -268,12 +288,12 @@ export async function criarPedidoBling(dadosCheckout: {
     data: new Date().toISOString().split('T')[0],
     observacoes: infoEntrega,
     contato: {
-      id: idContatoBling,
+      id: Number(idContatoBling),
     },
     itens: dadosCheckout.itens.map((item) => ({
-      produto: { id: item.idProdutoBling },
-      quantidade: item.quantidade,
-      valor: item.valorUnitario,
+      produto: { id: Number(item.idProdutoBling) },
+      quantidade: Number(item.quantidade),
+      valor: Number(item.valorUnitario),
     })),
   };
 
@@ -283,11 +303,13 @@ export async function criarPedidoBling(dadosCheckout: {
     body: JSON.stringify(payload)
   });
 
+  const respostaJson = await response.json();
+
   if (!response.ok) {
-    const erro = await response.json();
-    console.error("❌ ERRO BLING DETALHADO:", JSON.stringify(erro, null, 2));
-    throw new Error("Erro ao registrar pedido no Bling.");
+    console.error("❌ ERRO BLING DETALHADO:", JSON.stringify(respostaJson, null, 2));
+    const mensagemErro = respostaJson.error?.message || JSON.stringify(respostaJson.error?.fields) || "Erro ao registrar pedido no Bling.";
+    throw new Error(mensagemErro);
   }
 
-  return await response.json();
+  return respostaJson;
 }

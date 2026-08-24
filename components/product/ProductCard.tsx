@@ -1,110 +1,118 @@
+// components/product/ProductCard.tsx
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { useCartStore } from '../../store/cartStore';
-import type { Product } from '../../lib/products';
+import { useRouter } from 'next/navigation';
 
-export default function ProductCard({ product }: { product: Product }) {
-  const { addItem, openCart } = useCartStore();
+export default function ProductCard({ product }: { product: any }) {
+  const router = useRouter();
+  const productIdentifier = product.id || product.slug;
+  const availableVariants = Array.isArray(product.variants) ? product.variants : [];
 
-  const handleQuickAdd = (e: React.MouseEvent, variantSize: string) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Extrai apenas os Modelos únicos disponíveis
+  const uniqueModels = Array.from(
+    new Set(
+      availableVariants
+        .map((v: any) => v.model)
+        .filter((model: string) => model && model !== 'Geral')
+    )
+  );
 
-    const variant = product.variants?.find((v) => v.size === variantSize);
-    const variantId = Number(variant ? variant.id : product.id);
-
-    if (!variantId || Number.isNaN(variantId)) {
-      return;
-    }
-
-    addItem({
-      id: variantId,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      size: variantSize,
-      quantity: 1,
-    });
-
-    openCart();
-  };
-
-  const availableVariants =
-    product.variants?.filter((v) => v.stock === null || v.stock > 0) || [];
-
-  // Lógica para pegar a imagem da Frente e a do Verso
-  const imageFront = product.images?.[0] || product.image;
-  const imageBack = product.images?.[1] || product.image;
+  const imageFrontDefault = product.images?.[0] || '';
+  const imageBackDefault = product.images?.[1] || imageFrontDefault;
+  
+  const [currentImage, setCurrentImage] = useState(imageFrontDefault);
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    // 🚀 ESTILO BOUTIQUE: Borda arredondada, sombra suave e efeito dourado no hover
-    <div className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_2px_15px_rgba(0,0,0,0.05)] transition-all duration-500 hover:border-[#C9A227] hover:shadow-2xl">
+    <div 
+      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_2px_15px_rgba(0,0,0,0.05)] transition-all duration-500 hover:border-[#C9A227] hover:shadow-2xl"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setCurrentImage(imageFrontDefault);
+      }}
+    >
       
-      <Link
-        href={`/produto/${product.handle}`}
+      {/* Área da Imagem e Link Principal */}
+      <div 
+        onClick={() => router.push(`/produto/${productIdentifier}`)}
         className="relative aspect-[4/5] w-full overflow-hidden bg-[#F2F2F2]"
       >
-        {/* Badge Flutuante */}
         {product.badge && (
           <span className="absolute left-4 top-4 z-20 rounded-sm bg-[#0B1B34] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#C9A227] shadow-lg">
             {product.badge}
           </span>
         )}
 
-        {/* IMAGEM FRENTE */}
+        {/* IMAGEM DINÂMICA (Muda para o modelo ou verso) */}
         <img
-          src={imageFront}
+          src={isHovered && currentImage === imageFrontDefault ? imageBackDefault : currentImage}
           alt={product.name}
-          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ease-in-out group-hover:opacity-0"
+          className="absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out group-hover:scale-105"
         />
 
-        {/* IMAGEM VERSO */}
-        <img
-          src={imageBack}
-          alt={`${product.name} Verso`}
-          className="absolute inset-0 h-full w-full object-cover opacity-0 transition-all duration-700 ease-in-out group-hover:scale-105 group-hover:opacity-100"
-        />
-
-        {/* Menu de Tamanhos (Aparece ao passar o mouse) */}
-        <div className="absolute bottom-0 left-0 flex w-full translate-y-full flex-col gap-4 bg-white/95 p-6 backdrop-blur-md transition-all duration-500 ease-out group-hover:translate-y-0">
-          <span className="text-center text-[11px] font-bold uppercase tracking-[0.2em] text-[#0B1B34]">
-            Adicionar à Sacola
+        {/* Menu de Modelos no Hover (Sem usar <Link> dentro de <Link>) */}
+        <div className="absolute bottom-0 left-0 flex w-full translate-y-full flex-col gap-2.5 bg-white/95 p-4 backdrop-blur-md transition-all duration-500 ease-out group-hover:translate-y-0 z-30">
+          <span className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-[#0B1B34]">
+            Escolha o Modelo
           </span>
 
-          <div className="flex flex-wrap justify-center gap-2">
-            {availableVariants.length > 0 ? (
-              availableVariants.slice(0, 6).map((variant) => (
-                <button
-                  key={variant.id}
-                  onClick={(e) => handleQuickAdd(e, variant.size)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-[11px] font-bold uppercase text-gray-600 transition-all duration-300 hover:scale-110 hover:border-[#0B1B34] hover:bg-[#0B1B34] hover:text-white"
-                >
-                  {variant.size}
-                </button>
-              ))
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {uniqueModels.length > 0 ? (
+              uniqueModels.map((modelName: any) => {
+                const varSample = availableVariants.find((v: any) => v.model === modelName);
+
+                return (
+                  <button
+                    key={modelName}
+                    type="button"
+                    onMouseEnter={() => {
+                      // 🖼️ DINÂMICO: Altera a foto do card para a foto específica do modelo selecionado!
+                      if (varSample?.image) {
+                        setCurrentImage(varSample.image);
+                      }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Evita conflito com o clique do card principal
+                      router.push(`/produto/${productIdentifier}?modelo=${encodeURIComponent(modelName)}`);
+                    }}
+                    className="px-3 py-2 rounded-lg border border-gray-300 text-[11px] font-bold uppercase text-gray-800 transition-all duration-300 hover:scale-105 hover:border-[#0B1B34] hover:bg-[#0B1B34] hover:text-white"
+                  >
+                    {modelName}
+                  </button>
+                );
+              })
             ) : (
-              <span className="w-full text-center text-[11px] font-bold uppercase tracking-widest text-red-500">
-                Esgotado
-              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/produto/${productIdentifier}`);
+                }}
+                className="w-full text-center py-2 rounded bg-[#0B1B34] text-white text-[11px] font-bold uppercase tracking-widest"
+              >
+                Ver Produto
+              </button>
             )}
           </div>
         </div>
-      </Link>
+      </div>
 
       {/* Informações de Texto */}
-      <Link href={`/produto/${product.handle}`} className="flex flex-col items-center justify-center p-6 text-center bg-white">
+      <Link href={`/produto/${productIdentifier}`} className="flex flex-col items-center justify-center p-6 text-center bg-white">
         <h3 className="text-[13px] font-bold uppercase tracking-[0.15em] text-[#0B1B34] transition-colors duration-300 group-hover:text-[#C9A227] md:text-sm">
           {product.name}
         </h3>
 
         <div className="mt-3 flex items-center gap-3">
           <span className="text-sm font-black text-[#1E2233] md:text-base">
-            R$ {product.price.toFixed(2).replace('.', ',')}
+            R$ {Number(product.price || 0).toFixed(2).replace('.', ',')}
           </span>
-          {product.originalPrice && product.originalPrice > product.price && (
+          {product.regular_price && product.regular_price > product.price && (
             <span className="text-[11px] text-gray-400 line-through md:text-xs">
-              R$ {product.originalPrice.toFixed(2).replace('.', ',')}
+              R$ {Number(product.regular_price).toFixed(2).replace('.', ',')}
             </span>
           )}
         </div>

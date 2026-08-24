@@ -1,13 +1,103 @@
+// app/categoria/[slug]/page.tsx
 import Link from 'next/link';
 import ProductCard from '../../../components/product/ProductCard';
-import { getProductsByCategory, categories, getCategoryName } from '../../../lib/products';
+
+// 🛍️ Função para buscar e sincronizar os produtos do WooCommerce por categoria
+async function getProdutosWooCommercePorCategoria(categorySlug: string) {
+  try {
+    const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
+    const consumerKey = process.env.WC_CONSUMER_KEY;
+    const consumerSecret = process.env.WC_CONSUMER_SECRET;
+
+    if (!consumerKey || !consumerSecret) {
+      console.error('❌ Credenciais do WooCommerce não configuradas.');
+      return [];
+    }
+
+    const authHeader = 'Basic ' + Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+
+    const resProducts = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=50`, {
+      headers: { 'Authorization': authHeader },
+      cache: 'no-store',
+    });
+
+    if (!resProducts.ok) return [];
+
+    const products = await resProducts.json();
+    const listaExibicao: any[] = [];
+
+    for (const prod of products) {
+      const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
+      const imagemPrincipal = prod.images?.[0]?.src || '';
+      let variationsList = [];
+
+      if (prod.type === 'variable') {
+        try {
+          const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=50`, {
+            headers: { 'Authorization': authHeader },
+            cache: 'no-store',
+          });
+          if (resVar.ok) {
+            variationsList = await resVar.json();
+          }
+        } catch (e) {
+          console.error(`Erro ao buscar variações do produto ${prod.id}:`, e);
+        }
+      }
+
+      listaExibicao.push({
+        id: prod.id,
+        name: prod.name,
+        slug: prod.slug,
+        price: precoBase,
+        regular_price: Number(prod.regular_price || precoBase),
+        images: prod.images.map((img: any) => img.src),
+        categories: prod.categories.map((cat: any) => cat.slug),
+        badge: prod.attributes?.find((a: any) => a.name.toLowerCase().includes('badge'))?.options?.[0] || (prod.on_sale ? 'Promoção' : null),
+        variants: variationsList.length > 0 ? variationsList.map((v: any) => {
+          const modeloAttr = v.attributes?.find((a: any) => {
+            const nome = (a.name || '').toLowerCase();
+            return nome.includes('modelo') || nome.includes('style') || nome.includes('model');
+          });
+          const tamanhoAttr = v.attributes?.find((a: any) => {
+            const nome = (a.name || '').toLowerCase();
+            return nome.includes('tamanho') || nome.includes('size');
+          });
+
+          return {
+            id: v.id,
+            parent_id: prod.id,
+            model: modeloAttr?.option || 'Geral',
+            size: tamanhoAttr?.option || 'Único',
+            price: Number(v.price || precoBase),
+            stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
+            image: v.image?.src || imagemPrincipal
+          };
+        }) : [
+          { id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }
+        ]
+      });
+    }
+
+    // Se não for 'todos', filtra pelo slug da categoria do WooCommerce
+    if (categorySlug && categorySlug !== 'todos') {
+      return listaExibicao.filter((p: any) => p.categories.includes(categorySlug));
+    }
+
+    return listaExibicao;
+
+  } catch (error) {
+    console.error('❌ Erro ao carregar produtos da categoria:', error);
+    return [];
+  }
+}
 
 export default async function CategoryPage({ params }: { params: { slug: string } }) {
   const resolvedParams = await Promise.resolve(params);
   const categorySlug = resolvedParams.slug || 'todos';
-  const categoryTitle = categorySlug === 'todos' ? 'Todos os Produtos' : getCategoryName(categorySlug);
-
-  const realProducts = await getProductsByCategory(categorySlug);
+  
+  const realProducts = await getProdutosWooCommercePorCategoria(categorySlug);
+  const categoryTitle = categorySlug === 'todos' ? 'Todos os Produtos' : categorySlug.replace(/-/g, ' ').toUpperCase();
 
   return (
     <div className="w-full min-h-screen bg-[#FAF7EF] pt-0 pb-20">
@@ -36,15 +126,12 @@ export default async function CategoryPage({ params }: { params: { slug: string 
               >
                 Todos os Produtos
               </Link>
-              {categories.map((cat) => (
-                <Link
-                  key={cat.slug}
-                  href={`/categoria/${cat.slug}`}
-                  className={`text-xs uppercase tracking-widest transition-colors ${categorySlug === cat.slug ? 'font-bold text-[#0B1B34]' : 'text-gray-500 hover:text-[#0B1B34]'}`}
-                >
-                  {cat.name}
-                </Link>
-              ))}
+              <Link
+                href="/categoria/camisas-de-escola-de-samba"
+                className={`text-xs uppercase tracking-widest transition-colors ${categorySlug === 'camisas-de-escola-de-samba' ? 'font-bold text-[#0B1B34]' : 'text-gray-500 hover:text-[#0B1B34]'}`}
+              >
+                Camisas de Escola de Samba
+              </Link>
             </div>
           </div>
         </aside>
@@ -54,9 +141,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
           {realProducts.length === 0 ? (
             <div className="text-center py-20 text-[#1E2233] flex flex-col items-center justify-center border border-[#E5E5E5] bg-white">
               <p className="uppercase tracking-widest text-sm mb-4 font-semibold">
-                {categorySlug === 'acessorios'
-                  ? 'Novidades em breve nesta categoria.'
-                  : 'Nenhuma peça nesta categoria.'}
+                Nenhuma peça nesta categoria.
               </p>
               <Link href="/categoria/todos" className="text-xs uppercase tracking-widest border-b border-[#0B1B34] pb-1 hover:text-[#C9A227] hover:border-[#C9A227] transition-colors">
                 Ver Coleção Completa

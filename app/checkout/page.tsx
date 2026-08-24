@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import ShippingCalculator from '../../components/product/ShippingCalculator';
 import type { ShippingQuote } from '../../lib/shipping';
@@ -8,10 +8,15 @@ import Link from 'next/link';
 
 export default function CheckoutPage() {
   const { items, removeItem, clearCart } = useCartStore();
+  const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
 
-  // Estados do formulário de cadastro e endereço do cliente
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -29,20 +34,48 @@ export default function CheckoutPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Função para buscar cliente cadastrado no Bling pelo CPF
+  const handleBuscarCliente = async () => {
+    const docLimpo = formData.numeroDocumento.replace(/\D/g, '');
+    if (!docLimpo || docLimpo.length < 11) {
+      alert('Por favor, digite um CPF válido com pelo menos 11 dígitos para buscar.');
+      return;
+    }
+
+    setIsSearchingClient(true);
+    try {
+      const res = await fetch(`/api/cliente?cpf=${docLimpo}`);
+      const data = await res.json();
+
+      if (data.success && data.cliente) {
+        setFormData(data.cliente);
+        alert('✅ Dados encontrados e preenchidos com sucesso!');
+      } else {
+        alert('ℹ️ Nenhum cadastro anterior encontrado com este CPF. Preencha os campos normalmente.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('❌ Erro ao buscar cliente.');
+    } finally {
+      setIsSearchingClient(false);
+    }
+  };
+
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const frete = shippingQuote ? shippingQuote.price : 0;
   const total = subtotal + frete;
 
   const handleFinalizarPedidoBling = async () => {
-    // 🔍 Pega os itens diretamente do store no momento exato do clique para garantir dados atualizados
-    const currentItems = useCartStore.getState().items;
+    let carrinhoAtual = items;
+    if (!carrinhoAtual || carrinhoAtual.length === 0) {
+      carrinhoAtual = useCartStore.getState().items;
+    }
 
-    if (!currentItems || currentItems.length === 0) {
-      alert('Seu carrinho está vazio!');
+    if (!carrinhoAtual || carrinhoAtual.length === 0) {
+      alert('Seu carrinho está vazio! Adicione um produto antes de finalizar.');
       return;
     }
 
-    // 🔍 Validação rigorosa de todos os campos obrigatórios do cliente e endereço
     if (
       !formData.nome || 
       !formData.numeroDocumento || 
@@ -61,7 +94,7 @@ export default function CheckoutPage() {
 
     try {
       const payload = {
-        items: currentItems.map((item) => ({
+        items: carrinhoAtual.map((item: any) => ({
           id: item.id,
           quantity: item.quantity,
           price: item.price,
@@ -82,9 +115,7 @@ export default function CheckoutPage() {
 
       const response = await fetch('/api/checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -94,9 +125,16 @@ export default function CheckoutPage() {
         throw new Error(data.error || 'Erro ao registrar pedido.');
       }
 
-      alert('✅ Pedido realizado com sucesso e registrado no Bling!');
+      alert('✅ Pedido gerado com sucesso! Redirecionando para o pagamento...');
       clearCart();
-      window.location.href = '/';
+
+      // 💳 Redireciona o cliente para a URL oficial de pagamento da Appmax/WooCommerce
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        window.location.href = '/';
+      }
+
     } catch (error: any) {
       console.error(error);
       alert(`❌ Erro ao finalizar: ${error.message}`);
@@ -105,15 +143,10 @@ export default function CheckoutPage() {
     }
   };
 
-  if (items.length === 0) {
+  if (!isMounted) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
-        <h2 className="font-heading text-2xl font-bold uppercase tracking-widest mb-6 text-[#0B1B34]">
-          Seu carrinho está vazio
-        </h2>
-        <Link href="/" className="px-8 py-3 bg-[#0B1B34] text-white uppercase text-xs font-bold tracking-widest hover:bg-[#C9A227] hover:text-[#0B1B34] transition-colors">
-          Voltar para a Loja
-        </Link>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <p className="text-sm uppercase tracking-widest text-gray-500">Carregando checkout...</p>
       </div>
     );
   }
@@ -133,6 +166,29 @@ export default function CheckoutPage() {
             <div className="bg-white p-6 shadow-sm rounded-sm">
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">1. Seus Dados e Endereço</h3>
               
+              {/* Campo rápido para clientes recorrentes */}
+              <div className="mb-6 bg-[#0B1B34]/5 p-4 rounded-sm border border-[#0B1B34]/10">
+                <label className="block text-xs font-bold uppercase text-[#0B1B34] mb-2">Já comprou conosco antes? Digite seu CPF:</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    name="numeroDocumento" 
+                    value={formData.numeroDocumento} 
+                    onChange={handleInputChange} 
+                    className="flex-1 border p-2 text-sm rounded bg-white" 
+                    placeholder="Somente números" 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={handleBuscarCliente}
+                    disabled={isSearchingClient}
+                    className="px-4 py-2 bg-[#0B1B34] text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-[#C9A227] hover:text-[#0B1B34] transition-colors disabled:bg-gray-400"
+                  >
+                    {isSearchingClient ? 'Buscando...' : 'Buscar Dados'}
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Nome Completo *</label>
@@ -189,22 +245,26 @@ export default function CheckoutPage() {
             {/* Bloco de Produtos */}
             <div className="bg-white p-6 shadow-sm rounded-sm">
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">2. Seus Produtos</h3>
-              {items.map((item) => (
-                <div key={`${item.id}-${item.size}`} className="flex gap-4 py-4 border-b last:border-0">
-                  <img src={item.image} alt={item.name} className="w-20 h-24 object-contain bg-[#FAF7EF] p-1" />
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between">
-                        <h4 className="text-sm font-medium uppercase text-[#1E2233]">{item.name}</h4>
-                        <button onClick={() => removeItem(item.id)} className="text-xs text-gray-400 hover:text-red-500">Remover</button>
+              {items.length === 0 ? (
+                <p className="text-xs text-gray-500 py-4">Seu carrinho está vazio.</p>
+              ) : (
+                items.map((item) => (
+                  <div key={`${item.id}-${item.size}`} className="flex gap-4 py-4 border-b last:border-0">
+                    <img src={item.image} alt={item.name} className="w-20 h-24 object-contain bg-[#FAF7EF] p-1" />
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between">
+                          <h4 className="text-sm font-medium uppercase text-[#1E2233]">{item.name}</h4>
+                          <button onClick={() => removeItem(item.id, item.size)} className="text-xs text-gray-400 hover:text-red-500">Remover</button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Tamanho: {item.size}</p>
+                        <p className="text-xs text-gray-500 italic">Qtd: {item.quantity}</p>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">Tamanho: {item.size}</p>
-                      <p className="text-xs text-gray-500 italic">Qtd: {item.quantity}</p>
+                      <p className="text-sm font-bold text-[#1E2233]">R$ {item.price.toFixed(2).replace('.', ',')}</p>
                     </div>
-                    <p className="text-sm font-bold text-[#1E2233]">R$ {item.price.toFixed(2).replace('.', ',')}</p>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -239,7 +299,7 @@ export default function CheckoutPage() {
               </div>
 
               <div className="bg-[#0B1B34]/5 p-4 mb-6 text-[11px] text-[#0B1B34] leading-relaxed uppercase tracking-wider">
-                Ao finalizar, o seu pedido junto com os dados de entrega serão enviados direto para o Bling.
+                Ao finalizar, o seu pedido será gerado e você será redirecionado para o pagamento seguro.
               </div>
 
               <button
@@ -253,7 +313,7 @@ export default function CheckoutPage() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 ) : (
-                  'Finalizar Pedido no Bling'
+                  'Ir para o Pagamento'
                 )}
               </button>
 

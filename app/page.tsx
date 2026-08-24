@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import ProductCard from '../components/product/ProductCard';
-import { getProdutosBlingMapeados } from '../lib/bling';
 import HeroCarousel from '../components/home/HeroCarousel';
 import AboutAtelie from '../components/home/AboutAtelie';
 
@@ -19,13 +18,109 @@ const featuredCategories = [
   },
 ];
 
+// 🛍️ Função para buscar os produtos do WooCommerce e expandir as variações na Home
+async function getProdutosWooCommerce() {
+  try {
+    const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
+    const consumerKey = process.env.WC_CONSUMER_KEY;
+    const consumerSecret = process.env.WC_CONSUMER_SECRET;
+
+    if (!consumerKey || !consumerSecret) {
+      console.error('❌ Credenciais do WooCommerce não configuradas na Home.');
+      return [];
+    }
+
+    const authHeader = 'Basic ' + Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+
+    const response = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=20`, {
+      headers: { 'Authorization': authHeader },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      throw new Error('Erro ao buscar produtos na API do WooCommerce.');
+    }
+
+    const products = await response.json();
+    const listaExibicao: any[] = [];
+
+    for (const prod of products) {
+      const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
+      const imagemPrincipal = prod.images?.[0]?.src || '';
+
+      // Se for um produto variável, buscamos as variações para criar cards específicos ou enriquecer o card
+      if (prod.type === 'variable') {
+        try {
+          const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=20`, {
+            headers: { 'Authorization': authHeader },
+            cache: 'no-store',
+          });
+          
+          if (resVar.ok) {
+            const variations = await resVar.json();
+            
+            // Vamos agrupar por "Modelo" (ex: Baby Look, Regata, Vestido, Unissex)
+            // para exibir opções claras na vitrine se desejar, ou manter o produto pai com suas variantes
+            listaExibicao.push({
+              id: prod.id,
+              name: prod.name,
+              slug: prod.slug,
+              price: precoBase,
+              regular_price: Number(prod.regular_price || precoBase),
+              images: prod.images.map((img: any) => img.src),
+              categories: prod.categories.map((cat: any) => cat.slug),
+              variants: variations.map((v: any) => {
+                const modeloAttr = v.attributes?.find((a: any) => 
+                  a.name.toLowerCase().includes('modelo') || a.name.toLowerCase().includes('style')
+                );
+                const tamanhoAttr = v.attributes?.find((a: any) => 
+                  a.name.toLowerCase().includes('tamanho') || a.name.toLowerCase().includes('size')
+                );
+
+                return {
+                  id: v.id,                    // ID exato da variação (ex: #16252)
+                  parent_id: prod.id,
+                  model: modeloAttr?.option || 'Geral',
+                  size: tamanhoAttr?.option || 'Único',
+                  price: Number(v.price || precoBase),
+                  stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
+                  image: v.image?.src || imagemPrincipal
+                };
+              })
+            });
+            continue;
+          }
+        } catch (e) {
+          console.error(`Erro ao buscar variações para o produto ${prod.id}:`, e);
+        }
+      }
+
+      // Produto simples ou caso falhe a busca de variações
+      listaExibicao.push({
+        id: prod.id,
+        name: prod.name,
+        slug: prod.slug,
+        price: precoBase,
+        regular_price: Number(prod.regular_price || precoBase),
+        images: prod.images.map((img: any) => img.src),
+        categories: prod.categories.map((cat: any) => cat.slug),
+        variants: [{ id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }]
+      });
+    }
+
+    return listaExibicao;
+  } catch (error) {
+    console.error('❌ Erro ao carregar produtos do WooCommerce na Home:', error);
+    return [];
+  }
+}
+
 export default async function HomePage() {
-  const products = await getProdutosBlingMapeados();
-  const lancamentos = products.filter((p) => p.categories.includes('lancamentos'));
+  const products = await getProdutosWooCommerce();
+  const lancamentos = products;
 
   return (
     <>
-      {/* 🚀 O TRUQUE MÁGICO DAS ANIMAÇÕES EM CASCATA */}
       <style>{`
         @keyframes revealUp {
           0% { opacity: 0; transform: translateY(40px); }
@@ -39,7 +134,6 @@ export default async function HomePage() {
 
       <div className="w-full bg-[#F9F9F9]">
         
-        {/* Hero sem atraso para carregar instantaneamente */}
         <div className="animate-reveal" style={{ animationDelay: '0s' }}>
           <HeroCarousel />
         </div>
@@ -72,7 +166,6 @@ export default async function HomePage() {
 
         {/* Seção de Produtos (Lançamentos) */}
         <section className="w-full max-w-[1600px] mx-auto px-4 pb-24 pt-4">
-          {/* Título da seção animado */}
           <div className="animate-reveal mb-14 text-center" style={{ animationDelay: '0.4s' }}>
             <h2 className="font-heading text-3xl font-extrabold uppercase tracking-widest text-[#0B1B34] md:text-4xl">
               Lançamentos
@@ -85,7 +178,6 @@ export default async function HomePage() {
               Nenhum produto cadastrado no momento.
             </p>
           ) : (
-            // 🚀 MUDANÇA AQUI: gap-6 e 3 colunas em telas muito grandes (lg:grid-cols-3) para melhor distribuição do max-w-1600px
             <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8">
               {lancamentos.map((product, index) => (
                 <div 
@@ -99,7 +191,6 @@ export default async function HomePage() {
             </div>
           )}
 
-          {/* Botão animado */}
           <div className="animate-reveal mt-20 flex w-full justify-center" style={{ animationDelay: '1.2s' }}>
             <Link
               href="/categoria/todos"
