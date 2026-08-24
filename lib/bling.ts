@@ -1,40 +1,78 @@
 // lib/bling.ts
 import { Product } from './products';
 
-let accessToken = process.env.BLING_ACCESS_TOKEN;
-let refreshToken = process.env.BLING_REFRESH_TOKEN;
+// Função para obter um token válido a cada chamada, garantindo que o Vercel não sofra com escopo global perdido
+async function getValidAccessToken(): Promise<string | null> {
+  let accessToken = process.env.BLING_ACCESS_TOKEN;
+  const refreshToken = process.env.BLING_REFRESH_TOKEN;
+  const clientId = process.env.BLING_CLIENT_ID;
+  const clientSecret = process.env.BLING_CLIENT_SECRET;
 
-async function atualizarTokenBling() {
+  if (!accessToken || !refreshToken || !clientId || !clientSecret) {
+    console.error("❌ Faltam variáveis de ambiente do Bling configuradas no Vercel!");
+    return null;
+  }
+
+  return accessToken;
+}
+
+async function atualizarTokenBling(): Promise<string | null> {
   console.log("🔄 Tentando atualizar o Token do Bling automaticamente...");
-  if (!refreshToken) return false;
+  const refreshToken = process.env.BLING_REFRESH_TOKEN;
+  const clientId = process.env.BLING_CLIENT_ID;
+  const clientSecret = process.env.BLING_CLIENT_SECRET;
 
-  const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
+  if (!refreshToken || !clientId || !clientSecret) return null;
+
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   try {
     const response = await fetch('https://www.bling.com.br/Api/v3/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': `Basic ${credentials}` },
       body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken })
     });
-    if (!response.ok) return false;
+    if (!response.ok) return null;
     const data = await response.json();
-    accessToken = data.access_token;
-    refreshToken = data.refresh_token;
-    return true;
-  } catch { return false; }
+    
+    // Nota: Em produção ideal, você deve salvar isso em banco ou KV. Como estamos usando env do Vercel, retornamos o novo token para uso imediato.
+    return data.access_token || null;
+  } catch { 
+    return null; 
+  }
 }
 
 async function fetchRealBlingProducts(tentativa = 1): Promise<any[]> {
+  let accessToken = await getValidAccessToken();
   if (!accessToken) return [];
-  const response = await fetch('https://www.bling.com.br/Api/v3/produtos', {
+
+  // 🚀 ADICIONADO LIMIT=100 PARA TRAZER MAIS PRODUTOS DE UMA SÓ VEZ
+  const response = await fetch('https://www.bling.com.br/Api/v3/produtos?limite=100', {
     method: 'GET',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' },
-    // 👇 CORREÇÃO APLICADA AQUI: Sai o cache: 'no-store', entra a revalidação a cada 60 segundos 👇
     next: { revalidate: 60 } 
   });
+
   if (response.status === 401 && tentativa === 1) {
-    const renovou = await atualizarTokenBling();
-    if (renovou) return fetchRealBlingProducts(2);
+    const novoToken = await atualizarTokenBling();
+    if (novoToken) {
+      // Tenta novamente com o token renovado
+      const retryResponse = await fetch('https://www.bling.com.br/Api/v3/produtos?limite=100', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${novoToken}`, 'Accept': 'application/json' },
+        next: { revalidate: 60 }
+      });
+      if (retryResponse.ok) {
+        const retryJson = await retryResponse.json();
+        return retryJson.data || [];
+      }
+    }
   }
+
+  if (!response.ok) {
+    console.error("❌ Erro ao buscar produtos do Bling:", response.status, response.statusText);
+    return [];
+  }
+
   const json = await response.json();
   return json.data || [];
 }
@@ -42,17 +80,20 @@ async function fetchRealBlingProducts(tentativa = 1): Promise<any[]> {
 export async function getProdutosBlingMapeados(): Promise<Product[]> {
   try {
     const produtosBlingRaw = await fetchRealBlingProducts();
-    if (!produtosBlingRaw) return [];
+    if (!produtosBlingRaw || produtosBlingRaw.length === 0) {
+      console.warn("⚠️ Nenhum produto retornado pela API do Bling.");
+      return [];
+    }
     
     const modelosAgrupados: Record<string, any> = {};
 
-    // 🏆 DICIONÁRIO DE IMAGENS: Tudo padronizado para .jpg
+    // 🏆 DICIONÁRIO DE IMAGENS
     const dicionarioImagens: Record<string, string> = {
       "Baby Look (feminina)": "/products/babylook.jpeg", 
       "Vestido": "/products/vestido.png",               
       "Regata": "/products/regata.jpeg",                 
       "Básica (unissex)": "/products/basica.jpeg",       
-      "Básica": "/products/basica.jpeg"                  
+      "Básica": "/products/basica.jpeg"                    
     };
 
     produtosBlingRaw.forEach((p: any) => {
@@ -79,7 +120,6 @@ export async function getProdutosBlingMapeados(): Promise<Product[]> {
         }
       }
 
-      // Prioriza a imagem do nosso dicionário local. Se não tiver, tenta a do Bling. Se falhar, usa a genérica.
       const imagemReal = 
         dicionarioImagens[nomeModelo] || 
         p.imagemURL || 
@@ -87,7 +127,6 @@ export async function getProdutosBlingMapeados(): Promise<Product[]> {
         p.midias?.imagens?.[0]?.link || 
         '/products/camisa1.png';
 
-      // Cria o Card do Modelo na vitrine se ele ainda não existir
       if (!modelosAgrupados[nomeModelo]) {
         modelosAgrupados[nomeModelo] = {
           id: p.id, 
@@ -104,7 +143,6 @@ export async function getProdutosBlingMapeados(): Promise<Product[]> {
         };
       }
 
-      // BLOQUEIO DE DUPLICADOS
       const tamanhoJaExiste = modelosAgrupados[nomeModelo].variants.find((v: any) => v.size === tamanho);
       
       if (!tamanhoJaExiste) {
@@ -117,7 +155,6 @@ export async function getProdutosBlingMapeados(): Promise<Product[]> {
     });
 
     const produtosFinais = Object.values(modelosAgrupados).map((prod: any) => {
-      // ORDENAÇÃO DOS TAMANHOS
       const ordemTamanhos = { 'PP': 1, 'P': 2, 'M': 3, 'G': 4, 'GG': 5, 'XG': 6, 'EXG': 7 };
       prod.variants.sort((a: any, b: any) => 
         (ordemTamanhos[a.size as keyof typeof ordemTamanhos] || 99) - 
@@ -140,7 +177,6 @@ export async function getProdutoBlingPorId(id: string): Promise<Product | null> 
   return produtos.find((p) => p.id.toString() === id) || null;
 }
 
-// Função auxiliar para buscar ou criar o contato no Bling antes de gerar o pedido
 async function obterOuCriarIdContatoBling(cliente: {
   nome: string;
   email: string;
@@ -153,6 +189,9 @@ async function obterOuCriarIdContatoBling(cliente: {
   cep: string;
   uf: string;
 }): Promise<number> {
+  const accessToken = await getValidAccessToken();
+  if (!accessToken) throw new Error("Token de acesso inválido.");
+
   const buscaRes = await fetch(`https://www.bling.com.br/Api/v3/contatos?numeroDocumento=${cliente.numeroDocumento}`, {
     method: 'GET',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
@@ -218,10 +257,8 @@ export async function criarPedidoBling(dadosCheckout: {
   };
   itens: { idProdutoBling: number; quantidade: number; valorUnitario: number; }[];
 }) {
-  if (!accessToken) {
-    const renovou = await atualizarTokenBling();
-    if (!renovou) throw new Error("Não foi possível autenticar.");
-  }
+  const accessToken = await getValidAccessToken();
+  if (!accessToken) throw new Error("Não foi possível autenticar no Bling.");
 
   const idContatoBling = await obterOuCriarIdContatoBling(dadosCheckout.cliente);
 
