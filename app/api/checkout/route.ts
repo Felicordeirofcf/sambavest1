@@ -2,41 +2,43 @@
 import { NextResponse } from 'next/server';
 import { criarPedidoBling } from '@/lib/bling';
 
-// 🚀 Força a rota a ser dinâmica, evitando qualquer cache estático no Vercel
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    console.log("📦 Dados recebidos no Checkout:", JSON.stringify(body, null, 2));
+
     const { cliente, itens } = body;
 
-    // Validação básica dos dados recebidos do carrinho
-    if (!cliente || !itens || itens.length === 0) {
+    // Validação flexível: Se faltar itens, avisa. Se faltar cliente, criamos um genérico para não travar.
+    if (!itens || !Array.isArray(itens) || itens.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'Dados do cliente ou itens do carrinho ausentes.' },
+        { success: false, error: 'O carrinho está vazio ou os itens não foram enviados.' },
         { status: 400 }
       );
     }
 
-    // Chama a função para registrar o pedido no ERP Bling
+    const clienteFinal = {
+      nome: cliente?.nome || 'Cliente da Loja',
+      email: cliente?.email || 'cliente@email.com',
+      telefone: cliente?.telefone || '21999999999',
+      numeroDocumento: cliente?.numeroDocumento || '00000000000',
+      endereco: cliente?.endereco || 'Endereço não informado',
+      numero: cliente?.numero || 'S/N',
+      bairro: cliente?.bairro || 'Centro',
+      cidade: cliente?.cidade || 'Rio de Janeiro',
+      cep: cliente?.cep || '20000000',
+      uf: cliente?.uf || 'RJ',
+    };
+
     const pedidoCriado = await criarPedidoBling({
-      cliente: {
-        nome: cliente.nome,
-        email: cliente.email,
-        telefone: cliente.telefone,
-        numeroDocumento: cliente.numeroDocumento,
-        endereco: cliente.endereco || 'Endereço não informado',
-        numero: cliente.numero || 'S/N',
-        bairro: cliente.bairro || 'Bairro não informado',
-        cidade: cliente.cidade || 'Cidade não informada',
-        cep: cliente.cep || '00000000',
-        uf: cliente.uf || 'RJ',
-      },
+      cliente: clienteFinal,
       itens: itens.map((item: any) => ({
         idProdutoBling: Number(item.id),
-        quantidade: item.quantity,
-        valorUnitario: item.price,
+        quantidade: Number(item.quantity || 1),
+        valorUnitario: Number(item.price || 0),
       })),
     });
 
@@ -47,9 +49,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('❌ Erro na API de Checkout:', error);
-    
-    // 🛡️ Retorna sempre um JSON limpo, impedindo o erro de JSON Vazio no front-end
+    console.error('❌ Erro crítico na API de Checkout:', error);
     return NextResponse.json(
       { 
         success: false, 
