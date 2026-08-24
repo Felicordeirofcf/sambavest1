@@ -34,7 +34,10 @@ export default function CheckoutPage() {
   const total = subtotal + frete;
 
   const handleFinalizarPedidoBling = async () => {
-    if (items.length === 0) {
+    // 🔍 Pega os itens diretamente do store no momento exato do clique para garantir dados atualizados
+    const currentItems = useCartStore.getState().items;
+
+    if (!currentItems || currentItems.length === 0) {
       alert('Seu carrinho está vazio!');
       return;
     }
@@ -57,30 +60,32 @@ export default function CheckoutPage() {
     setIsLoading(true);
 
     try {
+      const payload = {
+        items: currentItems.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        cliente: {
+          nome: formData.nome,
+          email: formData.email,
+          telefone: formData.telefone,
+          numeroDocumento: formData.numeroDocumento,
+          endereco: formData.endereco,
+          numero: formData.numero,
+          bairro: formData.bairro,
+          cidade: formData.cidade,
+          cep: formData.cep,
+          uf: formData.uf || 'RJ',
+        },
+      };
+
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            id: item.id,
-            quantity: item.quantity,
-            price: item.price,
-          })),
-          cliente: {
-            nome: formData.nome,
-            email: formData.email,
-            telefone: formData.telefone,
-            numeroDocumento: formData.numeroDocumento,
-            endereco: formData.endereco,
-            numero: formData.numero,
-            bairro: formData.bairro,
-            cidade: formData.cidade,
-            cep: formData.cep,
-            uf: formData.uf || 'RJ',
-          },
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
