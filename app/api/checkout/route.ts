@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     const enderecoCompleto = clienteFinal.endereco + ', ' + clienteFinal.numero + ' - ' + clienteFinal.bairro;
 
-    // 🔍 1. BUSCA O CLIENTE EXISTENTE NO WOOCOMMERCE
+    // 🔍 1. BUSCA OU CRIA O CLIENTE NO WOOCOMMERCE
     let customerId = 0;
     try {
       const searchRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers?email=${encodeURIComponent(clienteFinal.email)}`, {
@@ -65,9 +65,48 @@ export async function POST(request: Request) {
       if (Array.isArray(existingCustomers) && existingCustomers.length > 0) {
         customerId = existingCustomers[0].id;
         console.log(`👤 Cliente já existente encontrado no WooCommerce (ID: ${customerId})`);
+      } else {
+        // 🆕 CLIENTE NÃO EXISTE: CRIAR NOVA CONTA COM SENHA AUTOMÁTICA
+        const randomPassword = Math.random().toString(36).slice(-8) + "Aa1@"; // Gera senha aleatória forte
+        
+        const newCustomerPayload = {
+          email: clienteFinal.email,
+          first_name: firstName,
+          last_name: lastName,
+          password: randomPassword, // A senha é gerada, mas o WP envia link para redefinir se configurado
+          billing: {
+            first_name: firstName,
+            last_name: lastName,
+            address_1: enderecoCompleto,
+            city: clienteFinal.cidade,
+            state: clienteFinal.uf,
+            postcode: cepLimpo,
+            country: 'BR',
+            email: clienteFinal.email,
+            phone: clienteFinal.telefone,
+          }
+        };
+
+        const createCustomerRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader,
+          },
+          body: JSON.stringify(newCustomerPayload),
+        });
+
+        const newCustomerData = await createCustomerRes.json();
+        
+        if (createCustomerRes.ok && newCustomerData.id) {
+          customerId = newCustomerData.id;
+          console.log(`🆕 Nova conta criada no WooCommerce para o e-mail ${clienteFinal.email} (ID: ${customerId})`);
+        } else {
+          console.error("❌ Falha ao tentar criar novo cliente:", newCustomerData);
+        }
       }
     } catch (custError) {
-      console.warn("⚠️ Aviso ao buscar cliente, prosseguindo como visitante/convidado.", custError);
+      console.warn("⚠️ Aviso ao buscar/criar cliente, prosseguindo como visitante/convidado.", custError);
     }
 
     const metodoEscolhido = paymentMethod || 'appmax_pix';
@@ -128,6 +167,7 @@ export async function POST(request: Request) {
       ]
     };
 
+    // 🎯 Se a conta foi criada ou encontrada, atrela ao pedido!
     if (customerId > 0) {
       wcOrderPayload.customer_id = customerId;
     }
