@@ -103,6 +103,10 @@ export default function CheckoutPage() {
       const firstName = partesNome[0] || '';
       const lastName = partesNome.slice(1).join(' ') || 'Cliente';
 
+      // Captura segura do nome do serviço de frete para evitar erros no TypeScript
+      const quoteAny = shippingQuote as any;
+      const shippingMethodTitle = quoteAny.name || quoteAny.service || quoteAny.serviceName || 'Frete Correios / Transportadora';
+
       const payload = {
         items: carrinhoAtual.map((item: any) => ({
           id: item.id,
@@ -124,7 +128,7 @@ export default function CheckoutPage() {
           uf: formData.uf || 'RJ',
         },
         shipping: {
-          method_title: (shippingQuote as any).name || (shippingQuote as any).service || 'Frete Correios / Transportadora',
+          method_title: shippingMethodTitle,
           price: shippingQuote.price,
         }
       };

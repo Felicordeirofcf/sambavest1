@@ -145,9 +145,10 @@ export async function POST(request: Request) {
       throw new Error(wcData.message || 'Erro ao criar o pedido no WooCommerce.');
     }
 
-    const paymentUrl = wcData.payment_url || `${wcUrl}/checkout/order-pay/${wcData.id}/?pay_for_order=true`;
+    // 🔗 URL de pagamento blindada com a chave de segurança (order_key) para evitar tela de login
+    const paymentUrl = wcData.payment_url || `${wcUrl}/checkout/order-pay/${wcData.id}/?pay_for_order=true&key=${wcData.order_key}`;
 
-    console.log(`✅ Pedido #${wcData.id} criado com sucesso no WooCommerce! URL de pagamento:`, paymentUrl);
+    console.log(`✅ Pedido #${wcData.id} criado com sucesso no WooCommerce! URL de pagamento direta:`, paymentUrl);
 
     return NextResponse.json({
       success: true,
