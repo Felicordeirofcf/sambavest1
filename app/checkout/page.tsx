@@ -65,7 +65,7 @@ export default function CheckoutPage() {
   const frete = shippingQuote ? shippingQuote.price : 0;
   const total = subtotal + frete;
 
-  const handleFinalizarPedidoBling = async () => {
+  const handleFinalizarPedido = async () => {
     let carrinhoAtual = items;
     if (!carrinhoAtual || carrinhoAtual.length === 0) {
       carrinhoAtual = useCartStore.getState().items;
@@ -353,7 +353,7 @@ export default function CheckoutPage() {
               </div>
 
               <button
-                onClick={handleFinalizarPedidoBling}
+                onClick={handleFinalizarPedido}
                 disabled={isLoading}
                 className="w-full py-5 bg-[#C9A227] text-[#0B1B34] font-bold uppercase tracking-widest text-sm hover:bg-[#0B1B34] hover:text-white transition-colors shadow-lg flex justify-center items-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
