@@ -124,7 +124,7 @@ export default function CheckoutPage() {
           uf: formData.uf || 'RJ',
         },
         shipping: {
-          method_title: shippingQuote.serviceName || 'Frete',
+          method_title: (shippingQuote as any).name || (shippingQuote as any).service || 'Frete Correios / Transportadora',
           price: shippingQuote.price,
         }
       };
