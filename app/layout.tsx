@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.sambavest.com.br'), // 🚀 Linha adicionada para resolver o aviso do Vercel!
+  metadataBase: new URL('https://www.sambavest.com.br'),
   title: {
     default: 'Samba Vest | Camisas Oficiais de Enredo',
     template: '%s | Samba Vest',
@@ -43,7 +43,8 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
-    url: 'https://atelie-ebon.vercel.app',
+    // 🚀 CORRIGIDO AQUI: Estava apontando para atelie-ebon.vercel.app
+    url: 'https://www.sambavest.com.br', 
     siteName: 'Samba Vest',
     title: 'Samba Vest | Camisas Oficiais de Enredo',
     description:

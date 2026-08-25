@@ -127,7 +127,25 @@ export default function Header() {
             </Link>
           </div>
 
-          <div className="flex-1 flex justify-end">
+          <div className="flex-1 flex justify-end items-center gap-6">
+            {/* 🚚 NOVO: Botão Meus Pedidos */}
+            <Link 
+              href="/meus-pedidos" 
+              className="group text-xs md:text-sm uppercase font-bold flex items-center gap-2 text-white/90 hover:text-[#C9A227] transition-all duration-300"
+              aria-label="Meus Pedidos"
+            >
+              <svg 
+                className="w-6 h-6 text-[#C9A227] transition-transform group-hover:scale-110 group-hover:-translate-y-1" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+              </svg>
+              <span className="hidden md:inline text-xs tracking-widest uppercase">Meus Pedidos</span>
+            </Link>
+
             <button
               onClick={openCart}
               className="group text-xs md:text-sm uppercase font-bold flex items-center gap-2.5 text-white/90 hover:text-[#C9A227] transition-all duration-300"
@@ -219,19 +237,28 @@ export default function Header() {
           ))}
         </nav>
 
-        <div className="p-5 border-t border-white/10 flex items-center gap-3 text-[13px] text-white/90 font-bold bg-black/20">
-          <svg className="w-5 h-5 text-[#C9A227]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            />
-          </svg>
-
-          <Link href="/minha-conta" onClick={closeMenu} className="hover:text-[#C9A227] transition-colors">
-            Minha Conta
+        {/* 🚚 NOVO: Seção Inferior do Menu Mobile Atualizada */}
+        <div className="p-5 border-t border-white/10 flex flex-col gap-4 bg-black/20">
+          
+          {/* Link Rastrear Pedidos Mobile */}
+          <Link href="/meus-pedidos" onClick={closeMenu} className="flex items-center gap-3 text-[13px] text-white/90 font-bold hover:text-[#C9A227] transition-colors group">
+            <svg className="w-5 h-5 text-[#C9A227] group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+            </svg>
+            <span className="uppercase tracking-wider">Meus Pedidos</span>
           </Link>
+
+          {/* Link Minha Conta Mobile */}
+          <div className="flex items-center gap-3 text-[13px] text-white/90 font-bold">
+            <svg className="w-5 h-5 text-[#C9A227]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <Link href="/minha-conta" onClick={closeMenu} className="hover:text-[#C9A227] transition-colors uppercase tracking-wider">
+              Minha Conta
+            </Link>
+          </div>
+          
         </div>
       </div>
     </>
