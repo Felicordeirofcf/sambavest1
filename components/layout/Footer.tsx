@@ -1,11 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { categories } from '../../lib/products';
 
-const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5521999999999';
-const WHATSAPP_DISPLAY = process.env.NEXT_PUBLIC_WHATSAPP_DISPLAY || '(21) 99999-9999';
-const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'contato@sambavest.com.br';
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5521996959903';
+const WHATSAPP_DISPLAY = process.env.NEXT_PUBLIC_WHATSAPP_DISPLAY || '(21) 99695-9903';
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || 'adm@sambavest.com';
 
 export default function Footer() {
   return (
@@ -14,18 +13,35 @@ export default function Footer() {
         {/* Colunas Superiores */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
 
-          {/* Departamentos */}
-          <div className="flex flex-col gap-3">
-            <h3 className="font-heading font-semibold text-base mb-2 text-[#C9A227]">Departamentos</h3>
-            {categories.map((cat) => (
-              <Link
-                key={cat.slug}
-                href={`/categoria/${cat.slug}`}
-                className="text-sm text-white/70 hover:text-[#C9A227] transition-colors"
+          {/* Lema e Instagram (Substituiu os Departamentos) */}
+          <div className="flex flex-col gap-4">
+            <h3 className="font-heading font-semibold text-base mb-1 text-[#C9A227]">SambaVest</h3>
+            <p className="text-sm text-white/70 italic leading-relaxed pr-4">
+              "Onde o amor pelo samba vira camisa."
+            </p>
+            <a
+              href="https://www.instagram.com/sambavest/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-white font-bold hover:text-[#C9A227] transition-colors mt-2"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="18" 
+                height="18" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
               >
-                {cat.name}
-              </Link>
-            ))}
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+              </svg>
+              Siga @sambavest
+            </a>
           </div>
 
           {/* Navegação */}
@@ -34,8 +50,6 @@ export default function Footer() {
             <Link href="/quem-somos" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Quem Somos</Link>
             <Link href="/contato" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Atendimento</Link>
             <Link href="/rastrear-pedido" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Rastrear Pedido</Link>
-            <Link href="/minha-conta" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Minha Conta</Link>
-            <Link href="/pedidos" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Pedidos</Link>
             <Link href="/politica-de-privacidade" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Política de Privacidade</Link>
             <Link href="/trocas-e-devolucoes" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Trocas e Devoluções</Link>
           </div>
@@ -59,7 +73,6 @@ export default function Footer() {
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-4 flex-wrap">
             <span className="font-semibold text-sm mr-2 text-white/80">Meios de pagamento</span>
-            {/* Aqui usamos badges simulando os ícones para ficar igual ao layout */}
             <div className="flex gap-2 flex-wrap">
               <span className="px-2 py-1 border border-white/20 bg-white text-xs font-bold text-blue-800 rounded">VISA</span>
               <span className="px-2 py-1 border border-white/20 bg-white text-xs font-bold text-red-500 rounded">Mastercard</span>

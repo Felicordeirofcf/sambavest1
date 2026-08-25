@@ -50,6 +50,15 @@ async function getProdutosWooCommerce() {
     for (const prod of products) {
       const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
       const imagemPrincipal = prod.images?.[0]?.src || '';
+      
+      // 1. Extraímos as imagens normais que vieram do WooCommerce
+      const productImages = prod.images ? prod.images.map((img: any) => img.src) : [];
+
+      // 🎯 2. INJEÇÃO DA FOTO DAS COSTAS (BEIJA-FLOR 2027)
+      // Se for a camisa da Beija-Flor e ela só tiver 1 imagem, adicionamos a imagem das costas!
+      if (prod.slug && prod.slug.includes('beija-flor-2027') && productImages.length === 1) {
+        productImages.push('https://sambavest.com/wp-content/uploads/2026/08/camisa_enredo_atual_2_.webp');
+      }
 
       // Se for um produto variável, buscamos as variações para criar cards específicos ou enriquecer o card
       if (prod.type === 'variable') {
@@ -68,7 +77,7 @@ async function getProdutosWooCommerce() {
               slug: prod.slug,
               price: precoBase,
               regular_price: Number(prod.regular_price || precoBase),
-              images: prod.images.map((img: any) => img.src),
+              images: productImages, // <-- Agora usa a nossa lista com a foto injetada
               categories: prod.categories.map((cat: any) => cat.slug),
               variants: variations.map((v: any) => {
                 const modeloAttr = v.attributes?.find((a: any) => 
@@ -79,7 +88,7 @@ async function getProdutosWooCommerce() {
                 );
 
                 return {
-                  id: v.id,                    // ID exato da variação (ex: #16252)
+                  id: v.id,
                   parent_id: prod.id,
                   model: modeloAttr?.option || 'Geral',
                   size: tamanhoAttr?.option || 'Único',
@@ -103,7 +112,7 @@ async function getProdutosWooCommerce() {
         slug: prod.slug,
         price: precoBase,
         regular_price: Number(prod.regular_price || precoBase),
-        images: prod.images.map((img: any) => img.src),
+        images: productImages, // <-- Agora usa a nossa lista com a foto injetada
         categories: prod.categories.map((cat: any) => cat.slug),
         variants: [{ id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }]
       });
@@ -204,7 +213,6 @@ export default async function HomePage() {
             </Link>
           </div>
         </section>
-
         <AboutAtelie />
       </div>
     </>

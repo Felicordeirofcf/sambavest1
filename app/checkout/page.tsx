@@ -202,7 +202,7 @@ export default function CheckoutPage() {
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Telefone / WhatsApp *</label>
-                  <input type="text" name="telefone" value={formData.telefone} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="(21) 99999-9999" />
+                  <input type="text" name="telefone" value={formData.telefone} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="(21) 99695-9903" />
                 </div>
 
                 <div className="md:col-span-2">

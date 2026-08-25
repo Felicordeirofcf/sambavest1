@@ -13,7 +13,7 @@ export default function ProductClient({ product }: { product: any }) {
 
   const variantsList = Array.isArray(product.variants) ? product.variants : [];
   const gallery = product.images && product.images.length > 0 ? product.images : [product.image];
-  const sizeGuideIndex = gallery.findIndex((img: string) => img.toLowerCase().includes('tabela') || img.toLowerCase().includes('guia'));
+  const sizeGuideIndex = gallery.findIndex((img: string) => img?.toLowerCase().includes('tabela') || img?.toLowerCase().includes('guia'));
 
   const availableModels = useMemo(() => {
     const modelsSet = new Set<string>();
@@ -36,6 +36,7 @@ export default function ProductClient({ product }: { product: any }) {
   );
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [activeImage, setActiveImage] = useState(0);
+  const [dynamicVariantImage, setDynamicVariantImage] = useState<string | null>(null);
 
   const availableSizes = useMemo(() => {
     const sizesSet = new Set<string>();
@@ -65,18 +66,30 @@ export default function ProductClient({ product }: { product: any }) {
     });
   }, [variantsList, selectedModel, selectedSize]);
 
-  // 🎯 Sincronização dinâmica da imagem ao trocar o modelo
+  // 🎯 Sincronização dinâmica e aprimorada da imagem ao trocar o modelo
   useEffect(() => {
     if (!selectedModel) return;
 
+    // Busca a variação compatível com o modelo selecionado
     const varSample = variantsList.find((v: any) => 
       (v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel)) && v.image
     );
 
-    if (varSample?.image) {
-      const indexImg = gallery.findIndex((img: string) => img === varSample.image);
+    // O WooCommerce pode enviar a imagem como string ou como objeto { src: "..." }
+    const variantImageUrl = typeof varSample?.image === 'object' ? varSample.image.src : varSample?.image;
+
+    if (variantImageUrl) {
+      // Tenta achar a imagem na galeria usando includes para ignorar parâmetros de versão (?v=123)
+      const indexImg = gallery.findIndex((img: string) => 
+        img === variantImageUrl || img.includes(variantImageUrl) || variantImageUrl.includes(img)
+      );
+      
       if (indexImg !== -1) {
         setActiveImage(indexImg);
+        setDynamicVariantImage(null); // Limpa imagem forçada se achou na galeria
+      } else {
+        // Se a imagem existir na variação mas não estiver na galeria principal, forçamos ela a aparecer
+        setDynamicVariantImage(variantImageUrl);
       }
     }
   }, [selectedModel, variantsList, gallery]);
@@ -86,11 +99,16 @@ export default function ProductClient({ product }: { product: any }) {
   const handleAddToCart = () => {
     if (!matchedVariant) return;
 
+    // Pega a URL final para a sacola
+    const finalCartImage = typeof matchedVariant?.image === 'object' 
+      ? matchedVariant.image.src 
+      : (matchedVariant?.image || dynamicVariantImage || gallery[activeImage] || '');
+
     addItem({
       id: matchedVariant.id,
       name: `${product.name} (${selectedModel} - ${selectedSize})`,
       price: currentPrice,
-      image: matchedVariant?.image || gallery[activeImage] || '',
+      image: finalCartImage,
       size: `${selectedModel} / ${selectedSize}`,
       quantity: 1,
     });
@@ -111,7 +129,7 @@ export default function ProductClient({ product }: { product: any }) {
               </span>
             )}
             <img
-              src={gallery[activeImage]}
+              src={dynamicVariantImage || gallery[activeImage]}
               alt={product.name}
               className="w-full h-full object-contain p-6 transition-all duration-500 ease-in-out"
             />
@@ -123,9 +141,12 @@ export default function ProductClient({ product }: { product: any }) {
                 <button
                   key={img}
                   type="button"
-                  onClick={() => setActiveImage(i)}
+                  onClick={() => {
+                    setActiveImage(i);
+                    setDynamicVariantImage(null); // Remove a imagem forçada se o usuário clicar na miniatura manualmente
+                  }}
                   className={`relative h-20 w-16 shrink-0 border bg-[#FAF7EF] transition-all rounded overflow-hidden ${
-                    activeImage === i ? 'border-[#0B1B34] ring-2 ring-[#0B1B34]/30' : 'border-gray-200 hover:border-gray-400'
+                    activeImage === i && !dynamicVariantImage ? 'border-[#0B1B34] ring-2 ring-[#0B1B34]/30' : 'border-gray-200 hover:border-gray-400'
                   }`}
                   aria-label={`Ver imagem ${i + 1}`}
                 >
@@ -199,7 +220,10 @@ export default function ProductClient({ product }: { product: any }) {
                 {sizeGuideIndex >= 0 && (
                   <button
                     type="button"
-                    onClick={() => setActiveImage(sizeGuideIndex)}
+                    onClick={() => {
+                      setActiveImage(sizeGuideIndex);
+                      setDynamicVariantImage(null);
+                    }}
                     className="text-xs font-semibold uppercase tracking-wider text-[#0B1B34] underline underline-offset-4 hover:text-[#C9A227] transition-colors"
                   >
                     Guia de tamanho

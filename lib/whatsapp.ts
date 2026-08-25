@@ -1,7 +1,7 @@
 import type { CartItem } from '../store/cartStore';
 
 export const WHATSAPP_NUMBER =
-  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5521999999999'; // troque no .env.local
+  process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5521996959903'; // troque no .env.local
 
 function formatPrice(value: number) {
   return `R$ ${value.toFixed(2).replace('.', ',')}`;
