@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log("📦 Body bruto recebido na API de Checkout:", JSON.stringify(body, null, 2));
 
-    const { cliente, items, shipping } = body;
+    const { cliente, items, shipping, paymentMethod } = body;
     const listaItens = items || body.itens;
 
     if (!listaItens || !Array.isArray(listaItens) || listaItens.length === 0) {
@@ -51,7 +51,6 @@ export async function POST(request: Request) {
     const documentoLimpo = clienteFinal.numeroDocumento.replace(/\D/g, '');
     const cepLimpo = clienteFinal.cep.replace(/\D/g, '');
 
-    // 🔍 1. APENAS BUSCA O CLIENTE SE EXISTIR (SEM CRIAR CONTA AUTOMÁTICA PARA EVITAR SENHAS)
     let customerId = 0;
     try {
       const searchRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers?email=${encodeURIComponent(clienteFinal.email)}`, {
@@ -68,15 +67,20 @@ export async function POST(request: Request) {
       console.warn("⚠️ Aviso ao buscar cliente, prosseguindo como visitante/convidado.", custError);
     }
 
-    // 🛍️ 2. MONTAR O PAYLOAD DO PEDIDO
+    const metodoEscolhido = paymentMethod || 'appmax_pix';
+    const tituloMetodo = metodoEscolhido.includes('pix') ? 'Pix -- AppMax' : 'Cartão de Crédito -- AppMax';
+
+    // Endereço concatenado sem template string complexa para evitar erros do Turbopack
+    const enderecoCompleto = clienteFinal.endereco + ', ' + clienteFinal.numero + ' - ' + clienteFinal.bairro;
+
     const wcOrderPayload: any = {
-      payment_method: 'appmax',
-      payment_method_title: 'Appmax Pagamentos',
+      payment_method: metodoEscolhido,
+      payment_method_title: tituloMetodo,
       set_paid: false,
       billing: {
         first_name: firstName,
         last_name: lastName,
-        address_1: `${clienteFinal.endereco}, ${clienteFinal.numero} - ${clienteFinal.bairro}`,
+        address_1: enderecoCompleto,
         city: clienteFinal.cidade,
         state: clienteFinal.uf,
         postcode: cepLimpo,
@@ -87,7 +91,7 @@ export async function POST(request: Request) {
       shipping: {
         first_name: firstName,
         last_name: lastName,
-        address_1: `${clienteFinal.endereco}, ${clienteFinal.numero} - ${clienteFinal.bairro}`,
+        address_1: enderecoCompleto,
         city: clienteFinal.cidade,
         state: clienteFinal.uf,
         postcode: cepLimpo,
@@ -106,8 +110,8 @@ export async function POST(request: Request) {
       }),
       shipping_lines: shipping ? [
         {
-          method_id: 'custom_shipping',
-          method_title: shipping.method_title || 'Frete',
+          method_id: 'flat_rate',
+          method_title: shipping.method_title || 'Frete Correios / Transportadora',
           total: String(shipping.price || 0)
         }
       ] : [],
@@ -145,10 +149,22 @@ export async function POST(request: Request) {
       throw new Error(wcData.message || 'Erro ao criar o pedido no WooCommerce.');
     }
 
-    // 🔗 URL de pagamento blindada com a chave de segurança (order_key) para evitar tela de login
-    const paymentUrl = wcData.payment_url || `${wcUrl}/checkout/order-pay/${wcData.id}/?pay_for_order=true&key=${wcData.order_key}`;
+    let paymentUrl = wcData.payment_url;
 
-    console.log(`✅ Pedido #${wcData.id} criado com sucesso no WooCommerce! URL de pagamento direta:`, paymentUrl);
+    if (wcData.meta_data && Array.isArray(wcData.meta_data)) {
+      const gatewayUrlMeta = wcData.meta_data.find(
+        (m: any) => m.key === '_appmax_payment_url' || m.key === 'payment_url' || m.key === '_payment_url' || m.key === 'payment_link' || m.key === 'appmax_url'
+      );
+      if (gatewayUrlMeta && gatewayUrlMeta.value) {
+        paymentUrl = gatewayUrlMeta.value;
+      }
+    }
+
+    if (!paymentUrl || paymentUrl.includes('order-pay')) {
+      paymentUrl = `${wcUrl}/finalizar-compra/order-pay/${wcData.id}/?pay_for_order=true&key=${wcData.order_key}`;
+    }
+
+    console.log(`✅ Pedido #${wcData.id} criado com sucesso no WooCommerce! URL de pagamento:`, paymentUrl);
 
     return NextResponse.json({
       success: true,

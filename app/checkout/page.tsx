@@ -12,6 +12,7 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState('appmax_pix'); // Estado para escolher Pix ou Cartão
 
   useEffect(() => {
     setIsMounted(true);
@@ -34,7 +35,6 @@ export default function CheckoutPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Função para buscar cliente cadastrado no Bling/Base pelo CPF
   const handleBuscarCliente = async () => {
     const docLimpo = formData.numeroDocumento.replace(/\D/g, '');
     if (!docLimpo || docLimpo.length < 11) {
@@ -76,7 +76,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    // 🛑 VALIDAÇÃO OBRIGATÓRIA DE FRETE
     if (!shippingQuote) {
       alert('⚠️ Por favor, calcule o frete informando o seu CEP antes de finalizar o pedido.');
       return;
@@ -103,11 +102,11 @@ export default function CheckoutPage() {
       const firstName = partesNome[0] || '';
       const lastName = partesNome.slice(1).join(' ') || 'Cliente';
 
-      // Captura segura do nome do serviço de frete para evitar erros no TypeScript
       const quoteAny = shippingQuote as any;
       const shippingMethodTitle = quoteAny.name || quoteAny.service || quoteAny.serviceName || 'Frete Correios / Transportadora';
 
       const payload = {
+        paymentMethod: paymentMethod, // Envia o método escolhido (Pix ou Cartão)
         items: carrinhoAtual.map((item: any) => ({
           id: item.id,
           quantity: item.quantity,
@@ -145,13 +144,13 @@ export default function CheckoutPage() {
         throw new Error(data.error || 'Erro ao registrar pedido.');
       }
 
-      alert('✅ Pedido gerado com sucesso! Redirecionando para o pagamento...');
-      clearCart();
+      console.log("🔗 URL de pagamento gerada:", data.paymentUrl);
 
       if (data.paymentUrl) {
+        clearCart();
         window.location.href = data.paymentUrl;
       } else {
-        window.location.href = '/';
+        throw new Error('A API não retornou uma URL de pagamento válida.');
       }
 
     } catch (error: any) {
@@ -255,6 +254,43 @@ export default function CheckoutPage() {
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Cidade *</label>
                   <input type="text" name="cidade" value={formData.cidade} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Rio de Janeiro" />
                 </div>
+              </div>
+            </div>
+
+            {/* 💳 3. SELEÇÃO DE FORMA DE PAGAMENTO (PIX OU CARTÃO) */}
+            <div className="bg-white p-6 shadow-sm rounded-sm">
+              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">3. Forma de Pagamento</h3>
+              
+              <div className="space-y-4">
+                <label className={`flex items-center gap-3 p-4 border rounded cursor-pointer transition-all ${paymentMethod === 'appmax_pix' ? 'border-[#0B1B34] bg-[#0B1B34]/5' : 'border-gray-200'}`}>
+                  <input 
+                    type="radio" 
+                    name="paymentMethod" 
+                    value="appmax_pix" 
+                    checked={paymentMethod === 'appmax_pix'} 
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="accent-[#0B1B34]" 
+                  />
+                  <div>
+                    <span className="block text-sm font-bold text-[#0B1B34]">Pix </span>
+                    <span className="text-xs text-gray-500">Aprova na hora e gera o QR Code / Copia e Cola.</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-3 p-4 border rounded cursor-pointer transition-all ${paymentMethod === 'appmax_credit' ? 'border-[#0B1B34] bg-[#0B1B34]/5' : 'border-gray-200'}`}>
+                  <input 
+                    type="radio" 
+                    name="paymentMethod" 
+                    value="appmax_credit" 
+                    checked={paymentMethod === 'appmax_credit'} 
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="accent-[#0B1B34]" 
+                  />
+                  <div>
+                    <span className="block text-sm font-bold text-[#0B1B34]">Cartão de Crédito</span>
+                    <span className="text-xs text-gray-500">Parcele suas compras de forma segura.</span>
+                  </div>
+                </label>
               </div>
             </div>
 
