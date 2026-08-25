@@ -51,6 +51,9 @@ export async function POST(request: Request) {
     const documentoLimpo = clienteFinal.numeroDocumento.replace(/\D/g, '');
     const cepLimpo = clienteFinal.cep.replace(/\D/g, '');
 
+    const enderecoCompleto = clienteFinal.endereco + ', ' + clienteFinal.numero + ' - ' + clienteFinal.bairro;
+
+    // 🔍 1. APENAS BUSCA O CLIENTE EXISTENTE (SEM EXIGIR SENHA)
     let customerId = 0;
     try {
       const searchRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers?email=${encodeURIComponent(clienteFinal.email)}`, {
@@ -70,9 +73,7 @@ export async function POST(request: Request) {
     const metodoEscolhido = paymentMethod || 'appmax_pix';
     const tituloMetodo = metodoEscolhido.includes('pix') ? 'Pix -- AppMax' : 'Cartão de Crédito -- AppMax';
 
-    // Endereço concatenado sem template string complexa para evitar erros do Turbopack
-    const enderecoCompleto = clienteFinal.endereco + ', ' + clienteFinal.numero + ' - ' + clienteFinal.bairro;
-
+    // 🛍️ 2. MONTAR O PAYLOAD DO PEDIDO NO WOOCOMMERCE
     const wcOrderPayload: any = {
       payment_method: metodoEscolhido,
       payment_method_title: tituloMetodo,
@@ -147,6 +148,54 @@ export async function POST(request: Request) {
     if (!wcResponse.ok) {
       console.error("❌ Erro retornado pela API do WooCommerce:", wcData);
       throw new Error(wcData.message || 'Erro ao criar o pedido no WooCommerce.');
+    }
+
+    // 🔗 3. SINCRONIZAÇÃO DIRETA COM O BLING (API v3 USANDO O ACCESS_TOKEN DO ENV)
+    try {
+      const blingToken = process.env.BLING_ACCESS_TOKEN;
+
+      if (blingToken) {
+        // Formato oficial do payload da API v3 do Bling para Pedidos de Venda
+        const blingPayload = {
+          dataEmissao: new Date().toISOString().split('T')[0],
+          contato: {
+            nome: clienteFinal.nome,
+            tipoPessoa: documentoLimpo.length > 11 ? 'J' : 'F',
+            numeroDocumento: documentoLimpo,
+            email: clienteFinal.email,
+          },
+          itens: listaItens.map((item: any) => ({
+            codigo: String(item.id),
+            descricao: item.name || 'Produto Samba Vest',
+            quantidade: Number(item.quantity || 1),
+            valor: Number(item.price || 0),
+          })),
+          transporte: {
+            frete: Number(shipping?.price || 0),
+          }
+        };
+
+        const blingRes = await fetch('https://api.bling.com.br/Api/v3/pedidos/vendas', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${blingToken}`,
+          },
+          body: JSON.stringify(blingPayload),
+        });
+
+        const blingData = await blingRes.json();
+        if (blingRes.ok) {
+          console.log("✅ Pedido enviado e sincronizado no Bling com sucesso!", blingData);
+        } else {
+          console.error("⚠️ Retorno da API do Bling:", JSON.stringify(blingData, null, 2));
+        }
+      } else {
+        console.warn("⚠️ BLING_ACCESS_TOKEN não encontrado nas variáveis de ambiente.");
+      }
+    } catch (blingError) {
+      console.error("❌ Falha na integração direta com o Bling:", blingError);
     }
 
     let paymentUrl = wcData.payment_url;
