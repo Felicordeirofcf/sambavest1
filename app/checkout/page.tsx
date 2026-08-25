@@ -76,6 +76,12 @@ export default function CheckoutPage() {
       return;
     }
 
+    // 🛑 VALIDAÇÃO OBRIGATÓRIA DE FRETE
+    if (!shippingQuote) {
+      alert('⚠️ Por favor, calcule o frete informando o seu CEP antes de finalizar o pedido.');
+      return;
+    }
+
     if (
       !formData.nome || 
       !formData.numeroDocumento || 
@@ -93,7 +99,6 @@ export default function CheckoutPage() {
     setIsLoading(true);
 
     try {
-      // Separa o nome e o sobrenome para o WooCommerce aceitar perfeitamente
       const partesNome = formData.nome.trim().split(' ');
       const firstName = partesNome[0] || '';
       const lastName = partesNome.slice(1).join(' ') || 'Cliente';
@@ -118,6 +123,10 @@ export default function CheckoutPage() {
           cep: formData.cep,
           uf: formData.uf || 'RJ',
         },
+        shipping: {
+          method_title: shippingQuote.serviceName || 'Frete',
+          price: shippingQuote.price,
+        }
       };
 
       const response = await fetch('/api/checkout', {
@@ -135,7 +144,6 @@ export default function CheckoutPage() {
       alert('✅ Pedido gerado com sucesso! Redirecionando para o pagamento...');
       clearCart();
 
-      // Redireciona para a URL de pagamento
       if (data.paymentUrl) {
         window.location.href = data.paymentUrl;
       } else {
@@ -166,14 +174,11 @@ export default function CheckoutPage() {
         </h1>
 
         <div className="flex flex-col lg:flex-row gap-10">
-          {/* Lado Esquerdo: Formulário de Cadastro/Endereço + Itens */}
           <div className="flex-1 space-y-6">
             
-            {/* Bloco de Dados do Cliente */}
             <div className="bg-white p-6 shadow-sm rounded-sm">
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">1. Seus Dados e Endereço</h3>
               
-              {/* Campo rápido para clientes recorrentes */}
               <div className="mb-6 bg-[#0B1B34]/5 p-4 rounded-sm border border-[#0B1B34]/10">
                 <label className="block text-xs font-bold uppercase text-[#0B1B34] mb-2">Já comprou conosco antes? Digite seu CPF:</label>
                 <div className="flex gap-2">
@@ -249,7 +254,6 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Bloco de Produtos */}
             <div className="bg-white p-6 shadow-sm rounded-sm">
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">2. Seus Produtos</h3>
               {items.length === 0 ? (
@@ -275,7 +279,6 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Lado Direito: Resumo e Pagamento */}
           <div className="w-full lg:w-[400px] space-y-6">
             <div className="bg-white p-6 shadow-sm rounded-sm sticky top-24">
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">Resumo do Pedido</h3>
@@ -292,7 +295,7 @@ export default function CheckoutPage() {
                       ? frete === 0
                         ? 'GRÁTIS'
                         : `R$ ${frete.toFixed(2).replace('.', ',')}`
-                      : 'Calcule abaixo'}
+                      : 'Obrigatório calcular'}
                   </span>
                 </div>
                 <div className="flex justify-between text-lg font-bold text-[#1E2233] pt-4 border-t">

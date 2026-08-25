@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log("📦 Body bruto recebido na API de Checkout:", JSON.stringify(body, null, 2));
 
-    const { cliente, items } = body;
+    const { cliente, items, shipping } = body;
     const listaItens = items || body.itens;
 
     if (!listaItens || !Array.isArray(listaItens) || listaItens.length === 0) {
@@ -32,14 +32,13 @@ export async function POST(request: Request) {
       uf: cliente?.uf || 'RJ',
     };
 
-    // 🌐 Credenciais e URL do WooCommerce configuradas no .env.local
     const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
     const consumerKey = process.env.WC_CONSUMER_KEY;
     const consumerSecret = process.env.WC_CONSUMER_SECRET;
 
     if (!consumerKey || !consumerSecret) {
       return NextResponse.json(
-        { success: false, error: 'Credenciais do WooCommerce (Consumer Key/Secret) não configuradas no servidor.' },
+        { success: false, error: 'Credenciais do WooCommerce não configuradas no servidor.' },
         { status: 500 }
       );
     }
@@ -52,7 +51,7 @@ export async function POST(request: Request) {
     const documentoLimpo = clienteFinal.numeroDocumento.replace(/\D/g, '');
     const cepLimpo = clienteFinal.cep.replace(/\D/g, '');
 
-    // 🔍 1. BUSCAR OU CRIAR O CLIENTE NO WOOCOMMERCE (Resolve o problema do "Visitante")
+    // 🔍 1. APENAS BUSCA O CLIENTE SE EXISTIR (SEM CRIAR CONTA AUTOMÁTICA PARA EVITAR SENHAS)
     let customerId = 0;
     try {
       const searchRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers?email=${encodeURIComponent(clienteFinal.email)}`, {
@@ -64,41 +63,9 @@ export async function POST(request: Request) {
       if (Array.isArray(existingCustomers) && existingCustomers.length > 0) {
         customerId = existingCustomers[0].id;
         console.log(`👤 Cliente já existente encontrado no WooCommerce (ID: ${customerId})`);
-      } else {
-        // Cria um novo cliente no WooCommerce para vincular ao pedido
-        const createCustRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': authHeader,
-          },
-          body: JSON.stringify({
-            email: clienteFinal.email,
-            first_name: firstName,
-            last_name: lastName,
-            username: clienteFinal.email.split('@')[0] + Math.floor(Math.random() * 1000),
-            billing: {
-              first_name: firstName,
-              last_name: lastName,
-              address_1: `${clienteFinal.endereco}, ${clienteFinal.numero} - ${clienteFinal.bairro}`,
-              city: clienteFinal.cidade,
-              state: clienteFinal.uf,
-              postcode: cepLimpo,
-              country: 'BR',
-              email: clienteFinal.email,
-              phone: clienteFinal.telefone,
-            }
-          }),
-        });
-
-        const newCustomerData = await createCustRes.json();
-        if (createCustRes.ok && newCustomerData.id) {
-          customerId = newCustomerData.id;
-          console.log(`✨ Novo cliente criado com sucesso no WooCommerce (ID: ${customerId})`);
-        }
       }
     } catch (custError) {
-      console.warn("⚠️ Aviso: Não foi possível vincular/criar o cliente automaticamente, prosseguindo com ID 0.", custError);
+      console.warn("⚠️ Aviso ao buscar cliente, prosseguindo como visitante/convidado.", custError);
     }
 
     // 🛍️ 2. MONTAR O PAYLOAD DO PEDIDO
@@ -127,17 +94,23 @@ export async function POST(request: Request) {
         country: 'BR',
       },
       line_items: listaItens.map((item: any) => {
-        // Trata os IDs para garantir que variação e produto pai sejam enviados corretamente
         const variationId = Number(item.variation_id || (item.parent_id ? item.id : 0));
         const productId = Number(item.parent_id || item.product_id || (variationId ? 0 : item.id));
 
         return {
-          product_id: productId > 0 ? productId : variationId, // Se não tiver pai explícito, o id principal assume
+          product_id: productId > 0 ? productId : variationId,
           variation_id: variationId > 0 ? variationId : 0,
           quantity: Number(item.quantity || item.quantidade || 1),
           price: String(item.price || item.valorUnitario || 0),
         };
       }),
+      shipping_lines: shipping ? [
+        {
+          method_id: 'custom_shipping',
+          method_title: shipping.method_title || 'Frete',
+          total: String(shipping.price || 0)
+        }
+      ] : [],
       meta_data: [
         {
           key: '_billing_cpf',
@@ -150,7 +123,6 @@ export async function POST(request: Request) {
       ]
     };
 
-    // Se encontramos ou criamos o ID do cliente, injetamos aqui para o WooCommerce NÃO colocar como "Visitante"
     if (customerId > 0) {
       wcOrderPayload.customer_id = customerId;
     }
