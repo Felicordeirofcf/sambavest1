@@ -10,9 +10,9 @@ export default function CheckoutPage() {
   const { items, removeItem, clearCart } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('appmax_pix');
+  const [isBuscandoCep, setIsBuscandoCep] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -35,33 +35,43 @@ export default function CheckoutPage() {
     uf: '',
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  // 🚀 BUSCA DE CEP AUTOMÁTICA (VIACEP)
+  const handleBuscarCep = async (cepBuscado: string) => {
+    const cepLimpo = cepBuscado.replace(/\D/g, '');
+    
+    if (cepLimpo.length !== 8) return;
 
-  const handleBuscarCliente = async () => {
-    const docLimpo = formData.numeroDocumento.replace(/\D/g, '');
-    if (!docLimpo || docLimpo.length < 11) {
-      alert('Por favor, digite um CPF válido com pelo menos 11 dígitos para buscar.');
-      return;
-    }
-
-    setIsSearchingClient(true);
+    setIsBuscandoCep(true);
     try {
-      const res = await fetch(`/api/cliente?cpf=${docLimpo}`);
-      const data = await res.json();
+      const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = await response.json();
 
-      if (data.success && data.cliente) {
-        setFormData(data.cliente);
-        alert('✅ Dados encontrados e preenchidos com sucesso!');
-      } else {
-        alert('ℹ️ Nenhum cadastro anterior encontrado com este CPF. Preencha os campos normalmente.');
+      if (!data.erro) {
+        setFormData(prev => ({
+          ...prev,
+          endereco: data.logradouro || '',
+          bairro: data.bairro || '',
+          cidade: data.localidade || '',
+          uf: data.uf || ''
+        }));
       }
     } catch (error) {
-      console.error(error);
-      alert('❌ Erro ao buscar cliente.');
+      console.error("Erro ao buscar CEP:", error);
     } finally {
-      setIsSearchingClient(false);
+      setIsBuscandoCep(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+
+    // Dispara a busca automática assim que digitar 8 números no CEP
+    if (name === 'cep') {
+      const cepLimpo = value.replace(/\D/g, '');
+      if (cepLimpo.length === 8) {
+        handleBuscarCep(cepLimpo);
+      }
     }
   };
 
@@ -86,7 +96,6 @@ export default function CheckoutPage() {
 
   const activeItems = getActiveItems();
   
-  // 🚀 CORREÇÃO DO TYPESCRIPT AQUI: Tipagem adicionada no acc e no item
   const subtotal = activeItems.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
   
   const frete = shippingQuote ? shippingQuote.price : 0;
@@ -209,77 +218,65 @@ export default function CheckoutPage() {
             <div className="bg-white p-6 shadow-sm rounded-sm">
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">1. Seus Dados e Endereço</h3>
               
-              <div className="mb-6 bg-[#0B1B34]/5 p-4 rounded-sm border border-[#0B1B34]/10">
-                <label className="block text-xs font-bold uppercase text-[#0B1B34] mb-2">Já comprou conosco antes? Digite seu CPF:</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    name="numeroDocumento" 
-                    value={formData.numeroDocumento} 
-                    onChange={handleInputChange} 
-                    className="flex-1 border p-2 text-sm rounded bg-white" 
-                    placeholder="Somente números" 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={handleBuscarCliente}
-                    disabled={isSearchingClient}
-                    className="px-4 py-2 bg-[#0B1B34] text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-[#C9A227] hover:text-[#0B1B34] transition-colors disabled:bg-gray-400"
-                  >
-                    {isSearchingClient ? 'Buscando...' : 'Buscar Dados'}
-                  </button>
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Nome Completo *</label>
-                  <input type="text" name="nome" value={formData.nome} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Ex: Amanda Pontes" />
+                  <input type="text" name="nome" value={formData.nome} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
                 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">E-mail *</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="amanda@gmail.com" />
+                  <input type="email" name="email" value={formData.email} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Telefone / WhatsApp *</label>
-                  <input type="text" name="telefone" value={formData.telefone} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="(21) 99695-9903" />
+                  <input type="text" name="telefone" value={formData.telefone} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">CPF ou CNPJ (Somente números) *</label>
-                  <input type="text" name="numeroDocumento" value={formData.numeroDocumento} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="12345678909" />
+                  <input type="text" name="numeroDocumento" value={formData.numeroDocumento} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">CEP *</label>
-                  <input type="text" name="cep" value={formData.cep} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="22723002" />
+                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                    CEP * {isBuscandoCep && <span className="text-[#C9A227] lowercase normal-case text-[10px] ml-2 animate-pulse">(buscando...)</span>}
+                  </label>
+                  <input 
+                    type="text" 
+                    name="cep" 
+                    value={formData.cep} 
+                    onChange={handleInputChange} 
+                    required 
+                    maxLength={9}
+                    className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" 
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Estado (UF)</label>
-                  <input type="text" name="uf" value={formData.uf} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="RJ" />
+                  <input type="text" name="uf" value={formData.uf} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Endereço (Rua, Avenida...) *</label>
-                  <input type="text" name="endereco" value={formData.endereco} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Estrada do Rio Grande" />
+                  <input type="text" name="endereco" value={formData.endereco} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Número *</label>
-                  <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="40804" />
+                  <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Bairro *</label>
-                  <input type="text" name="bairro" value={formData.bairro} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Taquara" />
+                  <input type="text" name="bairro" value={formData.bairro} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Cidade *</label>
-                  <input type="text" name="cidade" value={formData.cidade} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Rio de Janeiro" />
+                  <input type="text" name="cidade" value={formData.cidade} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
               </div>
             </div>
