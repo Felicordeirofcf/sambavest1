@@ -85,7 +85,10 @@ export default function CheckoutPage() {
   };
 
   const activeItems = getActiveItems();
-  const subtotal = activeItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  
+  // 🚀 CORREÇÃO DO TYPESCRIPT AQUI: Tipagem adicionada no acc e no item
+  const subtotal = activeItems.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+  
   const frete = shippingQuote ? shippingQuote.price : 0;
   const total = subtotal + frete;
 
