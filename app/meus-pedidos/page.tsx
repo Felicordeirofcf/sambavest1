@@ -161,7 +161,7 @@ export default function MeusPedidosPage() {
                       
                       <div className="mt-5">
                         <Link 
-                          href="https://wa.me/5521999999999?text=Olá, preciso de ajuda com o meu pedido." 
+                          href="https://wa.me/5521996959903?text=Olá, preciso de ajuda com o meu pedido." 
                           target="_blank"
                           className="inline-block text-xs font-bold uppercase text-[#0B1B34] underline hover:text-[#C9A227] transition-colors"
                         >
