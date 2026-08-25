@@ -12,10 +12,14 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSearchingClient, setIsSearchingClient] = useState(false);
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState('appmax_pix'); // Estado para escolher Pix ou Cartão
+  const [paymentMethod, setPaymentMethod] = useState('appmax_pix');
 
   useEffect(() => {
     setIsMounted(true);
+    // Força a atualização da store do Zustand caso use persistência local
+    if (typeof window !== 'undefined') {
+      useCartStore.persist.rehydrate();
+    }
   }, []);
 
   const [formData, setFormData] = useState({
@@ -61,15 +65,32 @@ export default function CheckoutPage() {
     }
   };
 
-  const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  // Garante a captura dos itens direto da store ou do localStorage de segurança
+  const getActiveItems = () => {
+    if (items && items.length > 0) return items;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('cart-storage');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.state?.items && parsed.state.items.length > 0) {
+            return parsed.state.items;
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao ler carrinho do storage", e);
+      }
+    }
+    return items;
+  };
+
+  const activeItems = getActiveItems();
+  const subtotal = activeItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const frete = shippingQuote ? shippingQuote.price : 0;
   const total = subtotal + frete;
 
   const handleFinalizarPedido = async () => {
-    let carrinhoAtual = items;
-    if (!carrinhoAtual || carrinhoAtual.length === 0) {
-      carrinhoAtual = useCartStore.getState().items;
-    }
+    const carrinhoAtual = getActiveItems();
 
     if (!carrinhoAtual || carrinhoAtual.length === 0) {
       alert('Seu carrinho está vazio! Adicione um produto antes de finalizar.');
@@ -106,7 +127,7 @@ export default function CheckoutPage() {
       const shippingMethodTitle = quoteAny.name || quoteAny.service || quoteAny.serviceName || 'Frete Correios / Transportadora';
 
       const payload = {
-        paymentMethod: paymentMethod, // Envia o método escolhido (Pix ou Cartão)
+        paymentMethod: paymentMethod,
         items: carrinhoAtual.map((item: any) => ({
           id: item.id,
           quantity: item.quantity,
@@ -148,7 +169,10 @@ export default function CheckoutPage() {
 
       if (data.paymentUrl) {
         clearCart();
-        window.location.href = data.paymentUrl;
+        // Redirecionamento forçado para a página de pagamento gerada
+        setTimeout(() => {
+          window.location.assign(data.paymentUrl);
+        }, 150);
       } else {
         throw new Error('A API não retornou uma URL de pagamento válida.');
       }
@@ -296,10 +320,10 @@ export default function CheckoutPage() {
 
             <div className="bg-white p-6 shadow-sm rounded-sm">
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">2. Seus Produtos</h3>
-              {items.length === 0 ? (
+              {activeItems.length === 0 ? (
                 <p className="text-xs text-gray-500 py-4">Seu carrinho está vazio.</p>
               ) : (
-                items.map((item) => (
+                activeItems.map((item: any) => (
                   <div key={`${item.id}-${item.size}`} className="flex gap-4 py-4 border-b last:border-0">
                     <img src={item.image} alt={item.name} className="w-20 h-24 object-contain bg-[#FAF7EF] p-1" />
                     <div className="flex-1 flex flex-col justify-between">
