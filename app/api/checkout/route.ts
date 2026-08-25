@@ -1,4 +1,3 @@
-// app/api/checkout/route.ts
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -45,14 +44,66 @@ export async function POST(request: Request) {
       );
     }
 
+    const authHeader = 'Basic ' + Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+
     const partesNome = clienteFinal.nome.trim().split(' ');
     const firstName = partesNome[0] || 'Cliente';
     const lastName = partesNome.slice(1).join(' ') || 'Da Loja';
-
     const documentoLimpo = clienteFinal.numeroDocumento.replace(/\D/g, '');
+    const cepLimpo = clienteFinal.cep.replace(/\D/g, '');
 
-    const wcOrderPayload = {
-      payment_method: 'appmax', // Identificador padrão da Appmax no WooCommerce
+    // 🔍 1. BUSCAR OU CRIAR O CLIENTE NO WOOCOMMERCE (Resolve o problema do "Visitante")
+    let customerId = 0;
+    try {
+      const searchRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers?email=${encodeURIComponent(clienteFinal.email)}`, {
+        headers: { 'Authorization': authHeader },
+        cache: 'no-store',
+      });
+      const existingCustomers = await searchRes.json();
+
+      if (Array.isArray(existingCustomers) && existingCustomers.length > 0) {
+        customerId = existingCustomers[0].id;
+        console.log(`👤 Cliente já existente encontrado no WooCommerce (ID: ${customerId})`);
+      } else {
+        // Cria um novo cliente no WooCommerce para vincular ao pedido
+        const createCustRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader,
+          },
+          body: JSON.stringify({
+            email: clienteFinal.email,
+            first_name: firstName,
+            last_name: lastName,
+            username: clienteFinal.email.split('@')[0] + Math.floor(Math.random() * 1000),
+            billing: {
+              first_name: firstName,
+              last_name: lastName,
+              address_1: `${clienteFinal.endereco}, ${clienteFinal.numero} - ${clienteFinal.bairro}`,
+              city: clienteFinal.cidade,
+              state: clienteFinal.uf,
+              postcode: cepLimpo,
+              country: 'BR',
+              email: clienteFinal.email,
+              phone: clienteFinal.telefone,
+            }
+          }),
+        });
+
+        const newCustomerData = await createCustRes.json();
+        if (createCustRes.ok && newCustomerData.id) {
+          customerId = newCustomerData.id;
+          console.log(`✨ Novo cliente criado com sucesso no WooCommerce (ID: ${customerId})`);
+        }
+      }
+    } catch (custError) {
+      console.warn("⚠️ Aviso: Não foi possível vincular/criar o cliente automaticamente, prosseguindo com ID 0.", custError);
+    }
+
+    // 🛍️ 2. MONTAR O PAYLOAD DO PEDIDO
+    const wcOrderPayload: any = {
+      payment_method: 'appmax',
       payment_method_title: 'Appmax Pagamentos',
       set_paid: false,
       billing: {
@@ -61,7 +112,7 @@ export async function POST(request: Request) {
         address_1: `${clienteFinal.endereco}, ${clienteFinal.numero} - ${clienteFinal.bairro}`,
         city: clienteFinal.cidade,
         state: clienteFinal.uf,
-        postcode: clienteFinal.cep.replace(/\D/g, ''),
+        postcode: cepLimpo,
         country: 'BR',
         email: clienteFinal.email,
         phone: clienteFinal.telefone,
@@ -72,22 +123,21 @@ export async function POST(request: Request) {
         address_1: `${clienteFinal.endereco}, ${clienteFinal.numero} - ${clienteFinal.bairro}`,
         city: clienteFinal.cidade,
         state: clienteFinal.uf,
-        postcode: clienteFinal.cep.replace(/\D/g, ''),
+        postcode: cepLimpo,
         country: 'BR',
       },
       line_items: listaItens.map((item: any) => {
-        // Se o item tiver parent_id, significa que 'id' é a variação (ex: Regata/G) e 'parent_id' é o produto pai.
-        // Se não tiver parent_id, tratamos o 'id' como o ID do produto diretamente.
-        const isVariation = Boolean(item.parent_id);
+        // Trata os IDs para garantir que variação e produto pai sejam enviados corretamente
+        const variationId = Number(item.variation_id || (item.parent_id ? item.id : 0));
+        const productId = Number(item.parent_id || item.product_id || (variationId ? 0 : item.id));
 
         return {
-          product_id: isVariation ? Number(item.parent_id) : Number(item.id),
-          variation_id: isVariation ? Number(item.id) : 0, // Se for variação, passa o ID específico aqui!
+          product_id: productId > 0 ? productId : variationId, // Se não tiver pai explícito, o id principal assume
+          variation_id: variationId > 0 ? variationId : 0,
           quantity: Number(item.quantity || item.quantidade || 1),
           price: String(item.price || item.valorUnitario || 0),
         };
       }),
-      // Metadados necessários para a Appmax e gateway processarem CPF/CNPJ corretamente
       meta_data: [
         {
           key: '_billing_cpf',
@@ -100,10 +150,12 @@ export async function POST(request: Request) {
       ]
     };
 
-    console.log("🚀 Criando pedido no WooCommerce/Appmax...", wcOrderPayload);
+    // Se encontramos ou criamos o ID do cliente, injetamos aqui para o WooCommerce NÃO colocar como "Visitante"
+    if (customerId > 0) {
+      wcOrderPayload.customer_id = customerId;
+    }
 
-    // 🔐 Autenticação Basic Auth para a API REST do WooCommerce
-    const authHeader = 'Basic ' + Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+    console.log("🚀 Criando pedido no WooCommerce/Appmax...", JSON.stringify(wcOrderPayload, null, 2));
 
     const wcResponse = await fetch(`${wcUrl}/wp-json/wc/v3/orders`, {
       method: 'POST',
@@ -121,7 +173,6 @@ export async function POST(request: Request) {
       throw new Error(wcData.message || 'Erro ao criar o pedido no WooCommerce.');
     }
 
-    // O WooCommerce retorna a URL de pagamento gerada pelo gateway (Appmax)
     const paymentUrl = wcData.payment_url || `${wcUrl}/checkout/order-pay/${wcData.id}/?pay_for_order=true`;
 
     console.log(`✅ Pedido #${wcData.id} criado com sucesso no WooCommerce! URL de pagamento:`, paymentUrl);

@@ -34,7 +34,7 @@ export default function CheckoutPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Função para buscar cliente cadastrado no Bling pelo CPF
+  // Função para buscar cliente cadastrado no Bling/Base pelo CPF
   const handleBuscarCliente = async () => {
     const docLimpo = formData.numeroDocumento.replace(/\D/g, '');
     if (!docLimpo || docLimpo.length < 11) {
@@ -93,6 +93,11 @@ export default function CheckoutPage() {
     setIsLoading(true);
 
     try {
+      // Separa o nome e o sobrenome para o WooCommerce aceitar perfeitamente
+      const partesNome = formData.nome.trim().split(' ');
+      const firstName = partesNome[0] || '';
+      const lastName = partesNome.slice(1).join(' ') || 'Cliente';
+
       const payload = {
         items: carrinhoAtual.map((item: any) => ({
           id: item.id,
@@ -101,6 +106,8 @@ export default function CheckoutPage() {
         })),
         cliente: {
           nome: formData.nome,
+          first_name: firstName,
+          last_name: lastName,
           email: formData.email,
           telefone: formData.telefone,
           numeroDocumento: formData.numeroDocumento,
@@ -128,7 +135,7 @@ export default function CheckoutPage() {
       alert('✅ Pedido gerado com sucesso! Redirecionando para o pagamento...');
       clearCart();
 
-      // 💳 Redireciona o cliente para a URL oficial de pagamento da Appmax/WooCommerce
+      // Redireciona para a URL de pagamento
       if (data.paymentUrl) {
         window.location.href = data.paymentUrl;
       } else {
@@ -192,12 +199,12 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Nome Completo *</label>
-                  <input type="text" name="nome" value={formData.nome} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Ex: João da Silva" />
+                  <input type="text" name="nome" value={formData.nome} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Ex: Amanda Pontes" />
                 </div>
                 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">E-mail *</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="joao@email.com" />
+                  <input type="email" name="email" value={formData.email} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="amanda@gmail.com" />
                 </div>
 
                 <div>
@@ -212,7 +219,7 @@ export default function CheckoutPage() {
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">CEP *</label>
-                  <input type="text" name="cep" value={formData.cep} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="20000000" />
+                  <input type="text" name="cep" value={formData.cep} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="22723002" />
                 </div>
 
                 <div>
@@ -222,17 +229,17 @@ export default function CheckoutPage() {
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Endereço (Rua, Avenida...) *</label>
-                  <input type="text" name="endereco" value={formData.endereco} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Rua Exemplo" />
+                  <input type="text" name="endereco" value={formData.endereco} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Estrada do Rio Grande" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Número *</label>
-                  <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="123" />
+                  <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="40804" />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Bairro *</label>
-                  <input type="text" name="bairro" value={formData.bairro} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Centro" />
+                  <input type="text" name="bairro" value={formData.bairro} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50" placeholder="Taquara" />
                 </div>
 
                 <div className="md:col-span-2">
