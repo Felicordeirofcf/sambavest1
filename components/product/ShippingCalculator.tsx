@@ -2,18 +2,9 @@
 
 import { useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
+import type { ShippingQuote } from '../../lib/shipping'; // 🚀 Importa diretamente da tipagem oficial do checkout!
 
-// Interface do formato que vem do nosso backend e checkout
-export interface ShippingQuote {
-  id: number | string;
-  name: string;
-  price: number;
-  delivery_time: number;
-  company_picture?: string;
-  minDays?: number;
-  maxDays?: number;
-  region?: string;
-}
+export type { ShippingQuote }; // Mantém exportado caso outro arquivo precise
 
 interface ShippingCalculatorProps {
   subtotal: number;
@@ -55,7 +46,6 @@ export default function ShippingCalculator({ subtotal, onQuote }: ShippingCalcul
 
       if (data.success && data.quotes && data.quotes.length > 0) {
         setQuotes(data.quotes);
-        // Já seleciona automaticamente a opção mais barata (que é a primeira da lista)
         handleSelectQuote(data.quotes[0]);
       } else {
         alert('Não foi possível calcular o frete para este CEP no momento.');
@@ -71,12 +61,11 @@ export default function ShippingCalculator({ subtotal, onQuote }: ShippingCalcul
   const handleSelectQuote = (quote: ShippingQuote) => {
     setSelectedQuoteId(quote.id);
     
-    // Regra do Frete Grátis (exemplo: acima de R$ 300 ganha frete grátis no PAC)
     const FREE_SHIPPING_THRESHOLD = 300; 
     let finalQuote: ShippingQuote = { 
       ...quote,
-      minDays: quote.delivery_time,
-      maxDays: quote.delivery_time,
+      minDays: quote.delivery_time || 3,
+      maxDays: quote.delivery_time || 7,
       region: 'Nacional'
     };
 
