@@ -14,7 +14,7 @@ export default function ProductClient({ product }: { product: any }) {
   const gallery = product.images && product.images.length > 0 ? product.images : [product.image];
   const sizeGuideIndex = gallery.findIndex((img: string) => img?.toLowerCase().includes('tabela') || img?.toLowerCase().includes('guia'));
 
-  // 👕 CAPTAÇÃO 100% DINÂMICA DOS MODELOS CADASTRADOS NO WOOCOMMERCE
+  // 👕 CAPTAÇÃO E ORDENAÇÃO FIXA DOS MODELOS (Unissex, Regata, Baby Look, Vestido)
   const availableModels = useMemo(() => {
     const modelsSet = new Set<string>();
     variantsList.forEach((v: any) => {
@@ -29,9 +29,17 @@ export default function ProductClient({ product }: { product: any }) {
       }
     });
 
+    const ordemDesejadaModels = ['unissex', 'regata', 'baby look', 'vestido'];
     const list = Array.from(modelsSet);
-    // Se não houver nenhum modelo específico nas variações, exibe o que vier ou oculta
-    return list.length > 0 ? list : [];
+    
+    return list.sort((a, b) => {
+      const indexA = ordemDesejadaModels.indexOf(a.toLowerCase());
+      const indexB = ordemDesejadaModels.indexOf(b.toLowerCase());
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.localeCompare(b);
+    });
   }, [variantsList]);
 
   const [selectedModel, setSelectedModel] = useState<string>(
@@ -72,7 +80,6 @@ export default function ProductClient({ product }: { product: any }) {
 
   // 🚀 BUSCA EXATA DA VARIAÇÃO SELECIONADA
   const matchedVariant = useMemo(() => {
-    // Se houver modelos cadastrados, exige a seleção do modelo e do tamanho. Se não houver modelos, exige apenas o tamanho.
     if (availableModels.length > 0 && !selectedModel) return null;
     if (!selectedSize) return null;
     
@@ -83,14 +90,16 @@ export default function ProductClient({ product }: { product: any }) {
     }) || null;
   }, [variantsList, selectedModel, selectedSize, availableModels]);
 
+  // 🖼️ TROCA AUTOMÁTICA DA FOTO AO SELECIONAR O MODELO
   useEffect(() => {
     if (!selectedModel) return;
 
+    // Procura uma variação que pertença a este modelo e que tenha imagem cadastrada
     const varSample = variantsList.find((v: any) => 
       (v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel)) && v.image
     );
 
-    const variantImageUrl = typeof varSample?.image === 'object' ? varSample.image.src : varSample?.image;
+    const variantImageUrl = typeof varSample?.image === 'object' ? varSample?.image?.src : varSample?.image;
 
     if (variantImageUrl) {
       const indexImg = gallery.findIndex((img: string) => 
@@ -201,7 +210,7 @@ export default function ProductClient({ product }: { product: any }) {
 
           <div className="text-sm text-gray-600 mb-6 font-light" dangerouslySetInnerHTML={{ __html: product.short_description || '' }} />
 
-          {/* 👕 SELETOR DE MODELOS (Só aparece se o produto tiver modelos reais cadastrados) */}
+          {/* 👕 SELETOR DE MODELOS ORDENADOS */}
           {availableModels.length > 0 && (
             <div className="mb-5">
               <label className="block text-xs font-bold uppercase tracking-widest text-[#0B1B34] mb-2">
