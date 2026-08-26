@@ -3,13 +3,16 @@
 import { useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
 
-// Interface do formato que vem do nosso backend
+// Interface do formato que vem do nosso backend e checkout
 export interface ShippingQuote {
   id: number | string;
   name: string;
   price: number;
   delivery_time: number;
   company_picture?: string;
+  minDays?: number;
+  maxDays?: number;
+  region?: string;
 }
 
 interface ShippingCalculatorProps {
@@ -70,7 +73,12 @@ export default function ShippingCalculator({ subtotal, onQuote }: ShippingCalcul
     
     // Regra do Frete Grátis (exemplo: acima de R$ 300 ganha frete grátis no PAC)
     const FREE_SHIPPING_THRESHOLD = 300; 
-    let finalQuote = { ...quote };
+    let finalQuote: ShippingQuote = { 
+      ...quote,
+      minDays: quote.delivery_time,
+      maxDays: quote.delivery_time,
+      region: 'Nacional'
+    };
 
     if (subtotal >= FREE_SHIPPING_THRESHOLD && quote.name.toLowerCase().includes('pac')) {
       finalQuote.price = 0;
