@@ -2,16 +2,23 @@
 
 import { useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
-import type { ShippingQuote } from '../../lib/shipping'; // 🚀 Importa diretamente da tipagem oficial do checkout!
+import type { ShippingQuote } from '../../lib/shipping';
 
-export type { ShippingQuote }; // Mantém exportado caso outro arquivo precise
+export type { ShippingQuote };
 
 interface ShippingCalculatorProps {
   subtotal: number;
   onQuote: (quote: ShippingQuote | null) => void;
+  productContext?: {
+    id: number | string;
+    name: string;
+    price: number;
+    image: string;
+    size?: string;
+  };
 }
 
-export default function ShippingCalculator({ subtotal, onQuote }: ShippingCalculatorProps) {
+export default function ShippingCalculator({ subtotal, onQuote, productContext }: ShippingCalculatorProps) {
   const { items } = useCartStore();
   const [cep, setCep] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,8 +32,13 @@ export default function ShippingCalculator({ subtotal, onQuote }: ShippingCalcul
       return;
     }
 
-    if (items.length === 0) {
-      alert('Seu carrinho está vazio.');
+    // Se houver itens na sacola, usa eles. Se não, usa o produto atual da página se estiver disponível.
+    const itemsToCalculate = items.length > 0 
+      ? items 
+      : (productContext ? [{ ...productContext, quantity: 1 }] : []);
+
+    if (itemsToCalculate.length === 0) {
+      alert('Selecione uma variação ou adicione o produto à sacola para calcular o frete.');
       return;
     }
 
@@ -39,7 +51,7 @@ export default function ShippingCalculator({ subtotal, onQuote }: ShippingCalcul
       const response = await fetch('/api/shipping', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cep: cepLimpo, items }),
+        body: JSON.stringify({ cep: cepLimpo, items: itemsToCalculate }),
       });
 
       const data = await response.json();
@@ -89,6 +101,7 @@ export default function ShippingCalculator({ subtotal, onQuote }: ShippingCalcul
           className="flex-1 border p-3 text-sm rounded bg-white focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]"
         />
         <button
+          type="button"
           onClick={handleCalculate}
           disabled={isLoading || cep.length < 8}
           className="px-6 py-3 bg-[#0B1B34] text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-[#C9A227] hover:text-[#0B1B34] transition-colors disabled:bg-gray-400"

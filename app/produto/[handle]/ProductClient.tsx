@@ -14,7 +14,7 @@ export default function ProductClient({ product }: { product: any }) {
   const gallery = product.images && product.images.length > 0 ? product.images : [product.image];
   const sizeGuideIndex = gallery.findIndex((img: string) => img?.toLowerCase().includes('tabela') || img?.toLowerCase().includes('guia'));
 
-  // 👕 CAPTAÇÃO E ORDENAÇÃO FIXA DOS MODELOS
+  // 👕 CAPTAÇÃO E ORDENAÇÃO FIXA DOS MODELOS (Unissex, Regata, Baby Look, Vestido)
   const availableModels = useMemo(() => {
     const modelsSet = new Set<string>();
     variantsList.forEach((v: any) => {
@@ -42,7 +42,7 @@ export default function ProductClient({ product }: { product: any }) {
     });
   }, [variantsList]);
 
-  // Normaliza a busca da URL ignorando maiúsculas/minúsculas
+  // Normaliza perfeitamente o modelo vindo da URL (ex: "BABY LOOK" -> "Baby Look")
   const matchedUrlModel = useMemo(() => {
     if (!modeloUrl) return null;
     return availableModels.find(m => m.toLowerCase() === modeloUrl.toLowerCase()) || null;
@@ -55,7 +55,15 @@ export default function ProductClient({ product }: { product: any }) {
   const [activeImage, setActiveImage] = useState(0);
   const [dynamicVariantImage, setDynamicVariantImage] = useState<string | null>(null);
 
-  // 📏 ORDENAÇÃO E CAPTAÇÃO DOS TAMANHOS
+  // Garante que se o parâmetro da URL mudar, o modelo selecionado atualiza na hora
+  useEffect(() => {
+    if (matchedUrlModel && matchedUrlModel !== selectedModel) {
+      setSelectedModel(matchedUrlModel);
+      setSelectedSize('');
+    }
+  }, [matchedUrlModel]);
+
+  // 📏 ORDENAÇÃO E CAPTAÇÃO DOS TAMANHOS DO WOOCOMMERCE
   const availableSizes = useMemo(() => {
     const sizesSet = new Set<string>();
     variantsList.forEach((v: any) => {
@@ -303,6 +311,13 @@ export default function ProductClient({ product }: { product: any }) {
             <ShippingCalculator 
               subtotal={currentPrice} 
               onQuote={() => {}} 
+              productContext={matchedVariant ? {
+                id: matchedVariant.id,
+                name: `${product.name} (${selectedModel} - ${selectedSize})`,
+                price: currentPrice,
+                image: matchedVariant.image || product.image,
+                size: `${selectedModel} / ${selectedSize}`
+              } : undefined}
             />
           </div>
         </div>
