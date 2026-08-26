@@ -113,7 +113,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
   // 🚀 Correção de português para os títulos
   const titleMap: Record<string, string> = {
     'todos': 'Todos os Produtos',
-    'lancamentos': 'Lançamentos',
+    'carnaval-2027': 'Carnaval 2027',
     'campeas-do-carnaval': 'Campeãs do Carnaval',
     'camisas-de-escola-de-samba': 'Camisas de Escola de Samba'
   };
@@ -135,7 +135,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row gap-10">
-        {/* Filtros Lateral (Sidebar) com todas as coleções */}
+        {/* Filtros Lateral (Sidebar) com todas as coleções atualizadas */}
         <aside className="hidden md:flex w-1/4 flex-col gap-8">
           <div className="border-b border-[#E5E5E5] pb-6 sticky top-24">
             <h3 className="text-sm uppercase tracking-[0.15em] text-[#0B1B34] mb-6 border-b border-[#0B1B34] pb-2 inline-block font-bold">
@@ -149,10 +149,10 @@ export default async function CategoryPage({ params }: { params: { slug: string 
                 Todos os Produtos
               </Link>
               <Link
-                href="/categoria/lancamentos"
-                className={`text-xs uppercase tracking-widest transition-colors ${categorySlug === 'lancamentos' ? 'font-bold text-[#0B1B34]' : 'text-gray-500 hover:text-[#0B1B34]'}`}
+                href="/categoria/carnaval-2027"
+                className={`text-xs uppercase tracking-widest transition-colors ${categorySlug === 'carnaval-2027' ? 'font-bold text-[#0B1B34]' : 'text-gray-500 hover:text-[#0B1B34]'}`}
               >
-                Lançamentos
+                Carnaval 2027
               </Link>
               <Link
                 href="/categoria/camisas-de-escola-de-samba"

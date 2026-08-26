@@ -8,8 +8,8 @@ import AboutAtelie from '../components/home/AboutAtelie';
 
 const featuredCategories = [
   {
-    name: 'Lançamentos',
-    slug: 'lancamentos',
+    name: 'Carnaval 2027', // 🚀 Atualizado para Carnaval 2027
+    slug: 'carnaval-2027', // 🚀 Rota atualizada
     image: '/products/beija-flor-2027-zeneida.webp',
   },
   {
@@ -33,7 +33,7 @@ async function getProdutosWooCommerce() {
 
     const authHeader = 'Basic ' + Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
 
-    const response = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=20`, {
+    const response = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=50`, {
       headers: { 'Authorization': authHeader },
       next: { revalidate: 60 }, // 🚀 Resposta rápida com cache controlado
     });
@@ -113,7 +113,9 @@ async function getProdutosWooCommerce() {
       });
     }
 
-    return listaExibicao;
+    // 🚀 Filtra os produtos para exibir apenas os do "Carnaval 2027" na vitrine da Home
+    return listaExibicao.filter(p => p.categories.includes('carnaval-2027'));
+
   } catch (error) {
     console.error('❌ Erro fatal ao carregar produtos na Home:', error);
     return [];
@@ -169,11 +171,11 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Seção de Produtos (Lançamentos) */}
+        {/* Seção de Produtos (Carnaval 2027) */}
         <section className="w-full max-w-[1600px] mx-auto px-4 pb-24 pt-4">
           <div className="animate-reveal mb-14 text-center" style={{ animationDelay: '0.4s' }}>
             <h2 className="font-heading text-3xl font-extrabold uppercase tracking-widest text-[#0B1B34] md:text-4xl">
-              Lançamentos
+              Carnaval 2027
             </h2>
             <div className="mx-auto mt-5 h-[3px] w-20 bg-[#C9A227] rounded-full" />
           </div>

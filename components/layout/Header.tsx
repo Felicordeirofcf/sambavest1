@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useCartStore } from '../../store/cartStore';
-import { categories } from '../../lib/products';
 
 function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
@@ -54,7 +53,7 @@ export default function Header() {
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
             <Link href="/" aria-label="Ir para a página inicial" className="transition-transform duration-300 hover:scale-105">
               <Image
-                src="/logo-oficial-vazado.png" // 🚀 NOVO NOME AQUI (MOBILE)
+                src="/logo-oficial-vazado.png"
                 alt="Samba Vest"
                 width={148}
                 height={60}
@@ -99,25 +98,20 @@ export default function Header() {
         <div className="hidden xl:flex justify-between items-center max-w-[1600px] mx-auto">
           <div className="flex-1 flex items-center justify-start">
             <nav className="flex gap-8 text-[12px] uppercase tracking-wider font-bold">
+              {/* 🚀 BOTÕES FIXOS E LIMPOS: Apenas Início e Coleção */}
               <NavLink href="/" active={pathname === '/'}>
                 Início
               </NavLink>
-              {categories.map((cat) => (
-                <NavLink
-                  key={cat.slug}
-                  href={`/categoria/${cat.slug}`}
-                  active={pathname === `/categoria/${cat.slug}`}
-                >
-                  {cat.name}
-                </NavLink>
-              ))}
+              <NavLink href="/categoria/todos" active={pathname.startsWith('/categoria')}>
+                NOSSA LOJA
+              </NavLink>
             </nav>
           </div>
 
           <div className="flex-1 flex justify-center">
             <Link href="/" aria-label="Ir para a página inicial" className="group">
               <Image
-                src="/logo-oficial-vazado.png" // 🚀 NOVO NOME AQUI (DESKTOP)
+                src="/logo-oficial-vazado.png"
                 alt="Samba Vest"
                 width={210}
                 height={85}
@@ -128,7 +122,7 @@ export default function Header() {
           </div>
 
           <div className="flex-1 flex justify-end items-center gap-6">
-            {/* 🚚 NOVO: Botão Meus Pedidos */}
+            {/* Botão Meus Pedidos */}
             <Link 
               href="/meus-pedidos" 
               className="group text-xs md:text-sm uppercase font-bold flex items-center gap-2 text-white/90 hover:text-[#C9A227] transition-all duration-300"
@@ -221,23 +215,12 @@ export default function Header() {
             <span className="text-[#C9A227]">→</span>
           </Link>
           <Link href="/categoria/todos" onClick={closeMenu} className="px-6 py-4 hover:bg-white/5 hover:text-[#C9A227] transition-colors border-b border-white/5 flex items-center justify-between">
-            <span>Ver todos os produtos</span>
+            <span>Coleção</span>
             <span className="text-[#C9A227]">→</span>
           </Link>
-          {categories.map((cat) => (
-            <Link
-              key={cat.slug}
-              href={`/categoria/${cat.slug}`}
-              onClick={closeMenu}
-              className="px-6 py-4 hover:bg-white/5 hover:text-[#C9A227] transition-colors border-b border-white/5 flex items-center justify-between"
-            >
-              <span>{cat.name}</span>
-              <span className="text-[#C9A227]">→</span>
-            </Link>
-          ))}
         </nav>
 
-        {/* 🚚 NOVO: Seção Inferior do Menu Mobile Atualizada */}
+        {/* Seção Inferior do Menu Mobile */}
         <div className="p-5 border-t border-white/10 flex flex-col gap-4 bg-black/20">
           
           {/* Link Rastrear Pedidos Mobile */}

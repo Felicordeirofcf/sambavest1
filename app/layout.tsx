@@ -28,11 +28,15 @@ export const metadata: Metadata = {
     default: 'Samba Vest | Camisas Oficiais de Enredo',
     template: '%s | Samba Vest',
   },
-  description: `Samba Vest — camisas oficiais de enredo das escolas campeãs do carnaval. Estampas exclusivas, tecido leve e de secagem rápida, do P ao EXG. Frete Grátis acima de R$${FREE_SHIPPING_THRESHOLD}.`,
+  // 🚀 ATUALIZADO: Incluímos o Carnaval 2027 na descrição para o Google
+  description: `Samba Vest — camisas oficiais de enredo das escolas campeãs e Lançamentos Carnaval 2027. Estampas exclusivas, tecido leve e de secagem rápida, do P ao EXG. Frete Grátis acima de R$${FREE_SHIPPING_THRESHOLD}.`,
+  
+  // 🚀 ATUALIZADO: Novas palavras-chave para melhorar as buscas
   keywords: [
     'camisa de enredo',
     'samba vest',
     'carnaval',
+    'carnaval 2027', 
     'escola de samba',
     'beija-flor',
     'viradouro',
@@ -43,12 +47,11 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
-    // 🚀 CORRIGIDO AQUI: Estava apontando para atelie-ebon.vercel.app
     url: 'https://www.sambavest.com.br', 
     siteName: 'Samba Vest',
     title: 'Samba Vest | Camisas Oficiais de Enredo',
-    description:
-      'Vista a emoção do carnaval. Camisas oficiais de enredo das escolas campeãs, do P ao EXG.',
+    // 🚀 ATUALIZADO: Essa é a mensagem que aparece quando você manda o link no WhatsApp
+    description: 'Vista a emoção do carnaval. Camisas oficiais de enredo das escolas campeãs e coleção exclusiva Carnaval 2027, do P ao EXG.',
     images: [
       {
         url: '/og-image.png',
@@ -62,7 +65,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Samba Vest | Camisas Oficiais de Enredo',
-    description: 'Vista a emoção do carnaval. Camisas oficiais de enredo das escolas campeãs.',
+    description: 'Vista a emoção do carnaval. Camisas oficiais de enredo das escolas campeãs e coleção exclusiva Carnaval 2027.',
     images: ['/og-image.png'],
   },
 
