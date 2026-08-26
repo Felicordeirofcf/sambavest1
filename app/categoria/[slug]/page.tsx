@@ -3,7 +3,7 @@ export const revalidate = 60; // 🚀 Cache inteligente de 1 minuto: navegação
 import Link from 'next/link';
 import ProductCard from '../../../components/product/ProductCard';
 
-// 🛍️ Função para buscar e sincronizar os produtos do WooCommerce por categoria com cache otimizado
+// 🛍️ Função ULTRA-RÁPIDA: Sincroniza e busca produtos e variações em paralelo
 async function getProdutosWooCommercePorCategoria(categorySlug: string) {
   try {
     const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
@@ -25,71 +25,73 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
     if (!resProducts.ok) return [];
 
     const products = await resProducts.json();
-    const listaExibicao: any[] = [];
 
-    for (const prod of products) {
-      const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
-      
-      // 1. Extração segura da imagem principal corrigida
-      const imagemPrincipal = prod.images?.[0]?.src || '';
-      
-      // 2. Extraímos as imagens normais da galeria
-      const productImages = prod.images ? prod.images.map((img: any) => img.src) : [];
+    // 🚀 Otimização Crítica: Mapeia e busca as variações de todos os produtos em paralelo
+    const listaExibicao = await Promise.all(
+      products.map(async (prod: any) => {
+        const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
+        
+        // 1. Extração segura da imagem principal
+        const imagemPrincipal = prod.images?.[0]?.src || '';
+        
+        // 2. Extraímos as imagens normais da galeria
+        const productImages = prod.images ? prod.images.map((img: any) => img.src) : [];
 
-      // 🎯 3. INJEÇÃO DA FOTO DAS COSTAS (BEIJA-FLOR 2027)
-      if (prod.slug && prod.slug.includes('beija-flor-2027') && productImages.length === 1) {
-        productImages.push('https://sambavest.com/wp-content/uploads/2026/08/camisa_enredo_atual_2_.webp');
-      }
-
-      let variationsList = [];
-
-      if (prod.type === 'variable') {
-        try {
-          const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=50`, {
-            headers: { 'Authorization': authHeader },
-            next: { revalidate: 60 },
-          });
-          if (resVar.ok) {
-            variationsList = await resVar.json();
-          }
-        } catch (e) {
-          console.error(`Erro ao buscar variações do produto ${prod.id}:`, e);
+        // 🎯 3. INJEÇÃO DA FOTO DAS COSTAS (BEIJA-FLOR 2027)
+        if (prod.slug && prod.slug.includes('beija-flor-2027') && productImages.length === 1) {
+          productImages.push('https://sambavest.com/wp-content/uploads/2026/08/camisa_enredo_atual_2_.webp');
         }
-      }
 
-      listaExibicao.push({
-        id: prod.id,
-        name: prod.name,
-        slug: prod.slug,
-        price: precoBase,
-        regular_price: Number(prod.regular_price || precoBase),
-        images: productImages.length > 0 ? productImages : [imagemPrincipal],
-        categories: prod.categories.map((cat: any) => cat.slug),
-        badge: prod.attributes?.find((a: any) => a.name.toLowerCase().includes('badge'))?.options?.[0] || (prod.on_sale ? 'Promoção' : null),
-        variants: variationsList.length > 0 ? variationsList.map((v: any) => {
-          const modeloAttr = v.attributes?.find((a: any) => {
-            const nome = (a.name || '').toLowerCase();
-            return nome.includes('modelo') || nome.includes('style') || nome.includes('model');
-          });
-          const tamanhoAttr = v.attributes?.find((a: any) => {
-            const nome = (a.name || '').toLowerCase();
-            return nome.includes('tamanho') || nome.includes('size');
-          });
+        let variationsList = [];
 
-          return {
-            id: v.id,
-            parent_id: prod.id,
-            model: modeloAttr?.option || 'Geral',
-            size: tamanhoAttr?.option || 'Único',
-            price: Number(v.price || precoBase),
-            stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
-            image: v.image?.src || imagemPrincipal
-          };
-        }) : [
-          { id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }
-        ]
-      });
-    }
+        if (prod.type === 'variable') {
+          try {
+            const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=50`, {
+              headers: { 'Authorization': authHeader },
+              next: { revalidate: 60 },
+            });
+            if (resVar.ok) {
+              variationsList = await resVar.json();
+            }
+          } catch (e) {
+            console.error(`Erro ao buscar variações do produto ${prod.id}:`, e);
+          }
+        }
+
+        return {
+          id: prod.id,
+          name: prod.name,
+          slug: prod.slug,
+          price: precoBase,
+          regular_price: Number(prod.regular_price || precoBase),
+          images: productImages.length > 0 ? productImages : [imagemPrincipal],
+          categories: prod.categories.map((cat: any) => cat.slug),
+          badge: prod.attributes?.find((a: any) => a.name.toLowerCase().includes('badge'))?.options?.[0] || (prod.on_sale ? 'Promoção' : null),
+          variants: variationsList.length > 0 ? variationsList.map((v: any) => {
+            const modeloAttr = v.attributes?.find((a: any) => {
+              const nome = (a.name || '').toLowerCase();
+              return nome.includes('modelo') || nome.includes('style') || nome.includes('model');
+            });
+            const tamanhoAttr = v.attributes?.find((a: any) => {
+              const nome = (a.name || '').toLowerCase();
+              return nome.includes('tamanho') || nome.includes('size');
+            });
+
+            return {
+              id: v.id,
+              parent_id: prod.id,
+              model: modeloAttr?.option || 'Geral',
+              size: tamanhoAttr?.option || 'Único',
+              price: Number(v.price || precoBase),
+              stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
+              image: v.image?.src || imagemPrincipal
+            };
+          }) : [
+            { id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }
+          ]
+        };
+      })
+    );
 
     // Se não for 'todos', filtra pelo slug da categoria do WooCommerce
     if (categorySlug && categorySlug !== 'todos') {
