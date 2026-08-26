@@ -87,16 +87,16 @@ export default function HeroCarousel() {
               <Link
                 href={slide.ctaHref}
                 aria-label={slide.title}
-                // 🚀 USANDO ASPECT RATIO DINÂMICO: Adapta-se perfeitamente sem distorcer nenhuma das imagens
+                // 🚀 USANDO ASPECT RATIO DINÂMICO
                 className="relative block aspect-[16/9] w-full md:aspect-[21/9]"
               >
                 <Image
                   src={slide.image}
                   alt={slide.title}
                   fill
-                  priority={i === 0}
+                  priority={i === 0} // Mantém o pré-carregamento do Next.js
+                  fetchPriority={i === 0 ? 'high' : 'auto'} // 🚀 MÁGICA AQUI: Força o Google no 4G a baixar essa imagem antes de tudo!
                   sizes="100vw"
-                  // 🚀 object-contain garante que a imagem inteira apareça sem cortes nas pontas
                   className="object-contain bg-[#0B1B34] transition-transform duration-[10000ms] hover:scale-105"
                 />
 
