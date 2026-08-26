@@ -1,4 +1,3 @@
-// app/produto/[handle]/ProductClient.tsx
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -262,7 +261,12 @@ export default function ProductClient({ product }: { product: any }) {
           </button>
 
           <div className="mt-6">
-            <ShippingCalculator subtotal={currentPrice} />
+            <ShippingCalculator 
+              subtotal={currentPrice} 
+              onQuote={() => {
+                // Apenas exibe o cálculo na página do produto
+              }} 
+            />
           </div>
         </div>
 
