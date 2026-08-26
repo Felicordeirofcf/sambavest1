@@ -47,7 +47,7 @@ export default function ProductClient({ product }: { product: any }) {
   const [activeImage, setActiveImage] = useState(0);
   const [dynamicVariantImage, setDynamicVariantImage] = useState<string | null>(null);
 
-  // 📏 ORDENAÇÃO DOS TAMANHOS (P, M, G, GG, XG, EXG) E ADIÇÃO MANUAL DO EXG
+  // 📏 ORDENAÇÃO DOS TAMANHOS AUTOMÁTICOS DO WOOCOMMERCE
   const availableSizes = useMemo(() => {
     const sizesSet = new Set<string>();
     variantsList.forEach((v: any) => {
@@ -65,10 +65,7 @@ export default function ProductClient({ product }: { product: any }) {
       }
     });
 
-    if (sizesSet.size > 0 && !sizesSet.has('EXG')) {
-      sizesSet.add('EXG');
-    }
-
+    // Mantemos apenas a regra de ordenação visual para que o EXG sempre fique no final da fila se ele vier do Woo
     const ordemDesejadaSizes = ['p', 'm', 'g', 'gg', 'xg', 'exg', 'único'];
     return Array.from(sizesSet).sort((a, b) => {
       const indexA = ordemDesejadaSizes.indexOf(a.toLowerCase());
@@ -80,26 +77,15 @@ export default function ProductClient({ product }: { product: any }) {
     });
   }, [variantsList, selectedModel]);
 
-  // 🚀 Lógica aprimorada para aceitar o EXG mapeando para uma variação base válida
+  // 🚀 Busca exata da Variação no WooCommerce (agora 100% fiel ao painel)
   const matchedVariant = useMemo(() => {
     if (!selectedModel || !selectedSize) return null;
     
-    const found = variantsList.find((v: any) => {
+    return variantsList.find((v: any) => {
       const matchModel = v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel);
       const matchSize = v.size === selectedSize || v.attributes?.some((a: any) => a.option === selectedSize);
       return matchModel && matchSize;
-    });
-
-    if (found) return found;
-
-    // Se for EXG, permite habilitar a compra usando a variação do mesmo modelo como base
-    if (selectedSize === 'EXG' && selectedModel) {
-      return variantsList.find((v: any) => 
-        v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel)
-      ) || variantsList[0] || null;
-    }
-
-    return null;
+    }) || null;
   }, [variantsList, selectedModel, selectedSize]);
 
   useEffect(() => {
@@ -125,21 +111,20 @@ export default function ProductClient({ product }: { product: any }) {
     }
   }, [selectedModel, variantsList, gallery]);
 
-  // 🚀 Preço correto garantido (evita zerar se a variação simulada não trouxer preço)
   const baseProductPrice = Number(product.price || 149.90);
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
 
   const handleAddToCart = () => {
-    if (!matchedVariant && selectedSize !== 'EXG') return;
+    if (!matchedVariant) return; // Só adiciona se a variação existir no Woo
 
     const finalCartImage = typeof matchedVariant?.image === 'object' 
       ? matchedVariant.image.src 
       : (matchedVariant?.image || dynamicVariantImage || gallery[activeImage] || '');
 
     addItem({
-      id: matchedVariant ? matchedVariant.id : product.id,
+      id: matchedVariant.id, // Agora usa 100% o ID real gerado pelo WooCommerce
       name: `${product.name} (${selectedModel} - ${selectedSize})`,
-      price: currentPrice, // 🚀 Garante que vai o preço certo para o carrinho e checkout
+      price: currentPrice,
       image: finalCartImage,
       size: `${selectedModel} / ${selectedSize}`,
       quantity: 1,
