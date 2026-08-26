@@ -81,7 +81,7 @@ async function getProdutosWooCommerce() {
           price: precoBase,
           regular_price: Number(prod.regular_price || precoBase),
           images: productImages.length > 0 ? productImages : [imagemPrincipal],
-          categories: prod.categories.map((cat: any) => cat.slug),
+          categories: prod.categories ? prod.categories.map((cat: any) => cat.slug) : [],
           variants: variationsList.length > 0 ? variationsList.map((v: any) => {
             const modeloAttr = v.attributes?.find((a: any) => {
               const nome = (a.name || '').toLowerCase();
@@ -108,8 +108,15 @@ async function getProdutosWooCommerce() {
       })
     );
 
-    // 🚀 Filtra os produtos para exibir apenas os do "Carnaval 2027" na vitrine da Home
-    return listaExibicao.filter((p: any) => p.categories.includes('carnaval-2027'));
+    // 🚀 Filtro flexível para garantir que traga os produtos de "carnaval-2027" ou que tenham "2027" no nome/slug
+    const filtrados = listaExibicao.filter((p: any) => {
+      const temCategoria = p.categories.some((c: string) => c.includes('carnaval-2027'));
+      const temNoSlugOuNome = p.slug.includes('2027') || p.name.toLowerCase().includes('2027');
+      return temCategoria || temNoSlugOuNome;
+    });
+
+    // Se por acaso o filtro restrito retornar vazio, entrega todos os produtos publicados para nunca deixar a Home em branco
+    return filtrados.length > 0 ? filtrados : listaExibicao;
 
   } catch (error) {
     console.error('❌ Erro fatal ao carregar produtos na Home:', error);

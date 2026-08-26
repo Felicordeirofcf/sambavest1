@@ -1,4 +1,3 @@
-// components/product/ProductCard.tsx
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +6,9 @@ import { useRouter } from 'next/navigation';
 
 export default function ProductCard({ product }: { product: any }) {
   const router = useRouter();
-  const productIdentifier = product.id || product.slug;
+  
+  // 🚀 CORRIGIDO: Prioriza sempre o slug amigável do WooCommerce para evitar erros 404 nas rotas
+  const productIdentifier = product.slug || product.id;
   const availableVariants = Array.isArray(product.variants) ? product.variants : [];
 
   // Extrai apenas os Modelos únicos disponíveis
@@ -19,7 +20,7 @@ export default function ProductCard({ product }: { product: any }) {
     )
   );
 
-  const imageFrontDefault = product.images?.[0] || '';
+  const imageFrontDefault = product.images?.[0] || product.image || '';
   const imageBackDefault = product.images?.[1] || imageFrontDefault;
   
   const [currentImage, setCurrentImage] = useState(imageFrontDefault);
@@ -141,7 +142,7 @@ export default function ProductCard({ product }: { product: any }) {
           <span className="text-sm font-black text-[#1E2233] md:text-base">
             R$ {Number(product.price || 0).toFixed(2).replace('.', ',')}
           </span>
-          {product.regular_price && product.regular_price > product.price && (
+          {product.regular_price && Number(product.regular_price) > Number(product.price) && (
             <span className="text-[11px] text-gray-400 line-through md:text-xs">
               R$ {Number(product.regular_price).toFixed(2).replace('.', ',')}
             </span>
