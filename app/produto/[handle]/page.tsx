@@ -1,11 +1,18 @@
 import ProductClient from './ProductClient';
 import { notFound } from 'next/navigation';
 
-export const revalidate = 300; // 🚀 Cache de 5 minutos: o Next.js serve instantaneamente do cache global
+export const revalidate = 300; // 🚀 Cache de 5 minutos para carregar instantaneamente
 
 export default async function ProductPage({ params }: { params: { handle: string } }) {
   const resolvedParams = await Promise.resolve(params);
-  const handleOrId = decodeURIComponent(resolvedParams.handle).trim();
+  
+  // 🚀 LIMPEZA CRUCIAL: Remove qualquer query string acidental que venha no parâmetro (ex: "16239?modelo=Unissex" vira apenas "16239")
+  const rawHandle = decodeURIComponent(resolvedParams.handle || '').trim();
+  const handleOrId = rawHandle.split('?')[0].split('&')[0];
+
+  if (!handleOrId) {
+    notFound();
+  }
 
   try {
     const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
@@ -22,7 +29,7 @@ export default async function ProductPage({ params }: { params: { handle: string
     let product = null;
     const isNumeric = /^\d+$/.test(handleOrId);
     
-    // 1️⃣ Busca otimizada do produto principal
+    // 1️⃣ Busca otimizada do produto principal pelo ID limpo ou pelo Slug
     if (isNumeric) {
       const res = await fetch(`${wcUrl}/wp-json/wc/v3/products/${handleOrId}`, {
         headers: { 'Authorization': authHeader },
@@ -40,11 +47,23 @@ export default async function ProductPage({ params }: { params: { handle: string
       }
     }
 
+    // Se falhar na busca direta, tenta varrer os primeiros produtos publicados para achar correspondência
+    if (!product) {
+      const resAll = await fetch(`${wcUrl}/wp-json/wc/v3/products?per_page=50&status=publish`, {
+        headers: { 'Authorization': authHeader },
+        next: { revalidate: 300 },
+      });
+      if (resAll.ok) {
+        const allProducts = await resAll.json();
+        product = allProducts.find((p: any) => String(p.id) === handleOrId || p.slug === handleOrId);
+      }
+    }
+
     if (!product) {
       notFound();
     }
 
-    // 2️⃣ Busca de variações de forma segura e com tratamento de erro isolado
+    // 2️⃣ Busca de variações de forma segura e isolada
     let variations = [];
     if (product.type === 'variable') {
       try {
@@ -56,11 +75,11 @@ export default async function ProductPage({ params }: { params: { handle: string
           variations = await resVariations.json();
         }
       } catch (err) {
-        console.error('⚠️ Aviso: Falha ao carregar variações em segundo plano, usando padrão.', err);
+        console.error('⚠️ Aviso: Falha ao carregar variações, usando padrão.', err);
       }
     }
 
-    // 3️⃣ Formatação blindada do produto para o cliente
+    // 3️⃣ Formatação blindada do produto para o componente cliente
     const productFormatado = {
       id: product.id,
       name: product.name,
