@@ -7,9 +7,8 @@ import { useRouter } from 'next/navigation';
 export default function ProductCard({ product }: { product: any }) {
   const router = useRouter();
   
-  // 🚀 GARANTIA: Usa o slug real do produto (ex: "camisa-viradouro-2027"). Se não houver, usa o ID.
-  // Nunca usa o slug de categoria.
-  const productIdentifier = product.slug || product.id;
+  // 🚀 SOLUÇÃO DEFINITIVA: Usa sempre o ID numérico do produto. O ID nunca falha no WooCommerce.
+  const productIdentifier = product.id;
   const availableVariants = Array.isArray(product.variants) ? product.variants : [];
 
   // Extrai apenas os Modelos únicos disponíveis
