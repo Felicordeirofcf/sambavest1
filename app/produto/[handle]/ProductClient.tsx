@@ -167,7 +167,7 @@ export default function ProductClient({ product }: { product: any }) {
               <span className="text-2xl font-black text-[#1E2233]">
                 R$ {Number(currentPrice || 0).toFixed(2).replace('.', ',')}
               </span>
-              {product.regular_price && product.regular_price > currentPrice && (
+              {Boolean(product.regular_price && Number(product.regular_price) > Number(currentPrice)) && (
                 <span className="text-sm text-gray-400 line-through mb-1">
                   R$ {Number(product.regular_price).toFixed(2).replace('.', ',')}
                 </span>
