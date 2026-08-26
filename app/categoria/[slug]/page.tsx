@@ -135,7 +135,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row gap-10">
-        {/* Filtros Lateral (Sidebar) */}
+        {/* Filtros Lateral (Sidebar) com todas as coleções */}
         <aside className="hidden md:flex w-1/4 flex-col gap-8">
           <div className="border-b border-[#E5E5E5] pb-6 sticky top-24">
             <h3 className="text-sm uppercase tracking-[0.15em] text-[#0B1B34] mb-6 border-b border-[#0B1B34] pb-2 inline-block font-bold">
@@ -149,10 +149,22 @@ export default async function CategoryPage({ params }: { params: { slug: string 
                 Todos os Produtos
               </Link>
               <Link
+                href="/categoria/lancamentos"
+                className={`text-xs uppercase tracking-widest transition-colors ${categorySlug === 'lancamentos' ? 'font-bold text-[#0B1B34]' : 'text-gray-500 hover:text-[#0B1B34]'}`}
+              >
+                Lançamentos
+              </Link>
+              <Link
                 href="/categoria/camisas-de-escola-de-samba"
                 className={`text-xs uppercase tracking-widest transition-colors ${categorySlug === 'camisas-de-escola-de-samba' ? 'font-bold text-[#0B1B34]' : 'text-gray-500 hover:text-[#0B1B34]'}`}
               >
                 Camisas de Escola de Samba
+              </Link>
+              <Link
+                href="/categoria/campeas-do-carnaval"
+                className={`text-xs uppercase tracking-widest transition-colors ${categorySlug === 'campeas-do-carnaval' ? 'font-bold text-[#0B1B34]' : 'text-gray-500 hover:text-[#0B1B34]'}`}
+              >
+                Campeãs do Carnaval
               </Link>
             </div>
           </div>
