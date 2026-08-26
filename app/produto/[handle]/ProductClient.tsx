@@ -47,7 +47,7 @@ export default function ProductClient({ product }: { product: any }) {
   const [activeImage, setActiveImage] = useState(0);
   const [dynamicVariantImage, setDynamicVariantImage] = useState<string | null>(null);
 
-  // 📏 ORDENAÇÃO DOS TAMANHOS AUTOMÁTICOS DO WOOCOMMERCE
+  // 📏 ORDENAÇÃO E CAPTAÇÃO 100% AUTOMÁTICA DOS TAMANHOS DO WOOCOMMERCE
   const availableSizes = useMemo(() => {
     const sizesSet = new Set<string>();
     variantsList.forEach((v: any) => {
@@ -65,7 +65,7 @@ export default function ProductClient({ product }: { product: any }) {
       }
     });
 
-    // Mantemos apenas a regra de ordenação visual para que o EXG sempre fique no final da fila se ele vier do Woo
+    // Apenas dizemos a ordem visual dos botões. Se o Woo enviar 'EXG', ele fica no final.
     const ordemDesejadaSizes = ['p', 'm', 'g', 'gg', 'xg', 'exg', 'único'];
     return Array.from(sizesSet).sort((a, b) => {
       const indexA = ordemDesejadaSizes.indexOf(a.toLowerCase());
@@ -77,7 +77,7 @@ export default function ProductClient({ product }: { product: any }) {
     });
   }, [variantsList, selectedModel]);
 
-  // 🚀 Busca exata da Variação no WooCommerce (agora 100% fiel ao painel)
+  // 🚀 BUSCA EXATA E ESTRITA (Sem gambiarras, só adiciona se tiver ID e estoque no Woo)
   const matchedVariant = useMemo(() => {
     if (!selectedModel || !selectedSize) return null;
     
@@ -115,14 +115,14 @@ export default function ProductClient({ product }: { product: any }) {
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
 
   const handleAddToCart = () => {
-    if (!matchedVariant) return; // Só adiciona se a variação existir no Woo
+    if (!matchedVariant) return; // Segurança total: O botão só funciona se a variação for real no Woo.
 
     const finalCartImage = typeof matchedVariant?.image === 'object' 
       ? matchedVariant.image.src 
       : (matchedVariant?.image || dynamicVariantImage || gallery[activeImage] || '');
 
     addItem({
-      id: matchedVariant.id, // Agora usa 100% o ID real gerado pelo WooCommerce
+      id: matchedVariant.id, // Envia o ID exato da variação cadastrada no painel
       name: `${product.name} (${selectedModel} - ${selectedSize})`,
       price: currentPrice,
       image: finalCartImage,
