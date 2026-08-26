@@ -73,7 +73,7 @@ export async function POST(request: Request) {
           email: clienteFinal.email,
           first_name: firstName,
           last_name: lastName,
-          password: randomPassword, // A senha é gerada, mas o WP envia link para redefinir se configurado
+          password: randomPassword, 
           billing: {
             first_name: firstName,
             last_name: lastName,
@@ -137,14 +137,21 @@ export async function POST(request: Request) {
         postcode: cepLimpo,
         country: 'BR',
       },
+      // 🚀 CORREÇÃO CRÍTICA DOS ITENS PARA O WOOCOMMERCE NÃO RECUSAR
       line_items: listaItens.map((item: any) => {
-        const variationId = Number(item.variation_id || (item.parent_id ? item.id : 0));
-        const productId = Number(item.parent_id || item.product_id || (variationId ? 0 : item.id));
+        // ID Base do produto: 'parent_id' se existir, ou o 'id' normal, mas nunca 0
+        const parentId = Number(item.parent_id);
+        const itemId = Number(item.id);
+        
+        // Se for um produto simples, envia só product_id. Se for variável, envia product_id e variation_id
+        const productId = parentId > 0 ? parentId : itemId;
+        const variationId = parentId > 0 ? itemId : 0;
 
         return {
-          product_id: productId > 0 ? productId : variationId,
-          variation_id: variationId > 0 ? variationId : 0,
+          product_id: productId,
+          ...(variationId > 0 && { variation_id: variationId }),
           quantity: Number(item.quantity || item.quantidade || 1),
+          // Deixa o WooCommerce puxar o preço real do sistema, não force preço por string se não precisar, mas manteremos o fallback
           price: String(item.price || item.valorUnitario || 0),
         };
       }),
@@ -167,12 +174,11 @@ export async function POST(request: Request) {
       ]
     };
 
-    // 🎯 Se a conta foi criada ou encontrada, atrela ao pedido!
     if (customerId > 0) {
       wcOrderPayload.customer_id = customerId;
     }
 
-    console.log("🚀 Criando pedido no WooCommerce/Appmax...", JSON.stringify(wcOrderPayload, null, 2));
+    console.log("🚀 Criando pedido no WooCommerce...", JSON.stringify(wcOrderPayload, null, 2));
 
     const wcResponse = await fetch(`${wcUrl}/wp-json/wc/v3/orders`, {
       method: 'POST',
