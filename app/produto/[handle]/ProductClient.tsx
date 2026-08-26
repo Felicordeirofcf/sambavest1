@@ -80,13 +80,26 @@ export default function ProductClient({ product }: { product: any }) {
     });
   }, [variantsList, selectedModel]);
 
+  // 🚀 Lógica aprimorada para aceitar o EXG mapeando para uma variação base válida
   const matchedVariant = useMemo(() => {
     if (!selectedModel || !selectedSize) return null;
-    return variantsList.find((v: any) => {
+    
+    const found = variantsList.find((v: any) => {
       const matchModel = v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel);
       const matchSize = v.size === selectedSize || v.attributes?.some((a: any) => a.option === selectedSize);
       return matchModel && matchSize;
     });
+
+    if (found) return found;
+
+    // Se for EXG, permite habilitar a compra usando a variação do mesmo modelo como base
+    if (selectedSize === 'EXG' && selectedModel) {
+      return variantsList.find((v: any) => 
+        v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel)
+      ) || variantsList[0] || null;
+    }
+
+    return null;
   }, [variantsList, selectedModel, selectedSize]);
 
   useEffect(() => {
