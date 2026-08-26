@@ -14,7 +14,7 @@ export default function ProductClient({ product }: { product: any }) {
   const gallery = product.images && product.images.length > 0 ? product.images : [product.image];
   const sizeGuideIndex = gallery.findIndex((img: string) => img?.toLowerCase().includes('tabela') || img?.toLowerCase().includes('guia'));
 
-  // 👕 CAPTAÇÃO E ORDENAÇÃO FIXA DOS MODELOS (Unissex, Regata, Baby Look, Vestido)
+  // 👕 CAPTAÇÃO E ORDENAÇÃO FIXA DOS MODELOS
   const availableModels = useMemo(() => {
     const modelsSet = new Set<string>();
     variantsList.forEach((v: any) => {
@@ -42,18 +42,24 @@ export default function ProductClient({ product }: { product: any }) {
     });
   }, [variantsList]);
 
+  // Normaliza a busca da URL ignorando maiúsculas/minúsculas
+  const matchedUrlModel = useMemo(() => {
+    if (!modeloUrl) return null;
+    return availableModels.find(m => m.toLowerCase() === modeloUrl.toLowerCase()) || null;
+  }, [modeloUrl, availableModels]);
+
   const [selectedModel, setSelectedModel] = useState<string>(
-    modeloUrl && availableModels.includes(modeloUrl) ? modeloUrl : (availableModels[0] || '')
+    matchedUrlModel || (availableModels[0] || '')
   );
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [activeImage, setActiveImage] = useState(0);
   const [dynamicVariantImage, setDynamicVariantImage] = useState<string | null>(null);
 
-  // 📏 ORDENAÇÃO E CAPTAÇÃO DOS TAMANHOS DO WOOCOMMERCE
+  // 📏 ORDENAÇÃO E CAPTAÇÃO DOS TAMANHOS
   const availableSizes = useMemo(() => {
     const sizesSet = new Set<string>();
     variantsList.forEach((v: any) => {
-      const matchModel = selectedModel ? (v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel)) : true;
+      const matchModel = selectedModel ? (v.model?.toLowerCase() === selectedModel.toLowerCase() || v.attributes?.some((a: any) => a.option?.toLowerCase() === selectedModel.toLowerCase())) : true;
       if (!matchModel) return;
 
       if (v.size && v.size !== 'Único') {
@@ -84,19 +90,18 @@ export default function ProductClient({ product }: { product: any }) {
     if (!selectedSize) return null;
     
     return variantsList.find((v: any) => {
-      const matchModel = availableModels.length > 0 ? (v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel)) : true;
-      const matchSize = v.size === selectedSize || v.attributes?.some((a: any) => a.option === selectedSize);
+      const matchModel = availableModels.length > 0 ? (v.model?.toLowerCase() === selectedModel.toLowerCase() || v.attributes?.some((a: any) => a.option?.toLowerCase() === selectedModel.toLowerCase())) : true;
+      const matchSize = v.size?.toLowerCase() === selectedSize.toLowerCase() || v.attributes?.some((a: any) => a.option?.toLowerCase() === selectedSize.toLowerCase());
       return matchModel && matchSize;
     }) || null;
   }, [variantsList, selectedModel, selectedSize, availableModels]);
 
-  // 🖼️ TROCA AUTOMÁTICA DA FOTO AO SELECIONAR O MODELO
+  // 🖼️ TROCA AUTOMÁTICA DA FOTO AO SELECIONAR O MODELO (Responde a cliques e à URL)
   useEffect(() => {
     if (!selectedModel) return;
 
-    // Procura uma variação que pertença a este modelo e que tenha imagem cadastrada
     const varSample = variantsList.find((v: any) => 
-      (v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel)) && v.image
+      (v.model?.toLowerCase() === selectedModel.toLowerCase() || v.attributes?.some((a: any) => a.option?.toLowerCase() === selectedModel.toLowerCase())) && v.image
     );
 
     const variantImageUrl = typeof varSample?.image === 'object' ? varSample?.image?.src : varSample?.image;
@@ -112,6 +117,8 @@ export default function ProductClient({ product }: { product: any }) {
       } else {
         setDynamicVariantImage(variantImageUrl);
       }
+    } else {
+      setDynamicVariantImage(null);
     }
   }, [selectedModel, variantsList, gallery]);
 
@@ -218,7 +225,7 @@ export default function ProductClient({ product }: { product: any }) {
               </label>
               <div className="flex flex-wrap gap-2.5">
                 {availableModels.map((model: string) => {
-                  const isSelected = selectedModel === model;
+                  const isSelected = selectedModel.toLowerCase() === model.toLowerCase();
                   return (
                     <button
                       key={model}
