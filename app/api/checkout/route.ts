@@ -32,7 +32,8 @@ export async function POST(request: Request) {
       uf: cliente?.uf || 'RJ',
     };
 
-    const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
+    // wcUrl é a URL da API do WooCommerce (geralmente onde ele está hospedado agora)
+    const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://painel.sambavest.com';
     const consumerKey = process.env.WC_CONSUMER_KEY;
     const consumerSecret = process.env.WC_CONSUMER_SECRET;
 
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
         console.log(`👤 Cliente já existente encontrado no WooCommerce (ID: ${customerId})`);
       } else {
         // 🆕 CLIENTE NÃO EXISTE: CRIAR NOVA CONTA COM SENHA AUTOMÁTICA
-        const randomPassword = Math.random().toString(36).slice(-8) + "Aa1@"; // Gera senha aleatória forte
+        const randomPassword = Math.random().toString(36).slice(-8) + "Aa1@"; 
         
         const newCustomerPayload = {
           email: clienteFinal.email,
@@ -137,13 +138,10 @@ export async function POST(request: Request) {
         postcode: cepLimpo,
         country: 'BR',
       },
-      // 🚀 CORREÇÃO CRÍTICA DOS ITENS PARA O WOOCOMMERCE NÃO RECUSAR
       line_items: listaItens.map((item: any) => {
-        // ID Base do produto: 'parent_id' se existir, ou o 'id' normal, mas nunca 0
         const parentId = Number(item.parent_id);
         const itemId = Number(item.id);
         
-        // Se for um produto simples, envia só product_id. Se for variável, envia product_id e variation_id
         const productId = parentId > 0 ? parentId : itemId;
         const variationId = parentId > 0 ? itemId : 0;
 
@@ -151,7 +149,6 @@ export async function POST(request: Request) {
           product_id: productId,
           ...(variationId > 0 && { variation_id: variationId }),
           quantity: Number(item.quantity || item.quantidade || 1),
-          // Deixa o WooCommerce puxar o preço real do sistema, não force preço por string se não precisar, mas manteremos o fallback
           price: String(item.price || item.valorUnitario || 0),
         };
       }),
@@ -213,8 +210,16 @@ export async function POST(request: Request) {
       }
     }
 
+    // 🚀 O SEGREDO DO 404 ESTÁ AQUI: O domínio que responde pelo WordPress não é mais sambavest.com
+    // Ele força a substituição do domínio principal (que agora é o Next.js) pelo domínio real onde o WooCommerce mora.
     if (!paymentUrl || paymentUrl.includes('order-pay')) {
-      paymentUrl = `${wcUrl}/finalizar-compra/order-pay/${wcData.id}/?pay_for_order=true&key=${wcData.order_key}`;
+      const wpBaseUrl = process.env.WP_BACKEND_URL || wcUrl;
+      paymentUrl = `${wpBaseUrl}/finalizar-compra/order-pay/${wcData.id}/?pay_for_order=true&key=${wcData.order_key}`;
+    }
+
+    // 🔥 Limpeza extra para evitar que a Vercel quebre ao tentar redirecionar para sambavest.com
+    if (paymentUrl.includes('https://sambavest.com/finalizar-compra')) {
+        paymentUrl = paymentUrl.replace('https://sambavest.com', wcUrl);
     }
 
     console.log(`✅ Pedido #${wcData.id} criado com sucesso no WooCommerce! URL de pagamento:`, paymentUrl);
