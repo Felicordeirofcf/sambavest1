@@ -54,7 +54,7 @@ export default function Header() {
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
             <Link href="/" aria-label="Ir para a página inicial" className="transition-transform duration-300 hover:scale-105">
               <Image
-                src="/logo-wordmark.png"
+                src="/logo-oficial-vazado.png" // 🚀 NOVO NOME AQUI (MOBILE)
                 alt="Samba Vest"
                 width={148}
                 height={60}
@@ -117,7 +117,7 @@ export default function Header() {
           <div className="flex-1 flex justify-center">
             <Link href="/" aria-label="Ir para a página inicial" className="group">
               <Image
-                src="/logo-wordmark.png"
+                src="/logo-oficial-vazado.png" // 🚀 NOVO NOME AQUI (DESKTOP)
                 alt="Samba Vest"
                 width={210}
                 height={85}

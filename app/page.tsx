@@ -1,6 +1,4 @@
-// app/page.tsx
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 3600; // 🚀 O SEGREDO ESTÁ AQUI: Cache de 1 hora!
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -21,7 +19,7 @@ const featuredCategories = [
   },
 ];
 
-// 🛍️ Função para buscar os produtos do WooCommerce e expandir as variações na Home
+// 🛍️ Função para buscar os produtos do WooCommerce
 async function getProdutosWooCommerce() {
   try {
     const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
@@ -37,11 +35,13 @@ async function getProdutosWooCommerce() {
 
     const response = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=20`, {
       headers: { 'Authorization': authHeader },
-      cache: 'no-store',
+      next: { revalidate: 3600 },
     });
 
     if (!response.ok) {
-      throw new Error('Erro ao buscar produtos na API do WooCommerce.');
+      const errorText = await response.text();
+      console.error(`❌ Erro da API do WooCommerce (Status ${response.status}):`, errorText);
+      throw new Error(`Erro ao buscar produtos. Status: ${response.status}`);
     }
 
     const products = await response.json();
@@ -51,21 +51,17 @@ async function getProdutosWooCommerce() {
       const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
       const imagemPrincipal = prod.images?.[0]?.src || '';
       
-      // 1. Extraímos as imagens normais que vieram do WooCommerce
       const productImages = prod.images ? prod.images.map((img: any) => img.src) : [];
 
-      // 🎯 2. INJEÇÃO DA FOTO DAS COSTAS (BEIJA-FLOR 2027)
-      // Se for a camisa da Beija-Flor e ela só tiver 1 imagem, adicionamos a imagem das costas!
       if (prod.slug && prod.slug.includes('beija-flor-2027') && productImages.length === 1) {
         productImages.push('https://sambavest.com/wp-content/uploads/2026/08/camisa_enredo_atual_2_.webp');
       }
 
-      // Se for um produto variável, buscamos as variações para criar cards específicos ou enriquecer o card
       if (prod.type === 'variable') {
         try {
           const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=20`, {
             headers: { 'Authorization': authHeader },
-            cache: 'no-store',
+            next: { revalidate: 3600 },
           });
           
           if (resVar.ok) {
@@ -77,7 +73,7 @@ async function getProdutosWooCommerce() {
               slug: prod.slug,
               price: precoBase,
               regular_price: Number(prod.regular_price || precoBase),
-              images: productImages, // <-- Agora usa a nossa lista com a foto injetada
+              images: productImages, 
               categories: prod.categories.map((cat: any) => cat.slug),
               variants: variations.map((v: any) => {
                 const modeloAttr = v.attributes?.find((a: any) => 
@@ -105,14 +101,13 @@ async function getProdutosWooCommerce() {
         }
       }
 
-      // Produto simples ou caso falhe a busca de variações
       listaExibicao.push({
         id: prod.id,
         name: prod.name,
         slug: prod.slug,
         price: precoBase,
         regular_price: Number(prod.regular_price || precoBase),
-        images: productImages, // <-- Agora usa a nossa lista com a foto injetada
+        images: productImages,
         categories: prod.categories.map((cat: any) => cat.slug),
         variants: [{ id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }]
       });
@@ -120,14 +115,15 @@ async function getProdutosWooCommerce() {
 
     return listaExibicao;
   } catch (error) {
-    console.error('❌ Erro ao carregar produtos do WooCommerce na Home:', error);
-    return [];
+    console.error('❌ Erro fatal ao carregar produtos na Home:', error);
+    return []; // Garante que retorne uma array vazia e não quebre a tela
   }
 }
 
 export default async function HomePage() {
+  // 🚀 Segurança extra: Garante que "lancamentos" seja sempre uma Array, mesmo se a API falhar
   const products = await getProdutosWooCommerce();
-  const lancamentos = products;
+  const lancamentos = Array.isArray(products) ? products : [];
 
   return (
     <>

@@ -1,3 +1,5 @@
+export const revalidate = 3600; // 🚀 O SEGREDO AQUI: Cache de 1 hora na página de Categoria!
+
 import Link from 'next/link';
 import ProductCard from '../../../components/product/ProductCard';
 
@@ -17,7 +19,7 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
 
     const resProducts = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=50`, {
       headers: { 'Authorization': authHeader },
-      cache: 'no-store',
+      next: { revalidate: 3600 }, // 🚀 Cache ativado na chamada da API
     });
 
     if (!resProducts.ok) return [];
@@ -45,7 +47,7 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
         try {
           const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=50`, {
             headers: { 'Authorization': authHeader },
-            cache: 'no-store',
+            next: { revalidate: 3600 }, // 🚀 Cache ativado nas variações
           });
           if (resVar.ok) {
             variationsList = await resVar.json();
@@ -107,7 +109,17 @@ export default async function CategoryPage({ params }: { params: { slug: string 
   const categorySlug = resolvedParams.slug || 'todos';
   
   const realProducts = await getProdutosWooCommercePorCategoria(categorySlug);
-  const categoryTitle = categorySlug === 'todos' ? 'Todos os Produtos' : categorySlug.replace(/-/g, ' ').toUpperCase();
+  
+  // 🚀 AQUI ESTÁ A CORREÇÃO DE PORTUGUÊS
+  const titleMap: Record<string, string> = {
+    'todos': 'Todos os Produtos',
+    'lancamentos': 'Lançamentos',
+    'campeas-do-carnaval': 'Campeãs do Carnaval',
+    'camisas-de-escola-de-samba': 'Camisas de Escola de Samba'
+  };
+  const categoryTitle = titleMap[categorySlug] 
+    ? titleMap[categorySlug].toUpperCase() 
+    : categorySlug.replace(/-/g, ' ').toUpperCase();
 
   return (
     <div className="w-full min-h-screen bg-[#FAF7EF] pt-0 pb-20">
