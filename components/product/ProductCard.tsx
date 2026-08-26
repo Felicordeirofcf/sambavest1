@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 export default function ProductCard({ product }: { product: any }) {
   const router = useRouter();
   
-  // 🚀 CORRIGIDO: Prioriza sempre o slug amigável do WooCommerce para evitar erros 404 nas rotas
+  // 🚀 GARANTIA: Usa o slug real do produto (ex: "camisa-viradouro-2027"). Se não houver, usa o ID.
+  // Nunca usa o slug de categoria.
   const productIdentifier = product.slug || product.id;
   const availableVariants = Array.isArray(product.variants) ? product.variants : [];
 
@@ -25,7 +26,6 @@ export default function ProductCard({ product }: { product: any }) {
   
   const [currentImage, setCurrentImage] = useState(imageFrontDefault);
   const [isHovered, setIsHovered] = useState(false);
-  // Estado para controlar a abertura do menu de modelos no celular por toque
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   return (
@@ -41,7 +41,6 @@ export default function ProductCard({ product }: { product: any }) {
       {/* Área da Imagem e Link Principal */}
       <div 
         onClick={() => {
-          // No mobile, se o menu estiver fechado, ao clicar na foto ele abre o menu de modelos para facilitar a escolha
           if (uniqueModels.length > 0 && !showMobileMenu) {
             setShowMobileMenu(true);
           } else {
@@ -56,14 +55,13 @@ export default function ProductCard({ product }: { product: any }) {
           </span>
         )}
 
-        {/* IMAGEM DINÂMICA (Muda para o modelo ou verso) */}
+        {/* IMAGEM DINÂMICA */}
         <img
           src={(isHovered || showMobileMenu) && currentImage === imageFrontDefault ? imageBackDefault : currentImage}
           alt={product.name}
           className="absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out group-hover:scale-105"
         />
 
-        {/* Botão para fechar o menu no celular caso queira voltar */}
         {showMobileMenu && (
           <button
             type="button"
@@ -78,7 +76,7 @@ export default function ProductCard({ product }: { product: any }) {
           </button>
         )}
 
-        {/* Menu de Modelos (Aparece no Hover no PC e ao tocar no Card/Menu no Mobile) */}
+        {/* Menu de Modelos */}
         <div 
           className={`absolute bottom-0 left-0 flex w-full flex-col gap-2.5 bg-white/95 p-4 backdrop-blur-md transition-all duration-500 ease-out z-30 ${
             showMobileMenu ? 'translate-y-0' : 'translate-y-full group-hover:translate-y-0'
@@ -103,7 +101,7 @@ export default function ProductCard({ product }: { product: any }) {
                       }
                     }}
                     onClick={(e) => {
-                      e.stopPropagation(); // Evita conflito com o clique do card
+                      e.stopPropagation();
                       if (varSample?.image) {
                         setCurrentImage(varSample.image);
                       }
