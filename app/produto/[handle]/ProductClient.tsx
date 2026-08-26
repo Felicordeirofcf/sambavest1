@@ -14,7 +14,7 @@ export default function ProductClient({ product }: { product: any }) {
   const gallery = product.images && product.images.length > 0 ? product.images : [product.image];
   const sizeGuideIndex = gallery.findIndex((img: string) => img?.toLowerCase().includes('tabela') || img?.toLowerCase().includes('guia'));
 
-  // 👕 ORDENAÇÃO DOS MODELOS (Unissex, Regata, Baby Look, Vestido)
+  // 👕 CAPTAÇÃO 100% DINÂMICA DOS MODELOS CADASTRADOS NO WOOCOMMERCE
   const availableModels = useMemo(() => {
     const modelsSet = new Set<string>();
     variantsList.forEach((v: any) => {
@@ -29,15 +29,9 @@ export default function ProductClient({ product }: { product: any }) {
       }
     });
 
-    const ordemDesejadaModels = ['unissex', 'regata', 'baby look', 'vestido'];
-    return Array.from(modelsSet).sort((a, b) => {
-      const indexA = ordemDesejadaModels.indexOf(a.toLowerCase());
-      const indexB = ordemDesejadaModels.indexOf(b.toLowerCase());
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
-      return a.localeCompare(b);
-    });
+    const list = Array.from(modelsSet);
+    // Se não houver nenhum modelo específico nas variações, exibe o que vier ou oculta
+    return list.length > 0 ? list : [];
   }, [variantsList]);
 
   const [selectedModel, setSelectedModel] = useState<string>(
@@ -47,7 +41,7 @@ export default function ProductClient({ product }: { product: any }) {
   const [activeImage, setActiveImage] = useState(0);
   const [dynamicVariantImage, setDynamicVariantImage] = useState<string | null>(null);
 
-  // 📏 ORDENAÇÃO E CAPTAÇÃO 100% AUTOMÁTICA DOS TAMANHOS DO WOOCOMMERCE
+  // 📏 ORDENAÇÃO E CAPTAÇÃO DOS TAMANHOS DO WOOCOMMERCE
   const availableSizes = useMemo(() => {
     const sizesSet = new Set<string>();
     variantsList.forEach((v: any) => {
@@ -65,7 +59,6 @@ export default function ProductClient({ product }: { product: any }) {
       }
     });
 
-    // Apenas dizemos a ordem visual dos botões. Se o Woo enviar 'EXG', ele fica no final.
     const ordemDesejadaSizes = ['p', 'm', 'g', 'gg', 'xg', 'exg', 'único'];
     return Array.from(sizesSet).sort((a, b) => {
       const indexA = ordemDesejadaSizes.indexOf(a.toLowerCase());
@@ -77,16 +70,18 @@ export default function ProductClient({ product }: { product: any }) {
     });
   }, [variantsList, selectedModel]);
 
-  // 🚀 BUSCA EXATA E ESTRITA (Sem gambiarras, só adiciona se tiver ID e estoque no Woo)
+  // 🚀 BUSCA EXATA DA VARIAÇÃO SELECIONADA
   const matchedVariant = useMemo(() => {
-    if (!selectedModel || !selectedSize) return null;
+    // Se houver modelos cadastrados, exige a seleção do modelo e do tamanho. Se não houver modelos, exige apenas o tamanho.
+    if (availableModels.length > 0 && !selectedModel) return null;
+    if (!selectedSize) return null;
     
     return variantsList.find((v: any) => {
-      const matchModel = v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel);
+      const matchModel = availableModels.length > 0 ? (v.model === selectedModel || v.attributes?.some((a: any) => a.option === selectedModel)) : true;
       const matchSize = v.size === selectedSize || v.attributes?.some((a: any) => a.option === selectedSize);
       return matchModel && matchSize;
     }) || null;
-  }, [variantsList, selectedModel, selectedSize]);
+  }, [variantsList, selectedModel, selectedSize, availableModels]);
 
   useEffect(() => {
     if (!selectedModel) return;
@@ -114,23 +109,22 @@ export default function ProductClient({ product }: { product: any }) {
   const baseProductPrice = Number(product.price || 149.90);
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
 
-  // 🚀 NOVA LÓGICA: Verifica se o produto tem a categoria de desconto e calcula o valor do PIX
   const temDescontoPix = product.categories && product.categories.includes('desconto-pix');
-  const precoPix = currentPrice * 0.90; // Aplica 10% de desconto
+  const precoPix = currentPrice * 0.90;
 
   const handleAddToCart = () => {
-    if (!matchedVariant) return; // Segurança total: O botão só funciona se a variação for real no Woo.
+    if (!matchedVariant) return;
 
     const finalCartImage = typeof matchedVariant?.image === 'object' 
       ? matchedVariant.image.src 
       : (matchedVariant?.image || dynamicVariantImage || gallery[activeImage] || '');
 
     addItem({
-      id: matchedVariant.id, // Envia o ID exato da variação cadastrada no painel
-      name: `${product.name} (${selectedModel} - ${selectedSize})`,
+      id: matchedVariant.id,
+      name: `${product.name} ${selectedModel ? `(${selectedModel} - ${selectedSize})` : `(${selectedSize})`}`,
       price: currentPrice,
       image: finalCartImage,
-      size: `${selectedModel} / ${selectedSize}`,
+      size: selectedModel ? `${selectedModel} / ${selectedSize}` : selectedSize,
       quantity: 1,
     });
 
@@ -196,7 +190,6 @@ export default function ProductClient({ product }: { product: any }) {
               )}
             </div>
 
-            {/* 🚀 NOVO: Exibe o preço do PIX apenas nas camisas que tem a categoria 'desconto-pix' */}
             {temDescontoPix && (
               <p className="mt-1 text-sm font-bold text-[#2ECC71]">
                 ou R$ {precoPix.toFixed(2).replace('.', ',')} via PIX (10% OFF)
@@ -208,11 +201,11 @@ export default function ProductClient({ product }: { product: any }) {
 
           <div className="text-sm text-gray-600 mb-6 font-light" dangerouslySetInnerHTML={{ __html: product.short_description || '' }} />
 
-          {/* 👕 SELETOR DE MODELOS */}
+          {/* 👕 SELETOR DE MODELOS (Só aparece se o produto tiver modelos reais cadastrados) */}
           {availableModels.length > 0 && (
             <div className="mb-5">
               <label className="block text-xs font-bold uppercase tracking-widest text-[#0B1B34] mb-2">
-                Modelo: <span className="font-normal text-gray-600">{selectedModel}</span>
+                Modelo: <span className="font-normal text-gray-600">{selectedModel || 'Selecione'}</span>
               </label>
               <div className="flex flex-wrap gap-2.5">
                 {availableModels.map((model: string) => {
@@ -287,7 +280,7 @@ export default function ProductClient({ product }: { product: any }) {
             disabled={!matchedVariant}
             className="w-full py-4 bg-[#C9A227] text-[#0B1B34] uppercase tracking-widest text-sm font-bold rounded-xl hover:bg-[#0B1B34] hover:text-white transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed shadow-md"
           >
-            {matchedVariant ? 'Adicionar à Sacola' : 'Selecione Modelo e Tamanho'}
+            {matchedVariant ? 'Adicionar à Sacola' : 'Selecione as Opções'}
           </button>
 
           <div className="mt-6">
