@@ -1,10 +1,9 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0; // 🚀 Sem cache: atualiza instantaneamente ao alterar produtos no WordPress!
+export const revalidate = 60; // 🚀 Cache inteligente de 1 minuto: navegação instantânea nas categorias!
 
 import Link from 'next/link';
 import ProductCard from '../../../components/product/ProductCard';
 
-// 🛍️ Função para buscar e sincronizar os produtos do WooCommerce por categoria
+// 🛍️ Função para buscar e sincronizar os produtos do WooCommerce por categoria com cache otimizado
 async function getProdutosWooCommercePorCategoria(categorySlug: string) {
   try {
     const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
@@ -20,7 +19,7 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
 
     const resProducts = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=50`, {
       headers: { 'Authorization': authHeader },
-      cache: 'no-store', // 🚀 Busca direta sem cache
+      next: { revalidate: 60 }, // 🚀 Resposta ultra rápida controlada por cache
     });
 
     if (!resProducts.ok) return [];
@@ -48,7 +47,7 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
         try {
           const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=50`, {
             headers: { 'Authorization': authHeader },
-            cache: 'no-store',
+            next: { revalidate: 60 },
           });
           if (resVar.ok) {
             variationsList = await resVar.json();

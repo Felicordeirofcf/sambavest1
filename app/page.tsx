@@ -1,5 +1,4 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0; // 🚀 Sem cache: atualiza instantaneamente ao mexer no WooCommerce!
+export const revalidate = 60; // 🚀 Cache inteligente de 1 minuto: navegação instantânea e atualização automática!
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -36,7 +35,7 @@ async function getProdutosWooCommerce() {
 
     const response = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=20`, {
       headers: { 'Authorization': authHeader },
-      cache: 'no-store', // 🚀 Garante que busca direto do WordPress sem guardar memória antiga
+      next: { revalidate: 60 }, // 🚀 Resposta rápida com cache controlado
     });
 
     if (!response.ok) {
@@ -62,7 +61,7 @@ async function getProdutosWooCommerce() {
         try {
           const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=20`, {
             headers: { 'Authorization': authHeader },
-            cache: 'no-store',
+            next: { revalidate: 60 },
           });
           
           if (resVar.ok) {
