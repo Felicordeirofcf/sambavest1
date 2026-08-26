@@ -8,8 +8,8 @@ import AboutAtelie from '../components/home/AboutAtelie';
 
 const featuredCategories = [
   {
-    name: 'Carnaval 2027', // 🚀 Atualizado para Carnaval 2027
-    slug: 'carnaval-2027', // 🚀 Rota atualizada
+    name: 'Carnaval 2027',
+    slug: 'carnaval-2027',
     image: '/products/beija-flor-2027-zeneida.webp',
   },
   {
@@ -35,7 +35,7 @@ async function getProdutosWooCommerce() {
 
     const response = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=50`, {
       headers: { 'Authorization': authHeader },
-      next: { revalidate: 60 }, // 🚀 Resposta rápida com cache controlado
+      next: { revalidate: 60 },
     });
 
     if (!response.ok) {
@@ -57,6 +57,8 @@ async function getProdutosWooCommerce() {
         productImages.push('https://sambavest.com/wp-content/uploads/2026/08/camisa_enredo_atual_2_.webp');
       }
 
+      let variationsList = [];
+
       if (prod.type === 'variable') {
         try {
           const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=20`, {
@@ -65,36 +67,7 @@ async function getProdutosWooCommerce() {
           });
           
           if (resVar.ok) {
-            const variations = await resVar.json();
-            
-            listaExibicao.push({
-              id: prod.id,
-              name: prod.name,
-              slug: prod.slug,
-              price: precoBase,
-              regular_price: Number(prod.regular_price || precoBase),
-              images: productImages, 
-              categories: prod.categories.map((cat: any) => cat.slug),
-              variants: variations.map((v: any) => {
-                const modeloAttr = v.attributes?.find((a: any) => 
-                  a.name.toLowerCase().includes('modelo') || a.name.toLowerCase().includes('style')
-                );
-                const tamanhoAttr = v.attributes?.find((a: any) => 
-                  a.name.toLowerCase().includes('tamanho') || a.name.toLowerCase().includes('size')
-                );
-
-                return {
-                  id: v.id,
-                  parent_id: prod.id,
-                  model: modeloAttr?.option || 'Geral',
-                  size: tamanhoAttr?.option || 'Único',
-                  price: Number(v.price || precoBase),
-                  stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
-                  image: v.image?.src || imagemPrincipal
-                };
-              })
-            });
-            continue;
+            variationsList = await resVar.json();
           }
         } catch (e) {
           console.error(`Erro ao buscar variações para o produto ${prod.id}:`, e);
@@ -107,9 +80,30 @@ async function getProdutosWooCommerce() {
         slug: prod.slug,
         price: precoBase,
         regular_price: Number(prod.regular_price || precoBase),
-        images: productImages,
+        images: productImages.length > 0 ? productImages : [imagemPrincipal],
         categories: prod.categories.map((cat: any) => cat.slug),
-        variants: [{ id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }]
+        variants: variationsList.length > 0 ? variationsList.map((v: any) => {
+          const modeloAttr = v.attributes?.find((a: any) => {
+            const nome = (a.name || '').toLowerCase();
+            return nome.includes('modelo') || nome.includes('style') || nome.includes('model');
+          });
+          const tamanhoAttr = v.attributes?.find((a: any) => {
+            const nome = (a.name || '').toLowerCase();
+            return nome.includes('tamanho') || nome.includes('size');
+          });
+
+          return {
+            id: v.id,
+            parent_id: prod.id,
+            model: modeloAttr?.option || 'Geral',
+            size: tamanhoAttr?.option || 'Único',
+            price: Number(v.price || precoBase),
+            stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
+            image: v.image?.src || imagemPrincipal
+          };
+        }) : [
+          { id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }
+        ]
       });
     }
 
@@ -141,7 +135,8 @@ export default async function HomePage() {
 
       <div className="w-full bg-[#F9F9F9]">
         
-        <div className="animate-reveal" style={{ animationDelay: '0s' }}>
+        {/* 🚀 OTIMIZADO: Carregamento instantâneo do banner principal (sem atraso de animação) */}
+        <div className="w-full">
           <HeroCarousel />
         </div>
 

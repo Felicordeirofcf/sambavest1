@@ -114,6 +114,10 @@ export default function ProductClient({ product }: { product: any }) {
   const baseProductPrice = Number(product.price || 149.90);
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
 
+  // 🚀 NOVA LÓGICA: Verifica se o produto tem a categoria de desconto e calcula o valor do PIX
+  const temDescontoPix = product.categories && product.categories.includes('desconto-pix');
+  const precoPix = currentPrice * 0.90; // Aplica 10% de desconto
+
   const handleAddToCart = () => {
     if (!matchedVariant) return; // Segurança total: O botão só funciona se a variação for real no Woo.
 
@@ -191,6 +195,14 @@ export default function ProductClient({ product }: { product: any }) {
                 </span>
               )}
             </div>
+
+            {/* 🚀 NOVO: Exibe o preço do PIX apenas nas camisas que tem a categoria 'desconto-pix' */}
+            {temDescontoPix && (
+              <p className="mt-1 text-sm font-bold text-[#2ECC71]">
+                ou R$ {precoPix.toFixed(2).replace('.', ',')} via PIX (10% OFF)
+              </p>
+            )}
+
             <p className="mt-1 text-xs text-gray-500">+ frete (calcule pelo seu CEP abaixo)</p>
           </div>
 
