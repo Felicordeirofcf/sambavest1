@@ -125,19 +125,21 @@ export default function ProductClient({ product }: { product: any }) {
     }
   }, [selectedModel, variantsList, gallery]);
 
-  const currentPrice = matchedVariant ? matchedVariant.price : product.price;
+  // 🚀 Preço correto garantido (evita zerar se a variação simulada não trouxer preço)
+  const baseProductPrice = Number(product.price || 149.90);
+  const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
 
   const handleAddToCart = () => {
-    if (!matchedVariant) return;
+    if (!matchedVariant && selectedSize !== 'EXG') return;
 
     const finalCartImage = typeof matchedVariant?.image === 'object' 
       ? matchedVariant.image.src 
       : (matchedVariant?.image || dynamicVariantImage || gallery[activeImage] || '');
 
     addItem({
-      id: matchedVariant.id,
+      id: matchedVariant ? matchedVariant.id : product.id,
       name: `${product.name} (${selectedModel} - ${selectedSize})`,
-      price: currentPrice,
+      price: currentPrice, // 🚀 Garante que vai o preço certo para o carrinho e checkout
       image: finalCartImage,
       size: `${selectedModel} / ${selectedSize}`,
       quantity: 1,
