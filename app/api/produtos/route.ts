@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
+    const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://api.sambavest.com';
     const consumerKey = process.env.WC_CONSUMER_KEY;
     const consumerSecret = process.env.WC_CONSUMER_SECRET;
 
