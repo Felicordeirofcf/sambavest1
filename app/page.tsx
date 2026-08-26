@@ -1,4 +1,5 @@
-export const revalidate = 3600; // 🚀 O SEGREDO ESTÁ AQUI: Cache de 1 hora!
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // 🚀 Sem cache: atualiza instantaneamente ao mexer no WooCommerce!
 
 import Link from 'next/link';
 import Image from 'next/image';
@@ -35,7 +36,7 @@ async function getProdutosWooCommerce() {
 
     const response = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=20`, {
       headers: { 'Authorization': authHeader },
-      next: { revalidate: 3600 },
+      cache: 'no-store', // 🚀 Garante que busca direto do WordPress sem guardar memória antiga
     });
 
     if (!response.ok) {
@@ -61,7 +62,7 @@ async function getProdutosWooCommerce() {
         try {
           const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=20`, {
             headers: { 'Authorization': authHeader },
-            next: { revalidate: 3600 },
+            cache: 'no-store',
           });
           
           if (resVar.ok) {
@@ -116,12 +117,11 @@ async function getProdutosWooCommerce() {
     return listaExibicao;
   } catch (error) {
     console.error('❌ Erro fatal ao carregar produtos na Home:', error);
-    return []; // Garante que retorne uma array vazia e não quebre a tela
+    return [];
   }
 }
 
 export default async function HomePage() {
-  // 🚀 Segurança extra: Garante que "lancamentos" seja sempre uma Array, mesmo se a API falhar
   const products = await getProdutosWooCommerce();
   const lancamentos = Array.isArray(products) ? products : [];
 

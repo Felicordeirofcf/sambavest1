@@ -1,4 +1,5 @@
-export const revalidate = 3600; // 🚀 O SEGREDO AQUI: Cache de 1 hora na página de Categoria!
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // 🚀 Sem cache: atualiza instantaneamente ao alterar produtos no WordPress!
 
 import Link from 'next/link';
 import ProductCard from '../../../components/product/ProductCard';
@@ -19,7 +20,7 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
 
     const resProducts = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=50`, {
       headers: { 'Authorization': authHeader },
-      next: { revalidate: 3600 }, // 🚀 Cache ativado na chamada da API
+      cache: 'no-store', // 🚀 Busca direta sem cache
     });
 
     if (!resProducts.ok) return [];
@@ -47,7 +48,7 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
         try {
           const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=50`, {
             headers: { 'Authorization': authHeader },
-            next: { revalidate: 3600 }, // 🚀 Cache ativado nas variações
+            cache: 'no-store',
           });
           if (resVar.ok) {
             variationsList = await resVar.json();
@@ -110,7 +111,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
   
   const realProducts = await getProdutosWooCommercePorCategoria(categorySlug);
   
-  // 🚀 AQUI ESTÁ A CORREÇÃO DE PORTUGUÊS
+  // 🚀 Correção de português para os títulos
   const titleMap: Record<string, string> = {
     'todos': 'Todos os Produtos',
     'lancamentos': 'Lançamentos',
