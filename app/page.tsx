@@ -19,7 +19,7 @@ const featuredCategories = [
   },
 ];
 
-// 🛍️ Função para buscar os produtos do WooCommerce
+// 🛍️ Função ULTRA-RÁPIDA: Busca produtos e variações em paralelo (Promise.all)
 async function getProdutosWooCommerce() {
   try {
     const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://sambavest.com';
@@ -41,74 +41,75 @@ async function getProdutosWooCommerce() {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`❌ Erro da API do WooCommerce (Status ${response.status}):`, errorText);
-      throw new Error(`Erro ao buscar produtos. Status: ${response.status}`);
+      return [];
     }
 
     const products = await response.json();
-    const listaExibicao: any[] = [];
 
-    for (const prod of products) {
-      const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
-      const imagemPrincipal = prod.images?.[0]?.src || '';
-      
-      const productImages = prod.images ? prod.images.map((img: any) => img.src) : [];
+    // 🚀 Otimização Crítica: Mapeia e busca todas as variações em paralelo para acelerar a abertura da loja
+    const listaExibicao = await Promise.all(
+      products.map(async (prod: any) => {
+        const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
+        const imagemPrincipal = prod.images?.[0]?.src || '';
+        const productImages = prod.images ? prod.images.map((img: any) => img.src) : [];
 
-      if (prod.slug && prod.slug.includes('beija-flor-2027') && productImages.length === 1) {
-        productImages.push('https://sambavest.com/wp-content/uploads/2026/08/camisa_enredo_atual_2_.webp');
-      }
-
-      let variationsList = [];
-
-      if (prod.type === 'variable') {
-        try {
-          const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=20`, {
-            headers: { 'Authorization': authHeader },
-            next: { revalidate: 60 },
-          });
-          
-          if (resVar.ok) {
-            variationsList = await resVar.json();
-          }
-        } catch (e) {
-          console.error(`Erro ao buscar variações para o produto ${prod.id}:`, e);
+        if (prod.slug && prod.slug.includes('beija-flor-2027') && productImages.length === 1) {
+          productImages.push('https://sambavest.com/wp-content/uploads/2026/08/camisa_enredo_atual_2_.webp');
         }
-      }
 
-      listaExibicao.push({
-        id: prod.id,
-        name: prod.name,
-        slug: prod.slug,
-        price: precoBase,
-        regular_price: Number(prod.regular_price || precoBase),
-        images: productImages.length > 0 ? productImages : [imagemPrincipal],
-        categories: prod.categories.map((cat: any) => cat.slug),
-        variants: variationsList.length > 0 ? variationsList.map((v: any) => {
-          const modeloAttr = v.attributes?.find((a: any) => {
-            const nome = (a.name || '').toLowerCase();
-            return nome.includes('modelo') || nome.includes('style') || nome.includes('model');
-          });
-          const tamanhoAttr = v.attributes?.find((a: any) => {
-            const nome = (a.name || '').toLowerCase();
-            return nome.includes('tamanho') || nome.includes('size');
-          });
+        let variationsList = [];
 
-          return {
-            id: v.id,
-            parent_id: prod.id,
-            model: modeloAttr?.option || 'Geral',
-            size: tamanhoAttr?.option || 'Único',
-            price: Number(v.price || precoBase),
-            stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
-            image: v.image?.src || imagemPrincipal
-          };
-        }) : [
-          { id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }
-        ]
-      });
-    }
+        if (prod.type === 'variable') {
+          try {
+            const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=20`, {
+              headers: { 'Authorization': authHeader },
+              next: { revalidate: 60 },
+            });
+            
+            if (resVar.ok) {
+              variationsList = await resVar.json();
+            }
+          } catch (e) {
+            console.error(`Erro ao buscar variações para o produto ${prod.id}:`, e);
+          }
+        }
+
+        return {
+          id: prod.id,
+          name: prod.name,
+          slug: prod.slug,
+          price: precoBase,
+          regular_price: Number(prod.regular_price || precoBase),
+          images: productImages.length > 0 ? productImages : [imagemPrincipal],
+          categories: prod.categories.map((cat: any) => cat.slug),
+          variants: variationsList.length > 0 ? variationsList.map((v: any) => {
+            const modeloAttr = v.attributes?.find((a: any) => {
+              const nome = (a.name || '').toLowerCase();
+              return nome.includes('modelo') || nome.includes('style') || nome.includes('model');
+            });
+            const tamanhoAttr = v.attributes?.find((a: any) => {
+              const nome = (a.name || '').toLowerCase();
+              return nome.includes('tamanho') || nome.includes('size');
+            });
+
+            return {
+              id: v.id,
+              parent_id: prod.id,
+              model: modeloAttr?.option || 'Geral',
+              size: tamanhoAttr?.option || 'Único',
+              price: Number(v.price || precoBase),
+              stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
+              image: v.image?.src || imagemPrincipal
+            };
+          }) : [
+            { id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }
+          ]
+        };
+      })
+    );
 
     // 🚀 Filtra os produtos para exibir apenas os do "Carnaval 2027" na vitrine da Home
-    return listaExibicao.filter(p => p.categories.includes('carnaval-2027'));
+    return listaExibicao.filter((p: any) => p.categories.includes('carnaval-2027'));
 
   } catch (error) {
     console.error('❌ Erro fatal ao carregar produtos na Home:', error);
@@ -135,7 +136,7 @@ export default async function HomePage() {
 
       <div className="w-full bg-[#F9F9F9]">
         
-        {/* 🚀 OTIMIZADO: Carregamento instantâneo do banner principal (sem atraso de animação) */}
+        {/* 🚀 OTIMIZADO: Carregamento instantâneo do banner principal */}
         <div className="w-full">
           <HeroCarousel />
         </div>

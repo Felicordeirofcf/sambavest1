@@ -36,14 +36,14 @@ function variantsFor(baseId: number): ProductVariant[] {
   }));
 }
 
-// 1. CATEGORIAS ATUALIZADAS ("Todos os produtos" já é nativo da URL /categoria/todos)
+// 1. CATEGORIAS ATUALIZADAS
 export const categories: Category[] = [
   { name: 'Carnaval 2027', slug: 'carnaval-2027' },
   { name: 'Camisas de Escola de Samba', slug: 'camisas-de-escola-de-samba' },
   { name: 'Campeãs do Carnaval', slug: 'campeas-do-carnaval' }
 ];
 
-// 2. PRODUTOS (Apenas as 4 camisas novas, agora apontando para carnaval-2027)
+// 2. PRODUTOS DO CATÁLOGO ESTÁTICO
 export const products: Product[] = [
   {
     id: 5,
@@ -56,7 +56,7 @@ export const products: Product[] = [
       '/products/tabela-tamanhos.jpg'
     ],
     handle: 'camisa-tradicional-zeneida-2027',
-    categories: ['carnaval-2027'], // 🚀 Atualizado
+    categories: ['carnaval-2027'],
     badge: 'Lançamento',
     description: 'Camisa oficial do enredo Zeneida, O Sopro do Pó de Louro. Material premium 100% Poliéster, super leve e confortável para o carnaval.',
     variants: variantsFor(5001),
@@ -72,7 +72,7 @@ export const products: Product[] = [
       '/products/tabela-tamanhos1.jpg'
     ],
     handle: 'regata-zeneida-2027',
-    categories: ['carnaval-2027'], // 🚀 Atualizado
+    categories: ['carnaval-2027'],
     badge: 'Lançamento',
     description: 'Regata oficial do enredo Zeneida, O Sopro do Pó de Louro. Modelagem cavada, ideal para os dias mais quentes e para os ensaios de quadra.',
     variants: variantsFor(6001),
@@ -88,7 +88,7 @@ export const products: Product[] = [
       '/products/tabela-tamanhos2.jpg'
     ],
     handle: 'baby-look-zeneida-2027',
-    categories: ['carnaval-2027'], // 🚀 Atualizado
+    categories: ['carnaval-2027'],
     badge: 'Lançamento',
     description: 'Baby Look oficial do enredo Zeneida. Modelagem mais acinturada e ajustada ao corpo. Material leve: 100% Poliéster.',
     variants: variantsFor(7001),
@@ -104,13 +104,14 @@ export const products: Product[] = [
       '/products/tabela-tamanhos3.jpg'
     ],
     handle: 'vestido-zeneida-2027',
-    categories: ['carnaval-2027'], // 🚀 Atualizado
+    categories: ['carnaval-2027'],
     badge: 'Lançamento',
     description: 'Vestido estilo batinha oficial do enredo Zeneida. A junção perfeita entre a paixão pela escola e o estilo para pular o carnaval com muito conforto.',
     variants: variantsFor(8001),
   }
 ];
 
+// Funções otimizadas para busca instantânea em memória
 export async function getAllProducts(): Promise<Product[]> {
   return products;
 }

@@ -1,6 +1,7 @@
-// app/produto/[handle]/page.tsx
 import ProductClient from './ProductClient';
 import { notFound } from 'next/navigation';
+
+export const revalidate = 60; // 🚀 Cache inteligente: abre a página do produto instantaneamente!
 
 export default async function ProductPage({ params }: { params: { handle: string } }) {
   const resolvedParams = await Promise.resolve(params);
@@ -18,10 +19,10 @@ export default async function ProductPage({ params }: { params: { handle: string
 
     const authHeader = 'Basic ' + Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
 
-    // 1️⃣ Busca o produto principal no WooCommerce
+    // 1️⃣ Busca o produto principal no WooCommerce com Cache Revalidate
     const resProduct = await fetch(`${wcUrl}/wp-json/wc/v3/products/${productId}`, {
       headers: { 'Authorization': authHeader },
-      cache: 'no-store',
+      next: { revalidate: 60 }, // 🚀 Muito mais rápido que no-store
     });
 
     if (!resProduct.ok) {
@@ -30,19 +31,19 @@ export default async function ProductPage({ params }: { params: { handle: string
 
     const product = await resProduct.json();
 
-    // 2️⃣ Se for um produto variável, busca todas as variações (Modelos, Tamanhos e IDs exatos)
+    // 2️⃣ Se for variável, busca as variações com Cache Revalidate
     let variations = [];
     if (product.type === 'variable') {
       const resVariations = await fetch(`${wcUrl}/wp-json/wc/v3/products/${productId}/variations?per_page=100`, {
         headers: { 'Authorization': authHeader },
-        cache: 'no-store',
+        next: { revalidate: 60 }, // 🚀 Rápido e cacheado
       });
       if (resVariations.ok) {
         variations = await resVariations.json();
       }
     }
 
-    // 3️⃣ Formata o produto unificado para entregar ao seu ProductClient com dados reais de estoque
+    // 3️⃣ Formata o produto unificado (incluindo as categories para o desconto do PIX)
     const productFormatado = {
       id: product.id,
       name: product.name,
@@ -54,9 +55,10 @@ export default async function ProductPage({ params }: { params: { handle: string
       short_description: product.short_description,
       images: product.images.map((img: any) => img.src),
       image: product.images?.[0]?.src || '',
+      categories: product.categories?.map((cat: any) => cat.slug) || [], // 🚀 Essencial para o selo de 10% OFF no Pix
       attributes: product.attributes.map((attr: any) => ({
         id: attr.id,
-        name: attr.name,       // Ex: 'Modelo', 'Tamanho'
+        name: attr.name,      // Ex: 'Modelo', 'Tamanho'
         options: attr.options, // Ex: ['Regata', 'Baby Look'], ['P', 'M', 'G']
       })),
       // Mapeia as variações com os IDs exatos e o estoque real do WooCommerce
