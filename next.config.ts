@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'www.sambavest.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.sambavest.com',
       }
     ],
   },
