@@ -1,55 +1,54 @@
-// Cálculo de frete por estimativa regional (sem depender de uma API de transportadora
-// configurada). Funciona 100% offline, então roda de primeira quando você testar o site.
-//
-// Quando quiser frete real (Correios, Melhor Envio, Jadlog etc.), troque a lógica de
-// calculateShipping por uma chamada à API do provedor escolhido — a assinatura da
-// função (recebe um CEP, devolve preço + prazo) pode continuar a mesma.
+// Configuração de Tipagem e Integração de Frete (Melhor Envio / Sistema)
 
-export const FREE_SHIPPING_THRESHOLD = 250;
+export const FREE_SHIPPING_THRESHOLD = 300; // Ajuste o valor do frete grátis conforme sua preferência
 
 export type ShippingQuote = {
+  id: number | string;
+  name: string;
   price: number;
+  delivery_time: number;
   minDays: number;
   maxDays: number;
   region: string;
+  company_picture?: string;
 };
 
-// Faixas de CEP por região (primeiro dígito do CEP) — valores estimados, ajuste
-// livremente para bater com o seu custo real de envio.
-const REGIONS: Record<string, { name: string; price: number; minDays: number; maxDays: number }> = {
-  '0': { name: 'São Paulo (capital e região)', price: 19.9, minDays: 2, maxDays: 4 },
-  '1': { name: 'São Paulo (interior)', price: 22.9, minDays: 3, maxDays: 5 },
-  '2': { name: 'Rio de Janeiro / Espírito Santo', price: 14.9, minDays: 2, maxDays: 4 },
-  '3': { name: 'Minas Gerais', price: 22.9, minDays: 3, maxDays: 5 },
-  '4': { name: 'Bahia / Sergipe', price: 27.9, minDays: 5, maxDays: 8 },
-  '5': { name: 'Pernambuco / Alagoas / Paraíba / Rio Grande do Norte', price: 29.9, minDays: 5, maxDays: 9 },
-  '6': { name: 'Ceará / Piauí / Maranhão / Norte', price: 32.9, minDays: 6, maxDays: 10 },
-  '7': { name: 'Distrito Federal / Goiás / Tocantins / Centro-Oeste', price: 26.9, minDays: 4, maxDays: 7 },
-  '8': { name: 'Paraná / Santa Catarina', price: 24.9, minDays: 3, maxDays: 6 },
-  '9': { name: 'Rio Grande do Sul', price: 27.9, minDays: 4, maxDays: 7 },
-};
-
+/**
+ * Valida se um CEP possui 8 dígitos numéricos válidos (com ou sem hífen).
+ */
 export function isValidCep(cep: string): boolean {
+  if (!cep) return false;
   return /^\d{5}-?\d{3}$/.test(cep.trim());
 }
 
 /**
- * Calcula o frete estimado a partir de um CEP e do subtotal do carrinho.
- * Retorna null se o CEP for inválido.
+ * Função utilitária para calcular frete via API interna do Melhor Envio / Next.js
  */
-export function calculateShipping(cep: string, subtotal: number): ShippingQuote | null {
-  const clean = cep.replace(/\D/g, '');
-  if (clean.length !== 8) return null;
+async function fetchMelhorEnvioQuotes(cep: string, items: any[]): Promise<ShippingQuote[]> {
+  try {
+    const response = await fetch('/api/shipping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cep, items }),
+    });
 
-  const region = REGIONS[clean[0]];
-  if (!region) return null;
+    const data = await response.json();
 
-  const free = subtotal >= FREE_SHIPPING_THRESHOLD;
-
-  return {
-    price: free ? 0 : region.price,
-    minDays: region.minDays,
-    maxDays: region.maxDays,
-    region: region.name,
-  };
+    if (data.success && data.quotes && data.quotes.length > 0) {
+      return data.quotes.map((q: any) => ({
+        id: q.id,
+        name: q.name,
+        price: Number(q.price),
+        delivery_time: q.delivery_time,
+        minDays: q.delivery_time,
+        maxDays: q.delivery_time + 2, // Margem de segurança de dias úteis
+        region: 'Nacional',
+        company_picture: q.company_picture
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error('Erro ao buscar cotações de frete:', error);
+    return [];
+  }
 }
