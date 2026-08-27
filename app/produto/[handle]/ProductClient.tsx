@@ -10,39 +10,60 @@ export default function ProductClient({ product }: { product: any }) {
   const searchParams = useSearchParams();
   const modeloUrl = searchParams.get('modelo');
 
-  const variantsList = Array.isArray(product.variants) ? product.variants : [];
-  const gallery = product.images && product.images.length > 0 ? product.images : [product.image];
-  const sizeGuideIndex = gallery.findIndex((img: string) => img?.toLowerCase().includes('tabela') || img?.toLowerCase().includes('guia'));
+  const variantsList = Array.isArray(product?.variants) ? product.variants : [];
+  const gallery: string[] = (product?.images && product.images.length > 0)
+    ? product.images.map((img: any) => (typeof img === 'string' ? img : img?.src || ''))
+    : [typeof product?.image === 'string' ? product.image : (product?.image?.src || '')];
 
-  // 👕 CAPTAÇÃO E ORDENAÇÃO FIXA DOS MODELOS (Unissex, Regata, Baby Look, Vestido)
+  const sizeGuideIndex = gallery.findIndex((img: string) => 
+    img?.toLowerCase().includes('tabela') || img?.toLowerCase().includes('guia') || img?.toLowerCase().includes('medidas')
+  );
+
+  // Helper para extrair o valor do modelo de uma variação
+  const extractModelFromVariant = (v: any): string => {
+    if (v.model && v.model !== 'Geral') return v.model;
+    if (v.attributes && Array.isArray(v.attributes)) {
+      const found = v.attributes.find((a: any) => {
+        const name = (a.name || a.slug || '').toLowerCase();
+        return name.includes('modelo') || name.includes('style') || name.includes('model');
+      });
+      if (found?.option) return found.option;
+    }
+    return '';
+  };
+
+  // Helper para extrair o valor do tamanho de uma variação
+  const extractSizeFromVariant = (v: any): string => {
+    if (v.size && v.size !== 'Único') return v.size;
+    if (v.attributes && Array.isArray(v.attributes)) {
+      const found = v.attributes.find((a: any) => {
+        const name = (a.name || a.slug || '').toLowerCase();
+        return name.includes('tamanho') || name.includes('size');
+      });
+      if (found?.option) return found.option;
+    }
+    return '';
+  };
+
+  // 👕 CAPTAÇÃO E ORDENAÇÃO DOS MODELOS
   const availableModels = useMemo(() => {
     const modelsSet = new Set<string>();
     variantsList.forEach((v: any) => {
-      if (v.model && v.model !== 'Geral') {
-        modelsSet.add(v.model);
-      } else {
-        const modelAttr = v.attributes?.find((a: any) => {
-          const nomeAttr = (a.name || '').toLowerCase();
-          return nomeAttr.includes('modelo') || nomeAttr.includes('style') || nomeAttr.includes('model');
-        });
-        if (modelAttr?.option) modelsSet.add(modelAttr.option);
-      }
+      const m = extractModelFromVariant(v);
+      if (m) modelsSet.add(m);
     });
 
-    const ordemDesejadaModels = ['unissex', 'regata', 'baby look', 'vestido'];
-    const list = Array.from(modelsSet);
-    
-    return list.sort((a, b) => {
-      const indexA = ordemDesejadaModels.indexOf(a.toLowerCase());
-      const indexB = ordemDesejadaModels.indexOf(b.toLowerCase());
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
+    const ordemDesejada = ['unissex', 'regata', 'baby look', 'vestido', 'infantil'];
+    return Array.from(modelsSet).sort((a, b) => {
+      const idxA = ordemDesejada.indexOf(a.toLowerCase());
+      const idxB = ordemDesejada.indexOf(b.toLowerCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
       return a.localeCompare(b);
     });
   }, [variantsList]);
 
-  // Normaliza perfeitamente o modelo vindo da URL (ex: "BABY LOOK" -> "Baby Look")
   const matchedUrlModel = useMemo(() => {
     if (!modeloUrl) return null;
     return availableModels.find(m => m.toLowerCase() === modeloUrl.toLowerCase()) || null;
@@ -55,7 +76,6 @@ export default function ProductClient({ product }: { product: any }) {
   const [activeImage, setActiveImage] = useState(0);
   const [dynamicVariantImage, setDynamicVariantImage] = useState<string | null>(null);
 
-  // Garante que se o parâmetro da URL mudar, o modelo selecionado atualiza na hora
   useEffect(() => {
     if (matchedUrlModel && matchedUrlModel !== selectedModel) {
       setSelectedModel(matchedUrlModel);
@@ -63,85 +83,93 @@ export default function ProductClient({ product }: { product: any }) {
     }
   }, [matchedUrlModel]);
 
-  // 📏 ORDENAÇÃO E CAPTAÇÃO DOS TAMANHOS DO WOOCOMMERCE
+  // 📏 CAPTAÇÃO DOS TAMANHOS DISPONÍVEIS PARA O MODELO ATIVO
   const availableSizes = useMemo(() => {
     const sizesSet = new Set<string>();
     variantsList.forEach((v: any) => {
-      const matchModel = selectedModel ? (v.model?.toLowerCase() === selectedModel.toLowerCase() || v.attributes?.some((a: any) => a.option?.toLowerCase() === selectedModel.toLowerCase())) : true;
+      const varModel = extractModelFromVariant(v);
+      const matchModel = selectedModel ? varModel.toLowerCase() === selectedModel.toLowerCase() : true;
       if (!matchModel) return;
 
-      if (v.size && v.size !== 'Único') {
-        sizesSet.add(v.size);
-      } else {
-        const sizeAttr = v.attributes?.find((a: any) => {
-          const nomeAttr = (a.name || '').toLowerCase();
-          return nomeAttr.includes('tamanho') || nomeAttr.includes('size');
-        });
-        if (sizeAttr?.option) sizesSet.add(sizeAttr.option);
-      }
+      const sz = extractSizeFromVariant(v);
+      if (sz) sizesSet.add(sz);
     });
 
-    const ordemDesejadaSizes = ['p', 'm', 'g', 'gg', 'xg', 'exg', 'único'];
+    const ordemTamanhos = ['pp', 'p', 'm', 'g', 'gg', 'xg', 'exg', 'g1', 'g2', 'g3', 'único'];
     return Array.from(sizesSet).sort((a, b) => {
-      const indexA = ordemDesejadaSizes.indexOf(a.toLowerCase());
-      const indexB = ordemDesejadaSizes.indexOf(b.toLowerCase());
-      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-      if (indexA !== -1) return -1;
-      if (indexB !== -1) return 1;
+      const idxA = ordemTamanhos.indexOf(a.toLowerCase());
+      const idxB = ordemTamanhos.indexOf(b.toLowerCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
       return a.localeCompare(b);
     });
   }, [variantsList, selectedModel]);
 
-  // 🚀 BUSCA EXATA DA VARIAÇÃO SELECIONADA
+  // 🚀 BUSCA DA VARIAÇÃO ATIVA
   const matchedVariant = useMemo(() => {
     if (availableModels.length > 0 && !selectedModel) return null;
     if (!selectedSize) return null;
-    
+
     return variantsList.find((v: any) => {
-      const matchModel = availableModels.length > 0 ? (v.model?.toLowerCase() === selectedModel.toLowerCase() || v.attributes?.some((a: any) => a.option?.toLowerCase() === selectedModel.toLowerCase())) : true;
-      const matchSize = v.size?.toLowerCase() === selectedSize.toLowerCase() || v.attributes?.some((a: any) => a.option?.toLowerCase() === selectedSize.toLowerCase());
+      const varModel = extractModelFromVariant(v);
+      const varSize = extractSizeFromVariant(v);
+
+      const matchModel = availableModels.length > 0 
+        ? varModel.toLowerCase() === selectedModel.toLowerCase() 
+        : true;
+      const matchSize = varSize.toLowerCase() === selectedSize.toLowerCase();
+
       return matchModel && matchSize;
     }) || null;
   }, [variantsList, selectedModel, selectedSize, availableModels]);
 
-  // 🖼️ TROCA AUTOMÁTICA DA FOTO AO SELECIONAR O MODELO (Responde a cliques e à URL)
+  // 🖼️ TROCA DINÂMICA DA FOTO AO SELECIONAR MODELO
   useEffect(() => {
     if (!selectedModel) return;
 
-    const varSample = variantsList.find((v: any) => 
-      (v.model?.toLowerCase() === selectedModel.toLowerCase() || v.attributes?.some((a: any) => a.option?.toLowerCase() === selectedModel.toLowerCase())) && v.image
-    );
+    // Procura variação que pertença ao modelo selecionado e que tenha imagem
+    const varWithImage = variantsList.find((v: any) => {
+      const m = extractModelFromVariant(v);
+      const hasImg = Boolean(v.image || (v.images && v.images.length > 0));
+      return m.toLowerCase() === selectedModel.toLowerCase() && hasImg;
+    });
 
-    const variantImageUrl = typeof varSample?.image === 'object' ? varSample?.image?.src : varSample?.image;
+    let targetImgUrl = '';
+    if (varWithImage) {
+      if (typeof varWithImage.image === 'string') {
+        targetImgUrl = varWithImage.image;
+      } else if (varWithImage.image?.src) {
+        targetImgUrl = varWithImage.image.src;
+      } else if (Array.isArray(varWithImage.images) && varWithImage.images[0]?.src) {
+        targetImgUrl = varWithImage.images[0].src;
+      }
+    }
 
-    if (variantImageUrl) {
-      const indexImg = gallery.findIndex((img: string) => 
-        img === variantImageUrl || img.includes(variantImageUrl) || variantImageUrl.includes(img)
+    if (targetImgUrl) {
+      const idxInGallery = gallery.findIndex((gUrl: string) => 
+        gUrl === targetImgUrl || gUrl.includes(targetImgUrl) || targetImgUrl.includes(gUrl)
       );
-      
-      if (indexImg !== -1) {
-        setActiveImage(indexImg);
+
+      if (idxInGallery !== -1) {
+        setActiveImage(idxInGallery);
         setDynamicVariantImage(null);
       } else {
-        setDynamicVariantImage(variantImageUrl);
+        setDynamicVariantImage(targetImgUrl);
       }
-    } else {
-      setDynamicVariantImage(null);
     }
   }, [selectedModel, variantsList, gallery]);
 
-  const baseProductPrice = Number(product.price || 149.90);
+  const baseProductPrice = Number(product?.price || 149.90);
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
 
-  const temDescontoPix = product.categories && product.categories.includes('desconto-pix');
+  const temDescontoPix = product?.categories && product.categories.includes('desconto-pix');
   const precoPix = currentPrice * 0.90;
 
   const handleAddToCart = () => {
     if (!matchedVariant) return;
 
-    const finalCartImage = typeof matchedVariant?.image === 'object' 
-      ? matchedVariant.image.src 
-      : (matchedVariant?.image || dynamicVariantImage || gallery[activeImage] || '');
+    const finalCartImage = dynamicVariantImage || gallery[activeImage] || (typeof matchedVariant?.image === 'object' ? matchedVariant.image?.src : matchedVariant?.image) || '';
 
     addItem({
       id: matchedVariant.id,
@@ -155,6 +183,8 @@ export default function ProductClient({ product }: { product: any }) {
     openCart();
   };
 
+  const displayedImage = dynamicVariantImage || gallery[activeImage] || '';
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
       <div className="flex flex-col md:flex-row gap-10 md:gap-16">
@@ -162,23 +192,25 @@ export default function ProductClient({ product }: { product: any }) {
         {/* Lado Esquerdo: Imagem Dinâmica */}
         <div className="w-full md:w-1/2">
           <div className="bg-[#FAF7EF] aspect-[3/4] relative rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-            {product.badge && (
+            {product?.badge && (
               <span className="absolute left-3 top-3 z-10 bg-[#0B1B34] px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#C9A227] shadow-sm">
                 {product.badge}
               </span>
             )}
-            <img
-              src={dynamicVariantImage || gallery[activeImage]}
-              alt={product.name}
-              className="w-full h-full object-contain p-6 transition-all duration-500 ease-in-out"
-            />
+            {displayedImage && (
+              <img
+                src={displayedImage}
+                alt={product?.name || 'Produto'}
+                className="w-full h-full object-contain p-6 transition-all duration-500 ease-in-out"
+              />
+            )}
           </div>
 
           {gallery.length > 1 && (
             <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
               {gallery.map((img: string, i: number) => (
                 <button
-                  key={img}
+                  key={`${img}-${i}`}
                   type="button"
                   onClick={() => {
                     setActiveImage(i);
@@ -196,10 +228,10 @@ export default function ProductClient({ product }: { product: any }) {
           )}
         </div>
 
-        {/* Lado Direito: Informações e Botões Interativos */}
+        {/* Lado Direito: Informações e Seletores */}
         <div className="w-full md:w-1/2 flex flex-col justify-center">
           <h1 className="font-heading text-2xl md:text-3xl font-extrabold uppercase tracking-widest text-[#0B1B34] mb-2">
-            {product.name}
+            {product?.name}
           </h1>
 
           <div className="mb-6">
@@ -207,7 +239,7 @@ export default function ProductClient({ product }: { product: any }) {
               <span className="text-2xl font-black text-[#1E2233]">
                 R$ {Number(currentPrice || 0).toFixed(2).replace('.', ',')}
               </span>
-              {Boolean(product.regular_price && Number(product.regular_price) > Number(currentPrice)) && (
+              {Boolean(product?.regular_price && Number(product.regular_price) > Number(currentPrice)) && (
                 <span className="text-sm text-gray-400 line-through mb-1">
                   R$ {Number(product.regular_price).toFixed(2).replace('.', ',')}
                 </span>
@@ -223,9 +255,11 @@ export default function ProductClient({ product }: { product: any }) {
             <p className="mt-1 text-xs text-gray-500">+ frete (calcule pelo seu CEP abaixo)</p>
           </div>
 
-          <div className="text-sm text-gray-600 mb-6 font-light" dangerouslySetInnerHTML={{ __html: product.short_description || '' }} />
+          {product?.short_description && (
+            <div className="text-sm text-gray-600 mb-6 font-light" dangerouslySetInnerHTML={{ __html: product.short_description }} />
+          )}
 
-          {/* 👕 SELETOR DE MODELOS ORDENADOS */}
+          {/* 👕 SELETOR DE MODELOS */}
           {availableModels.length > 0 && (
             <div className="mb-5">
               <label className="block text-xs font-bold uppercase tracking-widest text-[#0B1B34] mb-2">
@@ -278,7 +312,7 @@ export default function ProductClient({ product }: { product: any }) {
               </div>
               <div className="flex flex-wrap gap-2.5">
                 {availableSizes.map((size: string) => {
-                  const isSelected = selectedSize === size;
+                  const isSelected = selectedSize.toLowerCase() === size.toLowerCase();
                   return (
                     <button
                       key={size}
@@ -313,9 +347,9 @@ export default function ProductClient({ product }: { product: any }) {
               onQuote={() => {}} 
               productContext={matchedVariant ? {
                 id: matchedVariant.id,
-                name: `${product.name} (${selectedModel} - ${selectedSize})`,
+                name: `${product?.name} (${selectedModel} - ${selectedSize})`,
                 price: currentPrice,
-                image: matchedVariant.image || product.image,
+                image: displayedImage,
                 size: `${selectedModel} / ${selectedSize}`
               } : undefined}
             />
@@ -325,7 +359,7 @@ export default function ProductClient({ product }: { product: any }) {
       </div>
 
       {/* Descrição Completa e Guia de Medidas */}
-      {product.description && (
+      {product?.description && (
         <div className="mt-20 pt-12 border-t border-gray-200">
           <h2 className="font-heading text-xl font-extrabold uppercase tracking-widest text-[#0B1B34] mb-6 text-center">
             Descrição e Guia de Tamanhos
