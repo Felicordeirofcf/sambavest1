@@ -32,7 +32,6 @@ export async function POST(request: Request) {
       uf: cliente?.uf || 'RJ',
     };
 
-    // wcUrl é a URL da API do WooCommerce (geralmente onde ele está hospedado agora)
     const wcUrl = process.env.NEXT_PUBLIC_WC_URL || 'https://api.sambavest.com';
     const consumerKey = process.env.WC_CONSUMER_KEY;
     const consumerSecret = process.env.WC_CONSUMER_SECRET;
@@ -67,7 +66,6 @@ export async function POST(request: Request) {
         customerId = existingCustomers[0].id;
         console.log(`👤 Cliente já existente encontrado no WooCommerce (ID: ${customerId})`);
       } else {
-        // 🆕 CLIENTE NÃO EXISTE: CRIAR NOVA CONTA COM SENHA AUTOMÁTICA
         const randomPassword = Math.random().toString(36).slice(-8) + "Aa1@"; 
         
         const newCustomerPayload = {
@@ -210,14 +208,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // 🚀 O SEGREDO DO 404 ESTÁ AQUI: O domínio que responde pelo WordPress não é mais sambavest.com
-    // Ele força a substituição do domínio principal (que agora é o Next.js) pelo domínio real onde o WooCommerce mora.
+    // Se a AppMax não gerou o link externo, redirecionamos para a página de finalização 
+    // com os parâmetros que permitem o carregamento do gateway ou bypass de login.
     if (!paymentUrl || paymentUrl.includes('order-pay')) {
       const wpBaseUrl = process.env.WP_BACKEND_URL || wcUrl;
       paymentUrl = `${wpBaseUrl}/finalizar-compra/order-pay/${wcData.id}/?pay_for_order=true&key=${wcData.order_key}`;
     }
 
-    // 🔥 Limpeza extra para evitar que a Vercel quebre ao tentar redirecionar para sambavest.com
     if (paymentUrl.includes('https://sambavest.com/finalizar-compra')) {
         paymentUrl = paymentUrl.replace('https://sambavest.com', wcUrl);
     }
