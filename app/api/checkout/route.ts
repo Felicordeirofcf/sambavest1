@@ -1,15 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Agent } from 'undici';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Configuração do despachante para aceitar certificados SSL autoassinados no runtime Node.js da Vercel
-const sslBypassDispatcher = new Agent({
-  connect: {
-    rejectUnauthorized: false,
-  },
-});
+// Permite conexões com certificados autoassinados no runtime Node.js da Vercel
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 export async function POST(request: Request) {
   try {
@@ -65,8 +60,6 @@ export async function POST(request: Request) {
       const searchRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers?email=${encodeURIComponent(clienteFinal.email)}`, {
         headers: { Authorization: authHeader },
         cache: 'no-store',
-        // @ts-ignore - suporte a dispatcher undici no Next.js Server Runtime
-        dispatcher: sslBypassDispatcher,
       });
 
       if (searchRes.ok) {
@@ -84,8 +77,6 @@ export async function POST(request: Request) {
             'Content-Type': 'application/json',
             Authorization: authHeader,
           },
-          // @ts-ignore
-          dispatcher: sslBypassDispatcher,
           body: JSON.stringify({
             email: clienteFinal.email,
             first_name: firstName,
@@ -183,8 +174,6 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json',
         Authorization: authHeader,
       },
-      // @ts-ignore
-      dispatcher: sslBypassDispatcher,
       body: JSON.stringify(wcOrderPayload),
     });
 
