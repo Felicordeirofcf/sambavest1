@@ -1,18 +1,25 @@
 import { NextResponse } from 'next/server';
+import { Agent } from 'undici';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+// Configuração do despachante para aceitar certificados SSL autoassinados no runtime Node.js da Vercel
+const sslBypassDispatcher = new Agent({
+  connect: {
+    rejectUnauthorized: false,
+  },
+});
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log("📦 Body bruto recebido na API de Checkout:", JSON.stringify(body, null, 2));
+    console.log("📦 Body recebido no Checkout:", JSON.stringify(body, null, 2));
 
     const { cliente, items, shipping, paymentMethod } = body;
     const listaItens = items || body.itens;
 
     if (!listaItens || !Array.isArray(listaItens) || listaItens.length === 0) {
-      console.error("❌ Erro: Lista de itens veio vazia ou indefinida:", body);
       return NextResponse.json(
         { success: false, error: 'O carrinho está vazio ou os itens não foram enviados.' },
         { status: 400 }
@@ -50,68 +57,69 @@ export async function POST(request: Request) {
     const lastName = partesNome.slice(1).join(' ') || 'Da Loja';
     const documentoLimpo = clienteFinal.numeroDocumento.replace(/\D/g, '');
     const cepLimpo = clienteFinal.cep.replace(/\D/g, '');
-
-    const enderecoCompleto = clienteFinal.endereco + ', ' + clienteFinal.numero + ' - ' + clienteFinal.bairro;
+    const enderecoCompleto = `${clienteFinal.endereco}, ${clienteFinal.numero} - ${clienteFinal.bairro}`;
 
     // 🔍 1. BUSCA OU CRIA O CLIENTE NO WOOCOMMERCE
     let customerId = 0;
     try {
       const searchRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers?email=${encodeURIComponent(clienteFinal.email)}`, {
-        headers: { 'Authorization': authHeader },
+        headers: { Authorization: authHeader },
         cache: 'no-store',
+        // @ts-ignore - suporte a dispatcher undici no Next.js Server Runtime
+        dispatcher: sslBypassDispatcher,
       });
-      const existingCustomers = await searchRes.json();
 
-      if (Array.isArray(existingCustomers) && existingCustomers.length > 0) {
-        customerId = existingCustomers[0].id;
-        console.log(`👤 Cliente já existente encontrado no WooCommerce (ID: ${customerId})`);
-      } else {
-        const randomPassword = Math.random().toString(36).slice(-8) + "Aa1@"; 
-        
-        const newCustomerPayload = {
-          email: clienteFinal.email,
-          first_name: firstName,
-          last_name: lastName,
-          password: randomPassword, 
-          billing: {
-            first_name: firstName,
-            last_name: lastName,
-            address_1: enderecoCompleto,
-            city: clienteFinal.cidade,
-            state: clienteFinal.uf,
-            postcode: cepLimpo,
-            country: 'BR',
-            email: clienteFinal.email,
-            phone: clienteFinal.telefone,
-          }
-        };
+      if (searchRes.ok) {
+        const existingCustomers = await searchRes.json();
+        if (Array.isArray(existingCustomers) && existingCustomers.length > 0) {
+          customerId = existingCustomers[0].id;
+        }
+      }
 
+      if (customerId === 0) {
+        const randomPassword = Math.random().toString(36).slice(-8) + "Aa1@";
         const createCustomerRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': authHeader,
+            Authorization: authHeader,
           },
-          body: JSON.stringify(newCustomerPayload),
+          // @ts-ignore
+          dispatcher: sslBypassDispatcher,
+          body: JSON.stringify({
+            email: clienteFinal.email,
+            first_name: firstName,
+            last_name: lastName,
+            password: randomPassword,
+            billing: {
+              first_name: firstName,
+              last_name: lastName,
+              address_1: enderecoCompleto,
+              city: clienteFinal.cidade,
+              state: clienteFinal.uf,
+              postcode: cepLimpo,
+              country: 'BR',
+              email: clienteFinal.email,
+              phone: clienteFinal.telefone,
+            },
+          }),
         });
 
-        const newCustomerData = await createCustomerRes.json();
-        
-        if (createCustomerRes.ok && newCustomerData.id) {
-          customerId = newCustomerData.id;
-          console.log(`🆕 Nova conta criada no WooCommerce para o e-mail ${clienteFinal.email} (ID: ${customerId})`);
-        } else {
-          console.error("❌ Falha ao tentar criar novo cliente:", newCustomerData);
+        if (createCustomerRes.ok) {
+          const newCustomerData = await createCustomerRes.json();
+          if (newCustomerData.id) {
+            customerId = newCustomerData.id;
+          }
         }
       }
     } catch (custError) {
-      console.warn("⚠️ Aviso ao buscar/criar cliente, prosseguindo como visitante/convidado.", custError);
+      console.warn("⚠️ Aviso ao buscar/criar cliente, prosseguindo checkout:", custError);
     }
 
     const metodoEscolhido = paymentMethod || 'appmax_pix';
     const tituloMetodo = metodoEscolhido.includes('pix') ? 'Pix -- AppMax' : 'Cartão de Crédito -- AppMax';
 
-    // 🛍️ 2. MONTAR O PAYLOAD DO PEDIDO NO WOOCOMMERCE
+    // 🛍️ 2. MONTAR PAYLOAD DO PEDIDO
     const wcOrderPayload: any = {
       payment_method: metodoEscolhido,
       payment_method_title: tituloMetodo,
@@ -139,7 +147,7 @@ export async function POST(request: Request) {
       line_items: listaItens.map((item: any) => {
         const parentId = Number(item.parent_id);
         const itemId = Number(item.id);
-        
+
         const productId = parentId > 0 ? parentId : itemId;
         const variationId = parentId > 0 ? itemId : 0;
 
@@ -154,18 +162,13 @@ export async function POST(request: Request) {
         {
           method_id: 'flat_rate',
           method_title: shipping.method_title || 'Frete Correios / Transportadora',
-          total: String(shipping.price || 0)
+          total: String(shipping.price || 0),
         }
       ] : [],
       meta_data: [
-        {
-          key: '_billing_cpf',
-          value: documentoLimpo,
-        },
-        {
-          key: 'cpf',
-          value: documentoLimpo,
-        }
+        { key: '_billing_cpf', value: documentoLimpo },
+        { key: 'cpf', value: documentoLimpo },
+        { key: '_billing_phone', value: clienteFinal.telefone },
       ]
     };
 
@@ -173,34 +176,38 @@ export async function POST(request: Request) {
       wcOrderPayload.customer_id = customerId;
     }
 
-    console.log("🚀 Criando pedido no WooCommerce...", JSON.stringify(wcOrderPayload, null, 2));
-
+    // 🚀 3. ENVIAR PEDIDO AO WOOCOMMERCE
     const wcResponse = await fetch(`${wcUrl}/wp-json/wc/v3/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': authHeader,
+        Authorization: authHeader,
       },
+      // @ts-ignore
+      dispatcher: sslBypassDispatcher,
       body: JSON.stringify(wcOrderPayload),
     });
 
     const wcData = await wcResponse.json();
 
     if (!wcResponse.ok) {
-      console.error("❌ Erro retornado pela API do WooCommerce:", wcData);
-      throw new Error(wcData.message || 'Erro ao criar o pedido no WooCommerce.');
+      console.error("❌ Erro da API do WooCommerce:", wcData);
+      return NextResponse.json(
+        { success: false, error: wcData.message || 'Erro ao registrar pedido no WooCommerce.' },
+        { status: wcResponse.status || 400 }
+      );
     }
 
-    // 🔍 3. CAPTURA DA URL DE PAGAMENTO DA APPMAX
+    // 🔍 4. DEFINIÇÃO DA URL DE PAGAMENTO
     let paymentUrl = wcData.payment_url;
 
     if (wcData.meta_data && Array.isArray(wcData.meta_data)) {
       const gatewayUrlMeta = wcData.meta_data.find(
-        (m: any) => 
-          m.key === '_appmax_payment_url' || 
-          m.key === 'payment_url' || 
-          m.key === '_payment_url' || 
-          m.key === 'payment_link' || 
+        (m: any) =>
+          m.key === '_appmax_payment_url' ||
+          m.key === 'payment_url' ||
+          m.key === '_payment_url' ||
+          m.key === 'payment_link' ||
           m.key === 'appmax_url'
       );
       if (gatewayUrlMeta && gatewayUrlMeta.value) {
@@ -208,32 +215,28 @@ export async function POST(request: Request) {
       }
     }
 
-    // Se a AppMax não gerou o link externo, redirecionamos para a página de finalização 
-    // com os parâmetros que permitem o carregamento do gateway ou bypass de login.
     if (!paymentUrl || paymentUrl.includes('order-pay')) {
       const wpBaseUrl = process.env.WP_BACKEND_URL || wcUrl;
       paymentUrl = `${wpBaseUrl}/finalizar-compra/order-pay/${wcData.id}/?pay_for_order=true&key=${wcData.order_key}`;
     }
 
     if (paymentUrl.includes('https://sambavest.com/finalizar-compra')) {
-        paymentUrl = paymentUrl.replace('https://sambavest.com', wcUrl);
+      paymentUrl = paymentUrl.replace('https://sambavest.com', wcUrl);
     }
-
-    console.log(`✅ Pedido #${wcData.id} criado com sucesso no WooCommerce! URL de pagamento:`, paymentUrl);
 
     return NextResponse.json({
       success: true,
-      message: 'Pedido gerado com sucesso no WooCommerce e pronto para pagamento!',
-      paymentUrl: paymentUrl,
+      message: 'Pedido gerado com sucesso!',
+      paymentUrl,
       orderId: wcData.id,
     });
 
   } catch (error: any) {
     console.error('❌ Erro crítico na API de Checkout:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Erro interno ao processar o pedido.' 
+      {
+        success: false,
+        error: error.message || 'Erro interno ao processar o pedido.',
       },
       { status: 500 }
     );
