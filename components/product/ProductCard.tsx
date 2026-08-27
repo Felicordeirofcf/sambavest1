@@ -51,26 +51,13 @@ export default function ProductCard({ product }: { product: any }) {
     });
   }, [availableVariants]);
 
-  // 1. Imagem principal (Frente)
   const imageFrontDefault = typeof product.images?.[0] === 'string'
     ? product.images[0]
     : product.images?.[0]?.src || product.image || '';
 
-  // 2. Imagem secundária padrão (Plano B caso não tenha vestido)
   const imageBackDefault = typeof product.images?.[1] === 'string'
     ? product.images[1]
     : product.images?.[1]?.src || imageFrontDefault;
-
-  // 3. CAPTURA A IMAGEM DO VESTIDO (Se existir)
-  const imageVestido = useMemo(() => {
-    const vestidoVariant = availableVariants.find((v: any) => 
-      getVariantModelName(v).toLowerCase() === 'vestido'
-    );
-    return getVariantImageUrl(vestidoVariant);
-  }, [availableVariants]);
-
-  // 4. Define qual será a imagem exibida no Hover (Prioridade para o Vestido)
-  const hoverImage = imageVestido || imageBackDefault;
   
   const [currentImage, setCurrentImage] = useState(imageFrontDefault);
   const [isHovered, setIsHovered] = useState(false);
@@ -103,9 +90,9 @@ export default function ProductCard({ product }: { product: any }) {
           </span>
         )}
 
-        {/* IMAGEM DINÂMICA: Exibe a do vestido no hover */}
+        {/* IMAGEM DINÂMICA */}
         <img
-          src={(isHovered || showMobileMenu) && currentImage === imageFrontDefault ? hoverImage : currentImage}
+          src={(isHovered || showMobileMenu) && currentImage === imageFrontDefault ? imageBackDefault : currentImage}
           alt={product.name}
           className="absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out group-hover:scale-105"
         />
