@@ -5,6 +5,7 @@ import Image from 'next/image';
 import ProductCard from '../components/product/ProductCard';
 import HeroCarousel from '../components/home/HeroCarousel';
 import AboutAtelie from '../components/home/AboutAtelie';
+import InstagramReels from '../components/home/InstagramReels'; // 📱 Importação da seção de Reels do Instagram
 
 const featuredCategories = [
   {
@@ -235,6 +236,10 @@ export default async function HomePage() {
             </Link>
           </div>
         </section>
+
+        {/* 📱 Seção de Reels do Instagram logo após as camisas */}
+        <InstagramReels />
+
         <AboutAtelie />
       </div>
     </>
