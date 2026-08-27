@@ -3,14 +3,11 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Permite conexões com certificados autoassinados no runtime Node.js da Vercel
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log("📦 Body recebido no Checkout:", JSON.stringify(body, null, 2));
-
     const { cliente, items, shipping, paymentMethod } = body;
     const listaItens = items || body.itens;
 
@@ -54,64 +51,12 @@ export async function POST(request: Request) {
     const cepLimpo = clienteFinal.cep.replace(/\D/g, '');
     const enderecoCompleto = `${clienteFinal.endereco}, ${clienteFinal.numero} - ${clienteFinal.bairro}`;
 
-    // 🔍 1. BUSCA OU CRIA O CLIENTE NO WOOCOMMERCE
-    let customerId = 0;
-    try {
-      const searchRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers?email=${encodeURIComponent(clienteFinal.email)}`, {
-        headers: { Authorization: authHeader },
-        cache: 'no-store',
-      });
-
-      if (searchRes.ok) {
-        const existingCustomers = await searchRes.json();
-        if (Array.isArray(existingCustomers) && existingCustomers.length > 0) {
-          customerId = existingCustomers[0].id;
-        }
-      }
-
-      if (customerId === 0) {
-        const randomPassword = Math.random().toString(36).slice(-8) + "Aa1@";
-        const createCustomerRes = await fetch(`${wcUrl}/wp-json/wc/v3/customers`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: authHeader,
-          },
-          body: JSON.stringify({
-            email: clienteFinal.email,
-            first_name: firstName,
-            last_name: lastName,
-            password: randomPassword,
-            billing: {
-              first_name: firstName,
-              last_name: lastName,
-              address_1: enderecoCompleto,
-              city: clienteFinal.cidade,
-              state: clienteFinal.uf,
-              postcode: cepLimpo,
-              country: 'BR',
-              email: clienteFinal.email,
-              phone: clienteFinal.telefone,
-            },
-          }),
-        });
-
-        if (createCustomerRes.ok) {
-          const newCustomerData = await createCustomerRes.json();
-          if (newCustomerData.id) {
-            customerId = newCustomerData.id;
-          }
-        }
-      }
-    } catch (custError) {
-      console.warn("⚠️ Aviso ao buscar/criar cliente, prosseguindo checkout:", custError);
-    }
-
     const metodoEscolhido = paymentMethod || 'appmax_pix';
     const tituloMetodo = metodoEscolhido.includes('pix') ? 'Pix -- AppMax' : 'Cartão de Crédito -- AppMax';
 
-    // 🛍️ 2. MONTAR PAYLOAD DO PEDIDO
+    // 🛍️ PEDIDO CRIADO COMO CONVIDADO (Garante acesso direto à chave de pagamento sem login)
     const wcOrderPayload: any = {
+      customer_id: 0,
       payment_method: metodoEscolhido,
       payment_method_title: tituloMetodo,
       set_paid: false,
@@ -138,7 +83,6 @@ export async function POST(request: Request) {
       line_items: listaItens.map((item: any) => {
         const parentId = Number(item.parent_id);
         const itemId = Number(item.id);
-
         const productId = parentId > 0 ? parentId : itemId;
         const variationId = parentId > 0 ? itemId : 0;
 
@@ -163,11 +107,6 @@ export async function POST(request: Request) {
       ]
     };
 
-    if (customerId > 0) {
-      wcOrderPayload.customer_id = customerId;
-    }
-
-    // 🚀 3. ENVIAR PEDIDO AO WOOCOMMERCE
     const wcResponse = await fetch(`${wcUrl}/wp-json/wc/v3/orders`, {
       method: 'POST',
       headers: {
@@ -180,14 +119,12 @@ export async function POST(request: Request) {
     const wcData = await wcResponse.json();
 
     if (!wcResponse.ok) {
-      console.error("❌ Erro da API do WooCommerce:", wcData);
       return NextResponse.json(
         { success: false, error: wcData.message || 'Erro ao registrar pedido no WooCommerce.' },
         { status: wcResponse.status || 400 }
       );
     }
 
-    // 🔍 4. DEFINIÇÃO DA URL DE PAGAMENTO
     let paymentUrl = wcData.payment_url;
 
     if (wcData.meta_data && Array.isArray(wcData.meta_data)) {
@@ -221,12 +158,8 @@ export async function POST(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('❌ Erro crítico na API de Checkout:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Erro interno ao processar o pedido.',
-      },
+      { success: false, error: error.message || 'Erro interno ao processar o pedido.' },
       { status: 500 }
     );
   }

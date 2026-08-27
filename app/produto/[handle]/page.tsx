@@ -136,7 +136,7 @@ export default async function ProductPage({ params }: { params: { handle: string
           price: Number(v.price || product.price || 149.90),
           stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
           stock_status: v.stock_status || 'instock',
-          image: v.image?.src || '', // Retorna string vazia se a variação não tiver imagem exclusiva
+          image: v.image?.src || '',
           attributes: v.attributes ? v.attributes.map((attr: any) => ({
             name: attr.name,
             option: attr.option

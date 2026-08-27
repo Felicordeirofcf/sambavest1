@@ -10,10 +10,18 @@ export default function ProductClient({ product }: { product: any }) {
   const searchParams = useSearchParams();
   const modeloUrl = searchParams.get('modelo');
 
-  const variantsList = Array.isArray(product?.variants) ? product.variants : [];
-  const gallery: string[] = (product?.images && product.images.length > 0)
-    ? product.images.map((img: any) => (typeof img === 'string' ? img : img?.src || ''))
-    : [typeof product?.image === 'string' ? product.image : (product?.image?.src || '')];
+  // 🛑 CORREÇÃO: useMemo garante que a lista e a galeria não sejam recriadas a cada clique, 
+  // o que impedia a troca manual da foto nas miniaturas.
+  const variantsList = useMemo(() => {
+    return Array.isArray(product?.variants) ? product.variants : [];
+  }, [product?.variants]);
+
+  const gallery: string[] = useMemo(() => {
+    if (product?.images && product.images.length > 0) {
+      return product.images.map((img: any) => (typeof img === 'string' ? img : img?.src || ''));
+    }
+    return [typeof product?.image === 'string' ? product.image : (product?.image?.src || '')];
+  }, [product]);
 
   const sizeGuideIndex = gallery.findIndex((img: string) => 
     img?.toLowerCase().includes('tabela') || img?.toLowerCase().includes('guia') || img?.toLowerCase().includes('medidas')
@@ -81,7 +89,7 @@ export default function ProductClient({ product }: { product: any }) {
       setSelectedModel(matchedUrlModel);
       setSelectedSize('');
     }
-  }, [matchedUrlModel]);
+  }, [matchedUrlModel, selectedModel]);
 
   // 📏 CAPTAÇÃO DOS TAMANHOS DISPONÍVEIS PARA O MODELO ATIVO
   const availableSizes = useMemo(() => {
