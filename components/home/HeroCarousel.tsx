@@ -52,7 +52,7 @@ const slides: Slide[] = [
     subtitle: '',
     image: '/products/hero-paixao-carnaval.webp',
     ctaText: 'Ver Lançamento',
-    ctaHref: '/categoria/lancamentos',
+    ctaHref: '/categoria/carnaval-2027',
     fullImage: true,
   },
   {
@@ -61,7 +61,7 @@ const slides: Slide[] = [
     subtitle: '',
     image: '/products/imagem1.jpg',
     ctaText: 'Ver Lançamento',
-    ctaHref: '/categoria/lancamentos',
+    ctaHref: '/categoria/carnaval-2027',
     fullImage: true,
     overlayButtonText: 'Clique Aqui',
   },
