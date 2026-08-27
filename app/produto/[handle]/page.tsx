@@ -1,7 +1,7 @@
 import ProductClient from './ProductClient';
 import { notFound } from 'next/navigation';
 
-export const revalidate = 300; // 🚀 Cache de 5 minutos
+export const revalidate = 60; // 🚀 Cache inteligente de 1 minuto para sincronização ágil
 
 export default async function ProductPage({ params }: { params: { handle: string } }) {
   const resolvedParams = await Promise.resolve(params);
@@ -31,13 +31,13 @@ export default async function ProductPage({ params }: { params: { handle: string
     if (isNumeric) {
       const res = await fetch(`${wcUrl}/wp-json/wc/v3/products/${handleOrId}`, {
         headers: { 'Authorization': authHeader },
-        next: { revalidate: 300 },
+        next: { revalidate: 60 },
       });
       if (res.ok) product = await res.json();
     } else {
-      let res = await fetch(`${wcUrl}/wp-json/wc/v3/products?slug=${handleOrId}&status=publish`, {
+      const res = await fetch(`${wcUrl}/wp-json/wc/v3/products?slug=${handleOrId}&status=publish`, {
         headers: { 'Authorization': authHeader },
-        next: { revalidate: 300 },
+        next: { revalidate: 60 },
       });
       if (res.ok) {
         const list = await res.json();
@@ -45,11 +45,11 @@ export default async function ProductPage({ params }: { params: { handle: string
       }
     }
 
-    // 2️⃣ Se falhou, varre a lista geral buscando por aproximação de ID ou Slug
+    // 2️⃣ Se falhou, busca na lista geral
     if (!product) {
       const resAll = await fetch(`${wcUrl}/wp-json/wc/v3/products?per_page=100&status=publish`, {
         headers: { 'Authorization': authHeader },
-        next: { revalidate: 300 },
+        next: { revalidate: 60 },
       });
       if (resAll.ok) {
         const allProducts = await resAll.json();
@@ -60,9 +60,8 @@ export default async function ProductPage({ params }: { params: { handle: string
           handleOrId.includes(p.slug)
         );
 
-        // 🚀 FALLBACK DE EMERGÊNCIA: Se o ID da URL não existir de jeito nenhum, pega o primeiro produto válido da loja para evitar 404
         if (!product && allProducts.length > 0) {
-          console.warn(`⚠️ Aviso: Produto "${handleOrId}" não encontrado. Redirecionando para o primeiro produto disponível.`);
+          console.warn(`⚠️ Aviso: Produto "${handleOrId}" não encontrado. Usando primeiro disponível.`);
           product = allProducts[0];
         }
       }
@@ -72,13 +71,13 @@ export default async function ProductPage({ params }: { params: { handle: string
       notFound();
     }
 
-    // 3️⃣ Busca as variações do produto encontrado
-    let variations = [];
+    // 3️⃣ Busca as variações do produto
+    let variations: any[] = [];
     if (product.type === 'variable') {
       try {
         const resVariations = await fetch(`${wcUrl}/wp-json/wc/v3/products/${product.id}/variations?per_page=50`, {
           headers: { 'Authorization': authHeader },
-          next: { revalidate: 300 },
+          next: { revalidate: 60 },
         });
         if (resVariations.ok) {
           variations = await resVariations.json();
@@ -88,7 +87,20 @@ export default async function ProductPage({ params }: { params: { handle: string
       }
     }
 
-    // 4️⃣ Formatação robusta do produto
+    // Monta a galeria base de imagens
+    const baseImages: string[] = product.images && product.images.length > 0
+      ? product.images.map((img: any) => img.src)
+      : [];
+
+    // Adiciona imagens das variações à galeria principal caso não estejam nela
+    variations.forEach((v: any) => {
+      const varImg = v.image?.src;
+      if (varImg && !baseImages.includes(varImg)) {
+        baseImages.push(varImg);
+      }
+    });
+
+    // 4️⃣ Formatação do produto
     const productFormatado = {
       id: product.id,
       name: product.name,
@@ -98,8 +110,8 @@ export default async function ProductPage({ params }: { params: { handle: string
       regular_price: Number(product.regular_price || product.price || 149.90),
       description: product.description || '',
       short_description: product.short_description || '',
-      images: product.images ? product.images.map((img: any) => img.src) : [product.images?.[0]?.src || ''],
-      image: product.images?.[0]?.src || '',
+      images: baseImages.length > 0 ? baseImages : [''],
+      image: baseImages[0] || '',
       categories: product.categories ? product.categories.map((cat: any) => cat.slug) : [],
       attributes: product.attributes ? product.attributes.map((attr: any) => ({
         id: attr.id,
@@ -124,14 +136,14 @@ export default async function ProductPage({ params }: { params: { handle: string
           price: Number(v.price || product.price || 149.90),
           stock: v.stock_quantity ?? (v.stock_status === 'instock' ? 10 : 0),
           stock_status: v.stock_status || 'instock',
-          image: v.image?.src || product.images?.[0]?.src || null,
+          image: v.image?.src || '', // Retorna string vazia se a variação não tiver imagem exclusiva
           attributes: v.attributes ? v.attributes.map((attr: any) => ({
             name: attr.name,
             option: attr.option
           })) : []
         };
       }) : [
-        { id: product.id, model: 'Unissex', size: 'Único', stock: 10, price: Number(product.price || 149.90), image: product.images?.[0]?.src || '' }
+        { id: product.id, model: 'Unissex', size: 'Único', stock: 10, price: Number(product.price || 149.90), image: baseImages[0] || '' }
       ]
     };
 
