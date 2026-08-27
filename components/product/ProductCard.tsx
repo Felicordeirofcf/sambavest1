@@ -1,27 +1,63 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function ProductCard({ product }: { product: any }) {
   const router = useRouter();
   
-  // 🚀 SOLUÇÃO DEFINITIVA: Usa sempre o ID numérico do produto. O ID nunca falha no WooCommerce.
   const productIdentifier = product.id;
   const availableVariants = Array.isArray(product.variants) ? product.variants : [];
 
-  // Extrai apenas os Modelos únicos disponíveis
-  const uniqueModels = Array.from(
-    new Set(
-      availableVariants
-        .map((v: any) => v.model)
-        .filter((model: string) => model && model !== 'Geral')
-    )
-  );
+  // Helper para extrair imagem de uma variação (string ou objeto)
+  const getVariantImageUrl = (v: any): string => {
+    if (!v) return '';
+    if (typeof v.image === 'string') return v.image;
+    if (v.image?.src) return v.image.src;
+    if (Array.isArray(v.images) && v.images[0]?.src) return v.images[0].src;
+    return '';
+  };
 
-  const imageFrontDefault = product.images?.[0] || product.image || '';
-  const imageBackDefault = product.images?.[1] || imageFrontDefault;
+  // Helper para extrair nome do modelo
+  const getVariantModelName = (v: any): string => {
+    if (v.model && v.model !== 'Geral') return v.model;
+    if (v.attributes && Array.isArray(v.attributes)) {
+      const found = v.attributes.find((a: any) => {
+        const name = (a.name || a.slug || '').toLowerCase();
+        return name.includes('modelo') || name.includes('style') || name.includes('model');
+      });
+      if (found?.option) return found.option;
+    }
+    return '';
+  };
+
+  // Extrai apenas os Modelos únicos ordenados
+  const uniqueModels = useMemo(() => {
+    const modelsSet = new Set<string>();
+    availableVariants.forEach((v: any) => {
+      const m = getVariantModelName(v);
+      if (m) modelsSet.add(m);
+    });
+
+    const ordemDesejada = ['unissex', 'regata', 'baby look', 'vestido', 'infantil'];
+    return Array.from(modelsSet).sort((a, b) => {
+      const idxA = ordemDesejada.indexOf(a.toLowerCase());
+      const idxB = ordemDesejada.indexOf(b.toLowerCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [availableVariants]);
+
+  const imageFrontDefault = typeof product.images?.[0] === 'string'
+    ? product.images[0]
+    : product.images?.[0]?.src || product.image || '';
+
+  const imageBackDefault = typeof product.images?.[1] === 'string'
+    ? product.images[1]
+    : product.images?.[1]?.src || imageFrontDefault;
   
   const [currentImage, setCurrentImage] = useState(imageFrontDefault);
   const [isHovered, setIsHovered] = useState(false);
@@ -70,6 +106,7 @@ export default function ProductCard({ product }: { product: any }) {
               setCurrentImage(imageFrontDefault);
             }}
             className="absolute top-2 right-2 z-40 bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold md:hidden"
+            aria-label="Fechar menu de modelos"
           >
             ✕
           </button>
@@ -87,23 +124,20 @@ export default function ProductCard({ product }: { product: any }) {
 
           <div className="flex flex-wrap justify-center gap-1.5">
             {uniqueModels.length > 0 ? (
-              uniqueModels.map((modelName: any) => {
-                const varSample = availableVariants.find((v: any) => v.model === modelName);
+              uniqueModels.map((modelName: string) => {
+                const varSample = availableVariants.find((v: any) => getVariantModelName(v).toLowerCase() === modelName.toLowerCase());
+                const varImg = getVariantImageUrl(varSample);
 
                 return (
                   <button
                     key={modelName}
                     type="button"
                     onMouseEnter={() => {
-                      if (varSample?.image) {
-                        setCurrentImage(varSample.image);
-                      }
+                      if (varImg) setCurrentImage(varImg);
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (varSample?.image) {
-                        setCurrentImage(varSample.image);
-                      }
+                      if (varImg) setCurrentImage(varImg);
                       setShowMobileMenu(true);
                       router.push(`/produto/${productIdentifier}?modelo=${encodeURIComponent(modelName)}`);
                     }}
