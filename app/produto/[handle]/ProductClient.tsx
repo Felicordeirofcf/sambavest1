@@ -84,12 +84,14 @@ export default function ProductClient({ product }: { product: any }) {
   const [activeImage, setActiveImage] = useState(0);
   const [dynamicVariantImage, setDynamicVariantImage] = useState<string | null>(null);
 
+  // ✅ CORREÇÃO: Removemos a trava do selectedModel daqui!
+  // Agora ele só altera o modelo automaticamente se a URL mudar.
   useEffect(() => {
-    if (matchedUrlModel && matchedUrlModel !== selectedModel) {
+    if (matchedUrlModel) {
       setSelectedModel(matchedUrlModel);
-      setSelectedSize('');
+      setSelectedSize(''); // Limpa o tamanho ao vir de um link externo com modelo predefinido
     }
-  }, [matchedUrlModel, selectedModel]);
+  }, [matchedUrlModel]);
 
   // 📏 CAPTAÇÃO DOS TAMANHOS DISPONÍVEIS PARA O MODELO ATIVO
   const availableSizes = useMemo(() => {
