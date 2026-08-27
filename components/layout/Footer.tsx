@@ -49,7 +49,7 @@ export default function Footer() {
             <h3 className="font-heading font-semibold text-base mb-2 text-[#C9A227]">Navegação</h3>
             <Link href="/quem-somos" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Quem Somos</Link>
             <Link href="/contato" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Atendimento</Link>
-            <Link href="/rastrear-pedido" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Rastrear Pedido</Link>
+            <Link href="/meus-pedidos" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Rastrear Pedido</Link>
             <Link href="/politica-de-privacidade" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Política de Privacidade</Link>
             <Link href="/trocas-e-devolucoes" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Trocas e Devoluções</Link>
           </div>
