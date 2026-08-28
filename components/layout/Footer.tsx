@@ -13,7 +13,7 @@ export default function Footer() {
         {/* Colunas Superiores */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
 
-          {/* Lema e Instagram (Substituiu os Departamentos) */}
+          {/* Lema e Instagram (Abre em nova aba) */}
           <div className="flex flex-col gap-4">
             <h3 className="font-heading font-semibold text-base mb-1 text-[#C9A227]">SambaVest</h3>
             <p className="text-sm text-white/70 italic leading-relaxed pr-4">
@@ -44,7 +44,7 @@ export default function Footer() {
             </a>
           </div>
 
-          {/* Navegação */}
+          {/* Navegação Interna (Mesma página) */}
           <div className="flex flex-col gap-3">
             <h3 className="font-heading font-semibold text-base mb-2 text-[#C9A227]">Navegação</h3>
             <Link href="/quem-somos" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Quem Somos</Link>
@@ -54,15 +54,24 @@ export default function Footer() {
             <Link href="/trocas-e-devolucoes" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">Trocas e Devoluções</Link>
           </div>
 
-          {/* Entre em contato */}
+          {/* Entre em contato (WhatsApp abre em nova aba) + Dados da Empresa */}
           <div className="flex flex-col gap-3">
             <h3 className="font-heading font-semibold text-base mb-2 text-[#C9A227]">Entre em contato</h3>
-            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">
+            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">
               {WHATSAPP_DISPLAY}
             </a>
             <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm text-white/70 hover:text-[#C9A227] transition-colors">
               {CONTACT_EMAIL}
             </a>
+
+            {/* CNPJ e Endereço alinhados na mesma coluna */}
+            <div className="mt-4 pt-4 border-t border-white/10 text-xs text-white/60 space-y-1">
+              <p className="font-medium text-white/80">SAMBAVEST COMERCIO LTDA</p>
+              <p>CNPJ: 54.923.089/0001-97</p>
+              <p className="leading-relaxed">
+                Avenida João Cabral de Mello Neto, 850, Bloco 2 — Barra da Tijuca, Rio de Janeiro - RJ | CEP: 22.775-057
+              </p>
+            </div>
           </div>
         </div>
 
@@ -70,7 +79,7 @@ export default function Footer() {
         <div className="w-full border-t border-white/10 my-8"></div>
 
         {/* Meios de Pagamento e Direitos Reservados */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4 flex-wrap">
             <span className="font-semibold text-sm mr-2 text-white/80">Meios de pagamento</span>
             <div className="flex gap-2 flex-wrap">
@@ -88,7 +97,7 @@ export default function Footer() {
             </div>
           </div>
 
-          <div className="text-xs text-white/50 text-center md:text-left">
+          <div className="text-xs text-white/50 text-center md:text-right">
             © {new Date().getFullYear()} Samba Vest. Todos os direitos reservados.
           </div>
         </div>
