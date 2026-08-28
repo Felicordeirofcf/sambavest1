@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useCartStore } from '../../../store/cartStore';
 import ShippingCalculator from '../../../components/product/ShippingCalculator';
 import { useSearchParams } from 'next/navigation';
@@ -10,7 +10,7 @@ export default function ProductClient({ product }: { product: any }) {
   const searchParams = useSearchParams();
   const modeloUrl = searchParams.get('modelo');
 
-  // 🖼️ Tipagem explícita para o TypeScript não reclamar no build do Vercel
+  // Tipagem explícita para o TypeScript do Vercel
   const fallbackAssets: string[] = [
     // 'URL_DA_SUA_ARTE_DE_MODELOS_E_MEDIDAS.jpg',
   ];
@@ -89,14 +89,6 @@ export default function ProductClient({ product }: { product: any }) {
   );
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [activeImage, setActiveImage] = useState(0);
-  const [dynamicVariantImage, setDynamicVariantImage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (matchedUrlModel) {
-      setSelectedModel(matchedUrlModel);
-      setSelectedSize('');
-    }
-  }, [matchedUrlModel]);
 
   const availableSizes = useMemo(() => {
     const sizesSet = new Set<string>();
@@ -137,40 +129,6 @@ export default function ProductClient({ product }: { product: any }) {
     }) || null;
   }, [variantsList, selectedModel, selectedSize, availableModels]);
 
-  useEffect(() => {
-    if (!selectedModel) return;
-
-    const varWithImage = variantsList.find((v: any) => {
-      const m = extractModelFromVariant(v);
-      const hasImg = Boolean(v.image || (v.images && v.images.length > 0));
-      return m.toLowerCase() === selectedModel.toLowerCase() && hasImg;
-    });
-
-    let targetImgUrl = '';
-    if (varWithImage) {
-      if (typeof varWithImage.image === 'string') {
-        targetImgUrl = varWithImage.image;
-      } else if (varWithImage.image?.src) {
-        targetImgUrl = varWithImage.image.src;
-      } else if (Array.isArray(varWithImage.images) && varWithImage.images[0]?.src) {
-        targetImgUrl = varWithImage.images[0].src;
-      }
-    }
-
-    if (targetImgUrl) {
-      const idxInGallery = gallery.findIndex((gUrl: string) => 
-        gUrl === targetImgUrl || gUrl.includes(targetImgUrl) || targetImgUrl.includes(gUrl)
-      );
-
-      if (idxInGallery !== -1) {
-        setActiveImage(idxInGallery);
-        setDynamicVariantImage(null);
-      } else {
-        setDynamicVariantImage(targetImgUrl);
-      }
-    }
-  }, [selectedModel, variantsList, gallery]);
-
   const baseProductPrice = Number(product?.price || 149.90);
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
   const precoPix = currentPrice * 0.90;
@@ -178,7 +136,7 @@ export default function ProductClient({ product }: { product: any }) {
   const handleAddToCart = () => {
     if (!matchedVariant) return;
 
-    const finalCartImage = dynamicVariantImage || gallery[activeImage] || (typeof matchedVariant?.image === 'object' ? matchedVariant.image?.src : matchedVariant?.image) || '';
+    const finalCartImage = gallery[activeImage] || (typeof matchedVariant?.image === 'object' ? matchedVariant.image?.src : matchedVariant?.image) || '';
 
     addItem({
       id: matchedVariant.id,
@@ -192,7 +150,7 @@ export default function ProductClient({ product }: { product: any }) {
     openCart();
   };
 
-  const displayedImage = dynamicVariantImage || gallery[activeImage] || '';
+  const displayedImage = gallery[activeImage] || '';
   
   const whatsappMessage = encodeURIComponent(`Olá! Tenho dúvida sobre o produto: ${product?.name} (${selectedModel ? selectedModel : 'Modelo padrão'})`);
   const whatsappUrl = `https://api.whatsapp.com/send/?phone=5521996959903&text=${whatsappMessage}&type=phone_number&app_absent=0`;
@@ -213,7 +171,7 @@ export default function ProductClient({ product }: { product: any }) {
                 <img
                   src={displayedImage}
                   alt={product?.name || 'Produto'}
-                  className="w-full h-full object-contain p-6 transition-all duration-500 ease-in-out"
+                  className="w-full h-full object-contain p-6 transition-all duration-300 ease-in-out"
                 />
               )}
             </div>
@@ -224,12 +182,9 @@ export default function ProductClient({ product }: { product: any }) {
                   <button
                     key={`${img}-${i}`}
                     type="button"
-                    onClick={() => {
-                      setActiveImage(i);
-                      setDynamicVariantImage(null);
-                    }}
-                    className={`relative h-20 w-16 shrink-0 border bg-white transition-all rounded overflow-hidden ${
-                      activeImage === i && !dynamicVariantImage ? 'border-[#0B1B34] ring-2 ring-[#0B1B34]/30' : 'border-gray-200 hover:border-gray-400'
+                    onClick={() => setActiveImage(i)}
+                    className={`relative h-20 w-16 shrink-0 border bg-white transition-all rounded overflow-hidden cursor-pointer ${
+                      activeImage === i ? 'border-[#0B1B34] ring-2 ring-[#0B1B34]/30 scale-105' : 'border-gray-200 hover:border-gray-400'
                     }`}
                     aria-label={`Ver imagem ${i + 1}`}
                   >
@@ -330,11 +285,8 @@ export default function ProductClient({ product }: { product: any }) {
                   <div className="mt-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        setActiveImage(sizeGuideIndex);
-                        setDynamicVariantImage(null);
-                      }}
-                      className="text-xs font-semibold uppercase tracking-wider text-[#0B1B34] underline underline-offset-4 hover:text-[#C9A227] transition-colors"
+                      onClick={() => setActiveImage(sizeGuideIndex)}
+                      className="text-xs font-semibold uppercase tracking-wider text-[#0B1B34] underline underline-offset-4 hover:text-[#C9A227] transition-colors cursor-pointer"
                     >
                       Ver guia de medidas
                     </button>
@@ -346,7 +298,7 @@ export default function ProductClient({ product }: { product: any }) {
             <button
               onClick={handleAddToCart}
               disabled={!matchedVariant}
-              className="w-full py-4 bg-[#C9A227] text-[#0B1B34] uppercase tracking-widest text-sm font-extrabold rounded-xl hover:bg-[#b08d1e] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 mb-3"
+              className="w-full py-4 bg-[#C9A227] text-[#0B1B34] uppercase tracking-widest text-sm font-extrabold rounded-xl hover:bg-[#b08d1e] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 mb-3 cursor-pointer"
             >
               <span>🛒</span> {matchedVariant ? 'Adicionar à Sacola' : 'Selecione as Opções'}
             </button>
