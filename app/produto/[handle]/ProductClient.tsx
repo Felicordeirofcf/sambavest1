@@ -173,7 +173,7 @@ export default function ProductClient({ product }: { product: any }) {
   const baseProductPrice = Number(product?.price || 149.90);
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
 
-  const temDescontoPix = product?.categories && product.categories.includes('desconto-pix');
+  // 💰 Desconto Pix aplicado nativamente para todas as camisas
   const precoPix = currentPrice * 0.90;
 
   const handleAddToCart = () => {
@@ -256,11 +256,10 @@ export default function ProductClient({ product }: { product: any }) {
               )}
             </div>
 
-            {temDescontoPix && (
-              <p className="mt-1 text-sm font-bold text-[#2ECC71]">
-                ou R$ {precoPix.toFixed(2).replace('.', ',')} via PIX (10% OFF)
-              </p>
-            )}
+            {/* 💚 Aviso de Desconto Pix visível para todas as camisas */}
+            <p className="mt-1 text-sm font-bold text-[#2ECC71]">
+              ou R$ {precoPix.toFixed(2).replace('.', ',')} via PIX (10% OFF)
+            </p>
 
             <p className="mt-1 text-xs text-gray-500">+ frete (calcule pelo seu CEP abaixo)</p>
           </div>

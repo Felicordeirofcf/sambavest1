@@ -63,10 +63,9 @@ export default function ProductCard({ product }: { product: any }) {
   const [isHovered, setIsHovered] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // 💰 Cálculo do Desconto Pix (10% OFF)
+  // 💰 Cálculo universal do Desconto Pix (10% OFF)
   const productPrice = Number(product.price || 0);
   const precoPix = productPrice * 0.90;
-  const temDescontoPix = product?.categories && product.categories.includes('desconto-pix');
 
   return (
     <div 
@@ -186,12 +185,10 @@ export default function ProductCard({ product }: { product: any }) {
             )}
           </div>
 
-          {/* 💚 Aviso de Desconto Pix na Vitrine */}
-          {temDescontoPix && (
-            <span className="text-[11px] font-bold text-[#2ECC71]">
-              ou R$ {precoPix.toFixed(2).replace('.', ',')} via PIX (10% OFF)
-            </span>
-          )}
+          {/* 💚 Aviso de Desconto Pix visível em todos os produtos da vitrine */}
+          <span className="text-[11px] font-bold text-[#2ECC71]">
+            ou R$ {precoPix.toFixed(2).replace('.', ',')} via PIX (10% OFF)
+          </span>
         </div>
       </Link>
     </div>
