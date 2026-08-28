@@ -24,7 +24,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.sambavest.com.br'),
+  metadataBase: new URL('https://sambavest.com'),
   title: {
     default: 'Samba Vest | Camisas Oficiais de Enredo',
     template: '%s | Samba Vest',
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
-    url: 'https://www.sambavest.com.br', 
+    url: 'https://sambavest.com', 
     siteName: 'Samba Vest',
     title: 'Samba Vest | Camisas Oficiais de Enredo',
     description: 'Vista a emoção do carnaval. Camisas oficiais de enredo das escolas campeãs e coleção exclusiva Carnaval 2027, do P ao EXG.',
