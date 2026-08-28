@@ -10,9 +10,8 @@ export default function ProductClient({ product }: { product: any }) {
   const searchParams = useSearchParams();
   const modeloUrl = searchParams.get('modelo');
 
-  // 🖼️ IMAGENS PADRÃO (Opcional): Se quiser que apareça uma tabela de medidas e um infográfico de modelos 
-  // automático em todos os produtos, basta colar as URLs das artes aqui embaixo:
-  const fallbackAssets = [
+  // 🖼️ Tipagem explícita para o TypeScript não reclamar no build do Vercel
+  const fallbackAssets: string[] = [
     // 'URL_DA_SUA_ARTE_DE_MODELOS_E_MEDIDAS.jpg',
   ];
 
@@ -195,7 +194,6 @@ export default function ProductClient({ product }: { product: any }) {
 
   const displayedImage = dynamicVariantImage || gallery[activeImage] || '';
   
-  // 💬 Link oficial do WhatsApp abrindo em nova aba com mensagem customizada
   const whatsappMessage = encodeURIComponent(`Olá! Tenho dúvida sobre o produto: ${product?.name} (${selectedModel ? selectedModel : 'Modelo padrão'})`);
   const whatsappUrl = `https://api.whatsapp.com/send/?phone=5521996959903&text=${whatsappMessage}&type=phone_number&app_absent=0`;
 
@@ -204,7 +202,6 @@ export default function ProductClient({ product }: { product: any }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
         <div className="flex flex-col md:flex-row gap-10 md:gap-16">
           
-          {/* Lado Esquerdo: Imagem Dinâmica */}
           <div className="w-full md:w-1/2">
             <div className="bg-white aspect-[3/4] relative rounded-lg overflow-hidden border border-gray-200 shadow-sm">
               {product?.badge && (
@@ -243,7 +240,6 @@ export default function ProductClient({ product }: { product: any }) {
             )}
           </div>
 
-          {/* Lado Direito: Informações e Seletores */}
           <div className="w-full md:w-1/2 flex flex-col justify-center">
             <h1 className="font-heading text-2xl md:text-3xl font-extrabold uppercase tracking-widest text-[#0B1B34] mb-2">
               {product?.name}
@@ -261,7 +257,6 @@ export default function ProductClient({ product }: { product: any }) {
                 )}
               </div>
 
-              {/* 💚 Pílula Pix Sofisticada */}
               <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 shadow-2xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span className="text-xs font-bold tracking-wide text-emerald-700">
@@ -276,7 +271,6 @@ export default function ProductClient({ product }: { product: any }) {
               <div className="text-sm text-gray-600 mb-6 font-light" dangerouslySetInnerHTML={{ __html: product.short_description }} />
             )}
 
-            {/* 👕 SELETOR DE MODELOS */}
             {availableModels.length > 0 && (
               <div className="mb-5">
                 <label className="block text-xs font-bold uppercase tracking-widest text-[#0B1B34] mb-2">
@@ -307,7 +301,6 @@ export default function ProductClient({ product }: { product: any }) {
               </div>
             )}
 
-            {/* 📏 SELETOR DE TAMANHOS */}
             {availableSizes.length > 0 && (
               <div className="mb-6">
                 <label className="block text-xs font-bold uppercase tracking-widest text-[#0B1B34] mb-2">
@@ -350,7 +343,6 @@ export default function ProductClient({ product }: { product: any }) {
               </div>
             )}
 
-            {/* 🛒 Botão de Adicionar à Sacola */}
             <button
               onClick={handleAddToCart}
               disabled={!matchedVariant}
@@ -359,7 +351,6 @@ export default function ProductClient({ product }: { product: any }) {
               <span>🛒</span> {matchedVariant ? 'Adicionar à Sacola' : 'Selecione as Opções'}
             </button>
 
-            {/* 💬 Botão do WhatsApp (Abre em Nova Aba com target="_blank" sem sair da loja) */}
             <a
               href={whatsappUrl}
               target="_blank"
@@ -369,7 +360,6 @@ export default function ProductClient({ product }: { product: any }) {
               <span className="text-emerald-400 text-sm font-black">💬</span> Tirar dúvidas no WhatsApp
             </a>
 
-            {/* Selos de Confiança */}
             <div className="grid grid-cols-3 gap-2 py-4 border-t border-b border-gray-300 text-center text-xs text-gray-700 mb-6">
               <div className="flex flex-col items-center gap-1">
                 <span className="text-lg">🔒</span>
@@ -402,7 +392,6 @@ export default function ProductClient({ product }: { product: any }) {
 
         </div>
 
-        {/* 🌟 Seção Informativa Inferior */}
         <div className="mt-20 pt-12 border-t border-gray-300">
           <h2 className="font-heading text-xl font-extrabold uppercase tracking-widest text-[#0B1B34] mb-8 text-center">
             Por que vestir a sua paixão?
@@ -425,7 +414,6 @@ export default function ProductClient({ product }: { product: any }) {
             </div>
           </div>
 
-          {/* Descrição Completa do Produto do WordPress */}
           {product?.description && (
             <div className="mt-10 pt-10 border-t border-gray-300">
               <div 
