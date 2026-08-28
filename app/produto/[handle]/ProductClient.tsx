@@ -256,12 +256,15 @@ export default function ProductClient({ product }: { product: any }) {
               )}
             </div>
 
-            {/* 💚 Aviso de Desconto Pix visível para todas as camisas */}
-            <p className="mt-1 text-sm font-bold text-[#2ECC71]">
-              ou R$ {precoPix.toFixed(2).replace('.', ',')} via PIX (10% OFF)
-            </p>
+            {/* 💚 Pílula Pix Sofisticada na Página do Produto */}
+            <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-xs font-bold tracking-wide text-emerald-700">
+                R$ {precoPix.toFixed(2).replace('.', ',')} <span className="font-extrabold text-emerald-800">no Pix</span> <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-1.5 py-0.2 rounded font-black">10% OFF</span>
+              </span>
+            </div>
 
-            <p className="mt-1 text-xs text-gray-500">+ frete (calcule pelo seu CEP abaixo)</p>
+            <p className="mt-2 text-xs text-gray-500">+ frete (calcule pelo seu CEP abaixo)</p>
           </div>
 
           {product?.short_description && (
