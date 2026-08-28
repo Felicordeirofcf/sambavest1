@@ -94,9 +94,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
-        {/* 🚀 Facebook Pixel Code */}
+        {/* <!-- Meta Pixel Code --> */}
         <Script
-          id="facebook-pixel"
+          id="meta-pixel"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
@@ -113,17 +113,15 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* <!-- End Meta Pixel Code --> */}
       </head>
       <body
         className={`${inter.variable} ${poppins.variable} ${inter.className} bg-[#FAF7EF] text-[#1E2233] antialiased`}
       >
         <noscript>
-          <img 
-            height="1" 
-            width="1" 
-            style={{ display: 'none' }}
-            src="https://www.facebook.com/tr?id=929281782986289&ev=PageView&noscript=1"
-            alt=""
+          <img height="1" width="1" style={{display:'none'}}
+          src="https://www.facebook.com/tr?id=929281782986289&ev=PageView&noscript=1"
+          alt=""
           />
         </noscript>
 
