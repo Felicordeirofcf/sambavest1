@@ -15,8 +15,10 @@ export default function WhatsAppButton() {
       aria-label="Falar no WhatsApp"
       className="group fixed bottom-5 right-5 z-50 flex items-center"
     >
-      <span className="mr-3 hidden rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-[#0B1B34] shadow-lg backdrop-blur md:inline-flex">
-        Fale conosco
+      {/* Balão com o texto mais chamativo e amigável */}
+      <span className="mr-3 hidden rounded-xl bg-white/95 px-4 py-2.5 text-xs font-bold text-[#0B1B34] shadow-xl backdrop-blur md:inline-flex items-center gap-2 border border-gray-100 transition-transform duration-300 group-hover:-translate-x-1">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        Tem alguma dúvida sobre as camisas? Chame a gente!
       </span>
 
       <span className="absolute inset-0 rounded-full bg-green-500 blur-xl opacity-30 transition-opacity duration-300 group-hover:opacity-50" />
