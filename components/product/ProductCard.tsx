@@ -63,6 +63,11 @@ export default function ProductCard({ product }: { product: any }) {
   const [isHovered, setIsHovered] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  // 💰 Cálculo do Desconto Pix (10% OFF)
+  const productPrice = Number(product.price || 0);
+  const precoPix = productPrice * 0.90;
+  const temDescontoPix = product?.categories && product.categories.includes('desconto-pix');
+
   return (
     <div 
       className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_2px_15px_rgba(0,0,0,0.05)] transition-all duration-500 hover:border-[#C9A227] hover:shadow-2xl"
@@ -169,13 +174,22 @@ export default function ProductCard({ product }: { product: any }) {
           {product.name}
         </h3>
 
-        <div className="mt-3 flex items-center gap-3">
-          <span className="text-sm font-black text-[#1E2233] md:text-base">
-            R$ {Number(product.price || 0).toFixed(2).replace('.', ',')}
-          </span>
-          {product.regular_price && Number(product.regular_price) > Number(product.price) && (
-            <span className="text-[11px] text-gray-400 line-through md:text-xs">
-              R$ {Number(product.regular_price).toFixed(2).replace('.', ',')}
+        <div className="mt-3 flex flex-col items-center gap-1">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-black text-[#1E2233] md:text-base">
+              R$ {productPrice.toFixed(2).replace('.', ',')}
+            </span>
+            {product.regular_price && Number(product.regular_price) > productPrice && (
+              <span className="text-[11px] text-gray-400 line-through md:text-xs">
+                R$ {Number(product.regular_price).toFixed(2).replace('.', ',')}
+              </span>
+            )}
+          </div>
+
+          {/* 💚 Aviso de Desconto Pix na Vitrine */}
+          {temDescontoPix && (
+            <span className="text-[11px] font-bold text-[#2ECC71]">
+              ou R$ {precoPix.toFixed(2).replace('.', ',')} via PIX (10% OFF)
             </span>
           )}
         </div>
