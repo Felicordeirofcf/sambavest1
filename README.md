@@ -1,76 +1,55 @@
-# Samba Vest
+<div align="center">
 
-Loja da Samba Vest — camisas oficiais de enredo das escolas campeãs do carnaval. Projeto em [Next.js](https://nextjs.org) (App Router) + Tailwind CSS v4.
+# 🪩 Samba Vest — E-commerce Oficial
 
-## Como rodar localmente
+> *"Onde o amor pelo samba vira camisa."*
 
-Pré-requisito: [Node.js](https://nodejs.org) 20 ou superior instalado.
+[![Next.js](https://img.shields.io/badge/Next.js-14+-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-18+-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.8+-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Meta Pixel](https://img.shields.io/badge/Meta_Pixel-Active-1877F2?style=for-the-badge&logo=meta&logoColor=white)](https://developers.facebook.com/)
 
-```bash
-npm install
-npm run dev
-```
+Plataforma de e-commerce moderna e de alta performance desenvolvida para a **Samba Vest**, especializada em camisas oficiais e exclusivas de enredo das escolas de samba.
 
-Abra [http://localhost:3000](http://localhost:3000) no navegador.
+</div>
 
-## Configuração (opcional)
+---
 
-O site já funciona "out of the box", sem nenhuma variável de ambiente configurada. Se quiser
-personalizar o número de WhatsApp usado no botão flutuante, no carrinho, no checkout e no
-rodapé, copie `.env.example` para `.env.local` e preencha:
+## ✨ Sobre o Projeto
 
-```bash
-cp .env.example .env.local
-```
+A **Samba Vest** nasceu da paixão pelo carnaval e pela cultura das escolas de samba do Rio de Janeiro. O projeto foi arquitetado para oferecer uma experiência de compra fluida, elegante e altamente otimizada para conversão de vendas, contando com seletores dinâmicos de modelos e tamanhos, integração completa com meios de pagamento, cálculo automatizado de frete e rastreamento de campanhas via Meta Pixel.
 
-```
-NEXT_PUBLIC_WHATSAPP_NUMBER=5521999999999
-NEXT_PUBLIC_WHATSAPP_DISPLAY="(21) 99999-9999"
-NEXT_PUBLIC_CONTACT_EMAIL=contato@sambavest.com.br
-```
+---
 
-## Como editar os produtos da vitrine
+## 🚀 Principais Funcionalidades
 
-Os produtos mostrados na Home e nas páginas de categoria vêm de `lib/products.ts`. É um
-catálogo estático: para trocar nome, preço, imagem, descrição ou tamanhos de qualquer camisa,
-edite os objetos desse arquivo — nenhum outro componente precisa mudar.
+* **Arquitetura Moderna (App Router):** Desenvolvido em Next.js para máxima velocidade de carregamento e excelente otimização para motores de busca (SEO).
+* **Seletor de Variações Inteligente:** Navegação fluida entre diferentes modelos (*Unissex, Regata, Baby Look, Vestido*) e grades de tamanhos (*P ao EXG*).
+* **Galeria Interativa:** Visualização detalhada de fotos do produto com sincronização dinâmica e guia de medidas acessível.
+* **Conversão e Marketing:** Meta Pixel integrado nativamente para rastreamento de conversões (`PageView`) em todas as páginas da loja.
+* **Atendimento Humanizado:** Botão flutuante de WhatsApp otimizado com mensagens customizadas por produto para tirar dúvidas de forma ágil.
+* **Cálculo de Frete e Pix:** Ferramentas integradas de frete e destaque visual para pagamentos via Pix com desconto.
 
-As imagens dos produtos ficam em `public/products/`. Para adicionar uma nova camisa, coloque
-a imagem nessa pasta e aponte o campo `image` do produto para ela (ex: `/products/nome-do-arquivo.webp`).
+---
 
-As categorias do menu (Lançamentos, Camisas de Enredo, Campeãs do Carnaval, Kits Promocionais,
-Tamanho Grande, Acessórios) também estão em `lib/products.ts`, no array `categories`.
+## 🛠️ Tecnologias Utilizadas
 
-## Checkout
+* **Front-end:** React, Next.js (App Router), TypeScript
+* **Estilização:** Tailwind CSS
+* **Gerenciamento de Estado:** Zustand (Carrinho de compras)
+* **Marketing & Analytics:** Meta Pixel (Facebook Ads)
+* **Hospedagem & Deploy:** Vercel
 
-Como a loja ainda não está conectada a um checkout de pagamento, o botão "Finalizar Compra"
-(no carrinho e na página `/checkout`) monta uma mensagem com o resumo do pedido e abre o
-WhatsApp configurado em `NEXT_PUBLIC_WHATSAPP_NUMBER`. Essa lógica está em `lib/whatsapp.ts`.
+---
 
-## Integração futura com Nuvemshop (opcional)
+## 📂 Estrutura do Repositório
 
-Se no futuro você conectar uma loja real na Nuvemshop e quiser puxar produtos, estoque e
-checkout de lá em vez do catálogo estático, o arquivo `lib/nuvemshop.ts` já tem a integração
-pronta (busca de produtos e criação de checkout via API). Basta preencher
-`NEXT_PUBLIC_NUVEMSHOP_STORE_ID` e `NUVEMSHOP_ACCESS_TOKEN` no `.env.local` e trocar, nas
-páginas (`app/page.tsx`, `app/categoria/[slug]/page.tsx`, `app/produto/[handle]/page.tsx`),
-as chamadas a `lib/products.ts` pelas chamadas equivalentes de `lib/nuvemshop.ts`.
-
-## Logo e identidade visual
-
-O header usa a logo oficial da marca (`public/logo-wordmark.png`, extraída da sua arte
-original com o fundo removido). Os ícones de aba/atalho (`public/icon-mark.png`,
-`public/apple-touch-icon.png`, `public/favicon.ico`) e a imagem de compartilhamento
-(`public/og-image.png`) ainda usam um selo genérico gerado para o projeto — se quiser, é só
-substituir esses arquivos por versões quadradas da sua logo oficial, com o mesmo nome, que
-nenhum código precisa mudar.
-
-As cores da marca estão centralizadas como valores em Tailwind (`#0B1B34` navy, `#C9A227`
-dourado, `#FAF7EF` creme) espalhados pelos componentes, e também disponíveis como variáveis
-CSS em `app/globals.css` (`--brand-navy`, `--brand-gold`, `--brand-cream`, `--brand-red`) para
-quem preferir usá-las diretamente.
-
-## Aprenda mais sobre o Next.js
-
-- [Documentação do Next.js](https://nextjs.org/docs)
-- [Learn Next.js](https://nextjs.org/learn)
+```text
+├── app/                  # Rotas e páginas da aplicação (Next.js App Router)
+│   ├── layout.tsx        # Layout global, SEO, metadados e Meta Pixel
+│   └── produto/          # Páginas dinâmicas de produtos e variantes
+├── components/           # Componentes reutilizáveis da interface
+│   ├── layout/           # Header, Footer, Minicart e WhatsAppButton
+│   └── product/          # Calculadora de frete e seções de produto
+├── store/                # Gerenciamento de estado global (Zustand)
+└── lib/                  # Utilitários, regras de negócio e constantes
