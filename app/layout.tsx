@@ -16,6 +16,9 @@ const poppins = Poppins({
   variable: '--font-poppins',
 });
 
+// Pega o ID da variável de ambiente ou usa o do WooCommerce como fallback seguro
+const PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID || '2779685332183949';
+
 export const viewport: Viewport = {
   themeColor: '#0B1B34',
   width: 'device-width',
@@ -108,7 +111,7 @@ export default function RootLayout({
               t.src=v;s=b.getElementsByTagName(e)[0];
               s.parentNode.insertBefore(t,s)}(window, document,'script',
               'https://connect.facebook.net/en_US/fbevents.js');
-              fbq('init', '2779685332183949');
+              fbq('init', '${PIXEL_ID}');
               fbq('track', 'PageView');
             `,
           }}
@@ -120,7 +123,7 @@ export default function RootLayout({
       >
         <noscript>
           <img height="1" width="1" style={{display:'none'}}
-          src="https://www.facebook.com/tr?id=2779685332183949&ev=PageView&noscript=1"
+          src={`https://www.facebook.com/tr?id=${PIXEL_ID}&ev=PageView&noscript=1`}
           alt=""
           />
         </noscript>
