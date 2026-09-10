@@ -116,7 +116,7 @@ export default function RootLayout({
             `,
           }}
         />
-        <!-- End Meta Pixel Code -->
+        {/* <!-- End Meta Pixel Code --> */}
       </head>
       <body
         className={`${inter.variable} ${poppins.variable} ${inter.className} bg-[#FAF7EF] text-[#1E2233] antialiased`}
