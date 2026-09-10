@@ -13,10 +13,10 @@ export default function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Falar no WhatsApp"
-      className="group fixed bottom-5 right-5 z-50 flex items-center"
+      className="group fixed bottom-5 left-5 z-50 flex items-center flex-row-reverse md:flex-row"
     >
-      {/* Balão com o texto mais chamativo e amigável */}
-      <span className="mr-3 hidden rounded-xl bg-white/95 px-4 py-2.5 text-xs font-bold text-[#0B1B34] shadow-xl backdrop-blur md:inline-flex items-center gap-2 border border-gray-100 transition-transform duration-300 group-hover:-translate-x-1">
+      {/* Balão com o texto mais chamativo e amigável (ajustado para a direita do ícone no canto esquerdo) */}
+      <span className="ml-3 hidden rounded-xl bg-white/95 px-4 py-2.5 text-xs font-bold text-[#0B1B34] shadow-xl backdrop-blur md:inline-flex items-center gap-2 border border-gray-100 transition-transform duration-300 group-hover:translate-x-1">
         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
         Tem alguma dúvida sobre as camisas? Chame a gente!
       </span>
