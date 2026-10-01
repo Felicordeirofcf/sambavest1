@@ -101,7 +101,7 @@ export default function ProductClient({ product }: { product: any }) {
       if (sz) sizesSet.add(sz);
     });
 
-    const ordemTamanhos = ['pp', 'p', 'm', 'g', 'gg', 'xg', 'exg', 'g1', 'g2', 'g3', 'único'];
+    const ordemTamanhos = ['pp', 'p', 'm', 'g', 'gg', 'xg', 'exg', 'xgg', 'g1', 'g2', 'g3', 'único'];
     return Array.from(sizesSet).sort((a, b) => {
       const idxA = ordemTamanhos.indexOf(a.toLowerCase());
       const idxB = ordemTamanhos.indexOf(b.toLowerCase());
@@ -136,12 +136,22 @@ export default function ProductClient({ product }: { product: any }) {
   const handleAddToCart = () => {
     if (!matchedVariant) return;
 
+    // TRAVA DE SEGURANÇA: Garante que o modelo da variação bate com o modelo selecionado na tela
+    const variantModelCheck = extractModelFromVariant(matchedVariant);
+    if (variantModelCheck && variantModelCheck.toLowerCase() !== selectedModel.toLowerCase()) {
+      alert("Erro de sincronização de modelo. Por favor, selecione o tamanho novamente.");
+      return;
+    }
+
     const finalCartImage = gallery[activeImage] || (typeof matchedVariant?.image === 'object' ? matchedVariant.image?.src : matchedVariant?.image) || '';
+
+    // Aplica o desconto de 10% do Pix diretamente no preço enviado para a sacola
+    const priceWithPixDiscount = currentPrice * 0.90;
 
     addItem({
       id: matchedVariant.id,
-      name: `${product.name} ${selectedModel ? `(${selectedModel} - ${selectedSize})` : `(${selectedSize})`}`,
-      price: currentPrice,
+      name: `${product.name} ${selectedModel ? `(${selectedModel} -${selectedSize})` : `(${selectedSize})`}`,
+      price: priceWithPixDiscount,
       image: finalCartImage,
       size: selectedModel ? `${selectedModel} / ${selectedSize}` : selectedSize,
       quantity: 1,
@@ -334,7 +344,7 @@ export default function ProductClient({ product }: { product: any }) {
                 productContext={matchedVariant ? {
                   id: matchedVariant.id,
                   name: `${product?.name} (${selectedModel} - ${selectedSize})`,
-                  price: currentPrice,
+                  price: currentPrice * 0.90,
                   image: displayedImage,
                   size: `${selectedModel} / ${selectedSize}`
                 } : undefined}
