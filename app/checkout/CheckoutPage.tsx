@@ -10,10 +10,20 @@ export default function CheckoutPage() {
   const { items, removeItem, clearCart } = useCartStore();
   const [isLoading, setIsLoading] = useState(false);
   const [shippingQuote, setShippingQuote] = useState<ShippingQuote | null>(null);
+  
+  // Estado para controlar a forma de pagamento selecionada
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'credit_card'>('pix');
 
+  // Cálculos financeiros
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const frete = shippingQuote ? shippingQuote.price : 0;
-  const total = subtotal + frete;
+  
+  // Calcula o desconto de 10% apenas no valor dos produtos se o Pix estiver selecionado
+  const isPix = paymentMethod === 'pix';
+  const discount = isPix ? subtotal * 0.10 : 0;
+  
+  // Total final já com desconto aplicado (se houver) e somando o frete
+  const total = subtotal - discount + frete;
 
   const handleFinalizarPedidoBling = async () => {
     if (items.length === 0) {
@@ -30,13 +40,17 @@ export default function CheckoutPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          // Envia o preço unitário já com o desconto se for Pix, para bater com o valor cobrado
           items: items.map((item) => ({
             id: item.id,
             quantity: item.quantity,
-            price: item.price,
+            price: isPix ? item.price * 0.90 : item.price,
           })),
-          // Se quiser coletar dados do cliente em um formulário depois, pode passar aqui.
-          // Por enquanto, enviamos dados padrão para o Bling registrar o pedido.
+          paymentMethod,
+          shippingMethod: shippingQuote?.name || 'Não selecionado',
+          frete,
+          discount,
+          total,
           cliente: {
             nome: 'Cliente E-commerce Samba Vest',
             email: 'contato@sambavest.com',
@@ -100,7 +114,9 @@ export default function CheckoutPage() {
                       <p className="text-xs text-gray-500 mt-1">Tamanho: {item.size}</p>
                       <p className="text-xs text-gray-500 italic">Qtd: {item.quantity}</p>
                     </div>
-                    <p className="text-sm font-bold text-[#1E2233]">R$ {item.price.toFixed(2).replace('.', ',')}</p>
+                    <p className="text-sm font-bold text-[#1E2233]">
+                      R$ {item.price.toFixed(2).replace('.', ',')}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -110,6 +126,42 @@ export default function CheckoutPage() {
           {/* Lado Direito: Resumo e Pagamento */}
           <div className="w-full lg:w-[400px] space-y-6">
             <div className="bg-white p-6 shadow-sm rounded-sm sticky top-24">
+              
+              {/* Seção de Seleção de Pagamento */}
+              <div className="mb-6 pb-6 border-b border-gray-100">
+                <h3 className="text-sm font-bold uppercase tracking-widest mb-4 text-[#0B1B34]">Forma de Pagamento</h3>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setPaymentMethod('pix')}
+                    className={`flex-1 py-3 px-2 border rounded-md text-xs font-bold uppercase tracking-wider flex flex-col items-center justify-center gap-1 transition-all ${
+                      isPix 
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' 
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      PIX
+                    </div>
+                    <span className="text-[9px] font-black bg-emerald-200/50 px-1.5 py-0.5 rounded text-emerald-800">10% OFF</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setPaymentMethod('credit_card')}
+                    className={`flex-1 py-3 px-2 border rounded-md text-xs font-bold uppercase tracking-wider flex flex-col items-center justify-center gap-1 transition-all ${
+                      !isPix 
+                        ? 'border-[#0B1B34] bg-[#0B1B34] text-[#C9A227] shadow-sm' 
+                        : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      💳 Cartão
+                    </div>
+                    <span className="text-[9px] font-medium opacity-70">Até 12x</span>
+                  </button>
+                </div>
+              </div>
+
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">Resumo do Pedido</h3>
 
               <div className="space-y-4 text-sm mb-6">
@@ -117,6 +169,14 @@ export default function CheckoutPage() {
                   <span>Subtotal</span>
                   <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
                 </div>
+                
+                {isPix && (
+                  <div className="flex justify-between text-emerald-600 font-bold">
+                    <span>Desconto Pix (10%)</span>
+                    <span>- R$ {discount.toFixed(2).replace('.', ',')}</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-gray-600">
                   <span>Frete</span>
                   <span>
@@ -127,6 +187,7 @@ export default function CheckoutPage() {
                       : 'Calcule abaixo'}
                   </span>
                 </div>
+                
                 <div className="flex justify-between text-lg font-bold text-[#1E2233] pt-4 border-t">
                   <span>Total</span>
                   <span>R$ {total.toFixed(2).replace('.', ',')}</span>

@@ -145,13 +145,12 @@ export default function ProductClient({ product }: { product: any }) {
 
     const finalCartImage = gallery[activeImage] || (typeof matchedVariant?.image === 'object' ? matchedVariant.image?.src : matchedVariant?.image) || '';
 
-    // Aplica o desconto de 10% do Pix diretamente no preço enviado para a sacola
-    const priceWithPixDiscount = currentPrice * 0.90;
-
+    // CORREÇÃO: Envia SEMPRE o preço base (cheio) para a sacola.
+    // O desconto do Pix será calculado apenas na tela de checkout se a forma de pagamento for Pix.
     addItem({
       id: matchedVariant.id,
       name: `${product.name} ${selectedModel ? `(${selectedModel} -${selectedSize})` : `(${selectedSize})`}`,
-      price: priceWithPixDiscount,
+      price: currentPrice, 
       image: finalCartImage,
       size: selectedModel ? `${selectedModel} / ${selectedSize}` : selectedSize,
       quantity: 1,
