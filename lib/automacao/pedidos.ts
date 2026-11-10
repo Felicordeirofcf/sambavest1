@@ -20,6 +20,7 @@ export const M = {
   metaCompra: '_sv_meta_compra',
   blingPedido: '_sv_bling_pedido_id',
   blingNfe: '_sv_bling_nfe_id',
+  nfeEnviada: '_sv_bling_nfe_enviada',
   nfeChave: '_sv_nfe_chave',
   meEnvio: '_sv_melhorenvio_envio_id',
   meEtiqueta: '_sv_melhorenvio_etiqueta',
@@ -111,28 +112,46 @@ export async function processarPedido(id: number, opcoes: { rastreioMelhorEnvio?
         await passo('bling pedido', async () => {
           const r = await bling.criarPedidoVenda(pedido);
           await salvarNoPedido(pedido, { [M.blingPedido]: r.id });
-          await adicionarNota(pedido, `Pedido de venda criado no Bling (ID ${r.id}${r.numero ? `, nº ${r.numero}` : ''}).`);
+          const avisos = r.avisos.length ? ` Atenção: ${r.avisos.join('; ')}.` : '';
+          await adicionarNota(
+            pedido,
+            `Pedido de venda ${r.jaExistia ? 'encontrado' : 'criado'} no Bling (ID ${r.id}${r.numero ? `, nº ${r.numero}` : ''}).${avisos}`
+          );
           return String(r.id);
         });
       }
 
-      // 4) Bling: NF-e
+      // 4) Bling: NF-e. Gerar e enviar são passos separados e o ID da nota é gravado antes
+      //    do envio, para que uma falha no envio nunca gere uma segunda nota.
       const idPedidoBling = Number(meta(pedido, M.blingPedido));
       if (integracoes.bling() && config.bling.emitirNfe && idPedidoBling && !meta(pedido, M.blingNfe)) {
-        await passo('nfe emitir', async () => {
-          const idNota = await bling.emitirNfe(idPedidoBling);
+        await passo('nfe gerar', async () => {
+          const idNota = await bling.gerarNfe(idPedidoBling);
           await salvarNoPedido(pedido, { [M.blingNfe]: idNota });
-          await adicionarNota(pedido, `NF-e gerada e enviada à SEFAZ pelo Bling (ID ${idNota}).`);
+          await adicionarNota(pedido, `NF-e gerada no Bling a partir do pedido de venda (ID ${idNota}).`);
           return String(idNota);
         });
       }
       const idNota = Number(meta(pedido, M.blingNfe));
       if (integracoes.bling() && idNota && !meta(pedido, M.nfeChave)) {
-        await passo('nfe chave', async () => {
-          const chave = await bling.chaveNfe(idNota);
-          if (!chave) return;
-          await salvarNoPedido(pedido, { [M.nfeChave]: chave });
-          return chave;
+        await passo('nfe', async () => {
+          let nota = await bling.consultarNfe(idNota);
+          if (nota.situacao === 1 && !meta(pedido, M.nfeEnviada)) {
+            await bling.enviarNfe(idNota);
+            await salvarNoPedido(pedido, { [M.nfeEnviada]: new Date().toISOString() });
+            nota = await bling.consultarNfe(idNota);
+          }
+          if (nota.autorizada && nota.chaveAcesso) {
+            await salvarNoPedido(pedido, { [M.nfeChave]: nota.chaveAcesso });
+            await adicionarNota(pedido, `NF-e${nota.numero ? ` nº ${nota.numero}` : ''} autorizada. Chave: ${nota.chaveAcesso}`);
+            return nota.chaveAcesso;
+          }
+          if (nota.comProblema) {
+            throw new Error(
+              `NF-e ${idNota} está "${nota.descricao}" no Bling. Corrija os dados e reenvie pelo Bling; a automação pega a chave quando for autorizada.`
+            );
+          }
+          return `NF-e ${nota.descricao.toLowerCase()}`;
         });
       }
 
