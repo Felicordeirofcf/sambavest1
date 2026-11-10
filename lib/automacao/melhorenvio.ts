@@ -1,4 +1,4 @@
-// Integração com o Melhor Envio: cotação, envio no carrinho, compra e geração da etiqueta,
+// Integração com o Melhor Envio (a cotação fica em lib/frete.ts): pacote, envio no carrinho, compra e geração da etiqueta,
 // rastreio e webhooks.
 //
 // Os payloads seguem a referência da API v2 (docs.melhorenvio.com.br) e o plugin oficial do
@@ -57,47 +57,6 @@ export function pacote(pecas: number) {
     length: caixa.comprimento,
     weight: Number((qtd * pesoPorPecaKg + pesoCaixaKg).toFixed(3)),
   };
-}
-
-// ---------------- Cotação ----------------
-
-export type Cotacao = {
-  id: number;
-  name: string;
-  price: number;
-  delivery_time: number;
-  company_picture?: string;
-};
-
-/** Cota o frete para o CEP. Usa a mesma caixa/peso da etiqueta. */
-export async function cotar(cepDestino: string, pecas: number, valorProdutos: number): Promise<Cotacao[]> {
-  const origem = (config.melhorEnvio.remetente.cep || '').replace(/\D/g, '');
-  if (!origem) throw new Error('CEP_ORIGEM não configurado.');
-  const p = pacote(pecas);
-  const servicos = config.melhorEnvio.servicos;
-
-  const r = await me<any[]>('/me/shipment/calculate', {
-    method: 'POST',
-    body: {
-      from: { postal_code: origem },
-      to: { postal_code: cepDestino.replace(/\D/g, '') },
-      // Um único pacote com todas as peças (é o que vai para a etiqueta).
-      package: p,
-      options: { insurance_value: Number(valorProdutos.toFixed(2)), receipt: false, own_hand: false },
-      ...(servicos.length ? { services: servicos.join(',') } : {}),
-    },
-  });
-
-  return (Array.isArray(r) ? r : [])
-    .filter((c) => !c.error && c.price)
-    .map((c) => ({
-      id: Number(c.id),
-      name: `${c.company?.name} - ${c.name}`,
-      price: Number(c.price),
-      delivery_time: Number(c.delivery_time),
-      company_picture: c.company?.picture,
-    }))
-    .sort((a, b) => a.price - b.price);
 }
 
 // ---------------- Envio (carrinho) ----------------

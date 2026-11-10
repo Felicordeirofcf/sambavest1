@@ -52,6 +52,28 @@ e faça um novo deploy.
    Actions → Automação da loja → Run workflow. O `vercel.json` ainda roda tudo uma vez por dia como
    reserva.
 
+### Conferir a Base
+
+- **Gerar o CRON_SECRET**: no terminal, `openssl rand -hex 32` (ou um gerador de senhas com 40+
+  caracteres, só letras e números). Use exatamente o mesmo valor na Vercel e no GitHub.
+- **Certificado de `api.sambavest.com`**: o site agora exige HTTPS válido ao falar com o WooCommerce.
+  Teste em https://www.ssllabs.com/ssltest/ — nota A/B e **sem "Chain issues"**. Se faltar o
+  certificado intermediário, o navegador abre normal mas o servidor da Vercel recusa a conexão
+  (checkout e automações param). Na hospedagem, reemita/reinstale o Let's Encrypt com a cadeia completa.
+- **Webhooks**: em WooCommerce → Avançado → Webhooks, a coluna de status deve continuar **Ativo**.
+  Ao editar um webhook, o fim da página mostra as últimas entregas: o esperado é resposta **200**.
+  Resposta **401** = o Segredo do webhook é diferente de `WC_WEBHOOK_SECRET` na Vercel.
+- **Rotina**: em GitHub → Actions → Automação da loja → Run workflow. O passo "Chamar
+  /api/cron/automacao" deve terminar verde e mostrar `"ok":true`.
+
+## Checkout: preço e frete
+
+O navegador só envia **ID da variação, quantidade, forma de pagamento e serviço de frete**. O servidor
+(`app/api/checkout`) busca o preço atual de cada variação no WooCommerce, aplica os 10% do Pix
+(o pedido mostra o preço cheio e o desconto) e refaz a cotação no Melhor Envio para cobrar o frete
+real (PAC grátis a partir de R$ 300 em produtos, mesma regra da calculadora). Para mudar o desconto
+do Pix, altere `METODOS` em `app/api/checkout/route.ts` e o texto do checkout.
+
 ## 2. Bling: pedido de venda, NF-e e estoque
 
 1. No Bling, abra Central de Extensões → Área do Integrador → Criar aplicativo.
