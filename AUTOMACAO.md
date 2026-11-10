@@ -102,8 +102,34 @@ Liga/desliga:
    com o serviço escolhido pelo cliente no checkout. Você só confere e paga lá.
 4. Com `MELHOR_ENVIO_COMPRAR_ETIQUETA=true`, a etiqueta é paga com o saldo da carteira e gerada
    sozinha. O link para imprimir aparece numa nota do pedido e chega por e-mail.
-5. Quando a encomenda é postada, a rotina pega o código de rastreio, avisa o cliente e conclui o
-   pedido.
+5. Quando a encomenda é postada, o código de rastreio é buscado, o cliente é avisado e o pedido é
+   concluído. Isso acontece pela rotina de 30 minutos ou, se o webhook estiver ligado (abaixo), na hora.
+
+**Pacote (frete do checkout = etiqueta):** a cotação e a etiqueta usam a mesma caixa e o mesmo peso:
+`CAIXA_LARGURA_CM` × `CAIXA_ALTURA_CM` × `CAIXA_COMPRIMENTO_CM` e
+`PESO_POR_PECA_KG` × peças + `PESO_CAIXA_KG`. Se o peso declarado for menor que o real, os Correios
+cobram a diferença depois.
+
+**Serviços na cotação:** `MELHOR_ENVIO_SERVICOS` (padrão `1,2,17,3,4`: PAC, SEDEX, Mini Envios, Jadlog
+.Package e .Com). Transportadoras que exigem agência de postagem (Jadlog, Azul, Latam...) precisam da
+agência em `MELHOR_ENVIO_AGENCIAS` (ex.: `3:12345,4:12345`). Sem ela, o envio não entra no carrinho e
+chega um alerta.
+
+**Webhook (rastreio na hora, opcional):**
+1. No Melhor Envio, abra Integrações → Área Dev e crie um aplicativo (se ainda não tiver).
+2. Gere o token **por esse aplicativo** e use-o em `MELHOR_ENVIO_TOKEN`. O Melhor Envio só manda
+   webhooks de envios criados pelo mesmo aplicativo; um token criado em Configurações → Tokens não
+   dispara webhooks.
+3. No aplicativo, clique em **Novo webhook** com a URL `https://SEU-SITE/api/webhooks/melhorenvio`.
+4. Coloque o **client secret** do aplicativo em `MELHOR_ENVIO_WEBHOOK_SECRET`.
+
+Com o webhook, a postagem avisa o cliente na hora. Cancelamentos e problemas na entrega viram nota no
+pedido e alerta por e-mail. A rotina de 30 minutos continua como reserva.
+
+**Testar no sandbox:** crie uma conta em sandbox.melhorenvio.com.br, gere um token lá e use
+`MELHOR_ENVIO_SANDBOX=true`. A cotação e os envios passam a ir para o sandbox, que só tem Correios e
+Jadlog. A carteira do sandbox pode ser carregada com saldo fictício. Lá, a etiqueta muda de status sozinha
+a cada 15 minutos até "entregue", o que permite testar o rastreio e o webhook.
 
 Se a NF-e estiver ligada, o envio espera a NF-e ser autorizada e usa a chave dela. Sem NF-e, vai como
 declaração de conteúdo.
