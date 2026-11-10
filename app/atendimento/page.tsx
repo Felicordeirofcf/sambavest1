@@ -65,9 +65,12 @@ export default async function AtendimentoPage({ searchParams }: { searchParams: 
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold text-[#0B1B34]">Atendimento WhatsApp</h1>
-        <form action={logout}>
-          <button className="text-sm underline text-gray-600">Sair</button>
-        </form>
+        <div className="flex gap-4 items-center">
+          <Link href="/atendimento/simulador" className="text-sm underline text-gray-600">Simulador do robô</Link>
+          <form action={logout}>
+            <button className="text-sm underline text-gray-600">Sair</button>
+          </form>
+        </div>
       </div>
       {!integracoes.kv() && (
         <p className="mb-4 text-sm bg-red-50 text-red-700 p-3 rounded">

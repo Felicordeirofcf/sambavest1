@@ -158,6 +158,9 @@ Defina `ATENDIMENTO_SENHA` e abra `https://SEU-SITE/atendimento`. Mostra as conv
 as mensagens não lidas, os avisos automáticos enviados (com status entregue/lida/falhou) e permite
 **responder** enquanto a janela de 24 h estiver aberta. "Devolver ao robô" tira a marca de "humano".
 
+O **Simulador do robô** (`/atendimento/simulador`) mostra o que o robô responderia a uma mensagem,
+sem enviar nada. Funciona antes de conectar a Meta (o status do pedido usa o WooCommerce de verdade).
+
 Sem coexistência (5.5), o número ligado à API não funciona no app WhatsApp. Nesse caso, responda pelo
 painel.
 
