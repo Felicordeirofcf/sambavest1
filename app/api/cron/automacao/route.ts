@@ -6,6 +6,7 @@
 //   GET /api/cron/automacao?tarefa=estoque  → só sincroniza estoque Bling → WooCommerce
 //
 // Protegido por CRON_SECRET: header "Authorization: Bearer <CRON_SECRET>" (a Vercel manda sozinha).
+import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { config, integracoes } from '../../../../lib/automacao/config';
 import { sincronizarEstoque } from '../../../../lib/automacao/estoque';
@@ -15,7 +16,9 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  if (!config.cronSecret || request.headers.get('authorization') !== `Bearer ${config.cronSecret}`) {
+  const recebido = Buffer.from(request.headers.get('authorization') || '');
+  const esperado = Buffer.from(`Bearer ${config.cronSecret}`);
+  if (!config.cronSecret || recebido.length !== esperado.length || !crypto.timingSafeEqual(recebido, esperado)) {
     return NextResponse.json({ ok: false, error: 'não autorizado' }, { status: 401 });
   }
   if (!integracoes.woo()) {
