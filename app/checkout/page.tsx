@@ -143,7 +143,14 @@ export default function CheckoutPage() {
       const quoteAny = shippingQuote as any;
       const shippingMethodTitle = quoteAny.name || quoteAny.service || quoteAny.serviceName || 'Frete Correios / Transportadora';
 
+      // Identifica esta compra para o Meta Ads (gravado no pedido e usado na API de Conversões)
+      const eventId =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
       const payload = {
+        eventId,
         paymentMethod: paymentMethod,
         items: carrinhoAtual.map((item: any) => ({
           id: item.id,

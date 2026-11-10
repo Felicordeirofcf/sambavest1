@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cotarFrete, freteGratis } from '../../../lib/frete';
+import { metaDadosRastreio } from '../../../lib/automacao/meta';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -42,6 +43,9 @@ export async function POST(request: Request) {
     if (listaItens.length > MAX_ITENS) {
       return NextResponse.json({ success: false, error: 'Carrinho com itens demais.' }, { status: 400 });
     }
+
+    const eventId =
+      typeof body.eventId === 'string' && /^[A-Za-z0-9-]{1,64}$/.test(body.eventId) ? body.eventId : undefined;
 
     const metodoEscolhido = paymentMethod || 'appmax_pix';
     const metodo = METODOS[metodoEscolhido];
@@ -209,6 +213,8 @@ export async function POST(request: Request) {
         { key: '_billing_number', value: clienteFinal.numero },
         { key: '_billing_neighborhood', value: clienteFinal.bairro },
         { key: '_sv_melhorenvio_servico', value: String(cotacao.id) },
+        // Meta Ads: cookies do Pixel, IP e navegador, usados no evento Purchase quando o pagamento for aprovado
+        ...metaDadosRastreio(request, eventId),
       ]
     };
 
