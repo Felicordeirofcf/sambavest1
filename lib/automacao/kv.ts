@@ -1,0 +1,67 @@
+// Armazenamento chave-valor para dados que precisam sobreviver entre execuções
+// (token do Bling, travas contra processamento duplicado).
+// Usa Upstash Redis via REST quando configurado; senão cai para memória local,
+// que só serve para testes (na Vercel cada execução pode ter memória separada).
+import { config, integracoes } from './config';
+
+const memoria = new Map<string, { valor: string; expiraEm: number | null }>();
+
+async function redis(comando: (string | number)[]): Promise<unknown> {
+  const res = await fetch(config.kv.url!, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${config.kv.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(comando),
+    cache: 'no-store',
+  });
+  const json = (await res.json()) as { result?: unknown; error?: string };
+  if (!res.ok || json.error) throw new Error(`KV: ${json.error || res.status}`);
+  return json.result;
+}
+
+export async function kvGet<T>(chave: string): Promise<T | null> {
+  if (integracoes.kv()) {
+    const r = await redis(['GET', chave]);
+    return typeof r === 'string' ? (JSON.parse(r) as T) : null;
+  }
+  const item = memoria.get(chave);
+  if (!item) return null;
+  if (item.expiraEm && item.expiraEm < Date.now()) {
+    memoria.delete(chave);
+    return null;
+  }
+  return JSON.parse(item.valor) as T;
+}
+
+export async function kvSet(chave: string, valor: unknown, segundos?: number): Promise<void> {
+  const texto = JSON.stringify(valor);
+  if (integracoes.kv()) {
+    await redis(segundos ? ['SET', chave, texto, 'EX', segundos] : ['SET', chave, texto]);
+    return;
+  }
+  memoria.set(chave, { valor: texto, expiraEm: segundos ? Date.now() + segundos * 1000 : null });
+}
+
+export async function kvDel(chave: string): Promise<void> {
+  if (integracoes.kv()) {
+    await redis(['DEL', chave]);
+    return;
+  }
+  memoria.delete(chave);
+}
+
+/** Tenta pegar uma trava. Retorna false se outra execução já está com ela. */
+export async function adquirirTrava(chave: string, segundos: number): Promise<boolean> {
+  if (integracoes.kv()) {
+    const r = await redis(['SET', `trava:${chave}`, '1', 'NX', 'EX', segundos]);
+    return r === 'OK';
+  }
+  const k = `trava:${chave}`;
+  const atual = memoria.get(k);
+  if (atual && (!atual.expiraEm || atual.expiraEm > Date.now())) return false;
+  memoria.set(k, { valor: '1', expiraEm: Date.now() + segundos * 1000 });
+  return true;
+}
+
+export async function liberarTrava(chave: string): Promise<void> {
+  await kvDel(`trava:${chave}`);
+}
