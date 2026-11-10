@@ -40,8 +40,12 @@ export async function POST(request: Request) {
   // Responde rápido para o WooCommerce (ele desativa webhooks que demoram/falham)
   // e processa em segundo plano. Os dados do pedido são buscados de novo na API.
   after(async () => {
-    const rel = await processarPedido(id!);
-    console.log('[automacao] webhook', JSON.stringify(rel));
+    try {
+      const rel = await processarPedido(id!);
+      console.log('[automacao] webhook', JSON.stringify(rel));
+    } catch (e) {
+      console.error('[automacao] webhook falhou', id, (e as Error).message);
+    }
   });
 
   return NextResponse.json({ ok: true, pedido: id });

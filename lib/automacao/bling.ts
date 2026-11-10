@@ -95,7 +95,12 @@ export async function bling<T = unknown>(caminho: string, init: { method?: strin
       continue;
     }
     const texto = await res.text();
-    const json = texto ? JSON.parse(texto) : {};
+    let json: any = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
+    try {
+      json = texto ? JSON.parse(texto) : {};
+    } catch {
+      // resposta não-JSON (ex.: página de erro)
+    }
     if (!res.ok) {
       const campos = json.error?.fields?.map((f: { msg?: string; element?: string }) => f.msg || f.element).join('; ');
       throw new Error(`Bling ${res.status} em ${caminho}: ${campos || json.error?.description || json.error?.message || texto.slice(0, 200)}`);
@@ -152,7 +157,22 @@ async function idProdutoPorCodigo(codigo: string): Promise<number | null> {
 
 // ---------------- Pedido de venda ----------------
 
+/** Procura um pedido de venda já criado para este pedido do site (evita duplicar). */
+export async function pedidoVendaExistente(pedido: WcPedido): Promise<{ id: number; numero?: number } | null> {
+  try {
+    const r = await bling<{ data: { id: number; numero?: number; numeroLoja?: string }[] }>(
+      `/pedidos/vendas?numerosLojas[]=${encodeURIComponent(String(pedido.id))}`
+    );
+    return r.data?.find((p) => String(p.numeroLoja) === String(pedido.id)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function criarPedidoVenda(pedido: WcPedido): Promise<{ id: number; numero?: number }> {
+  const existente = await pedidoVendaExistente(pedido);
+  if (existente) return existente;
+
   const contatoId = await obterOuCriarContato(pedido);
   const end = enderecoEntrega(pedido);
 

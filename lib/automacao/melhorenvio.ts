@@ -21,7 +21,12 @@ async function me<T = unknown>(caminho: string, init: { method?: string; body?: 
     cache: 'no-store',
   });
   const texto = await res.text();
-  const json = texto ? JSON.parse(texto) : {};
+  let json: any = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
+  try {
+    json = texto ? JSON.parse(texto) : {};
+  } catch {
+    // resposta não-JSON (ex.: página de erro)
+  }
   if (!res.ok) {
     const erros = json.errors ? Object.values(json.errors).flat().join('; ') : '';
     throw new Error(`Melhor Envio ${res.status} em ${caminho}: ${erros || json.message || texto.slice(0, 200)}`);

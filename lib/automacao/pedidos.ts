@@ -126,7 +126,7 @@ export async function processarPedido(id: number): Promise<Relatorio> {
       }
 
       // 5) Melhor Envio: envio + etiqueta
-      const aguardandoNfe = config.bling.emitirNfe && !meta(pedido, M.nfeChave);
+      const aguardandoNfe = integracoes.bling() && config.bling.emitirNfe && !meta(pedido, M.nfeChave);
       if (
         integracoes.melhorEnvio() &&
         config.melhorEnvio.criarEnvios &&
@@ -232,7 +232,7 @@ export async function rotinaPedidos(prazo: number): Promise<Relatorio[]> {
       !meta(p, M.avisoPago) ||
       !meta(p, M.alertaLoja) ||
       (integracoes.bling() && config.bling.enviarPedidos && !meta(p, M.blingPedido)) ||
-      (integracoes.bling() && config.bling.emitirNfe && !meta(p, M.nfeChave)) ||
+      (integracoes.bling() && config.bling.emitirNfe && !!meta(p, M.blingPedido) && !meta(p, M.nfeChave)) ||
       (integracoes.melhorEnvio() && config.melhorEnvio.criarEnvios && !meta(p, M.meEnvio) && melhorEnvio.servicoDoPedido(p)) ||
       (config.melhorEnvio.comprarEtiqueta && meta(p, M.meEnvio) && !meta(p, M.meEtiqueta));
     if (faltaEtapa) urgentes.push(p);
