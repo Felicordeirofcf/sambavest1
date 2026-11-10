@@ -3,11 +3,12 @@
 // Configurar em: developers.facebook.com → seu app → WhatsApp → Configuração → Webhook
 //   URL de retorno: https://SEU-SITE/api/webhooks/whatsapp
 //   Token de verificação: o mesmo valor de WHATSAPP_VERIFY_TOKEN
-//   Campos: assine "messages"
+//   Campos: assine "messages" e, com coexistência (número também no app WhatsApp Business),
+//   "smb_message_echoes" (cópia das mensagens que você manda pelo app)
 // A assinatura de cada POST é conferida com a Chave secreta do app (WHATSAPP_APP_SECRET).
 import crypto from 'node:crypto';
 import { after, NextResponse } from 'next/server';
-import { processarMensagem, MensagemMeta } from '../../../../lib/automacao/atendimento';
+import { EcoMeta, processarMensagem, MensagemMeta, registrarEco } from '../../../../lib/automacao/atendimento';
 import { config } from '../../../../lib/automacao/config';
 import { atualizarStatus } from '../../../../lib/automacao/conversas';
 import { alertarLoja } from '../../../../lib/automacao/notificacoes';
@@ -30,6 +31,7 @@ type CorpoMeta = {
       value?: {
         contacts?: { wa_id: string; profile?: { name?: string } }[];
         messages?: MensagemMeta[];
+        message_echoes?: EcoMeta[]; // coexistência: mensagens enviadas pelo app WhatsApp Business
         statuses?: StatusMeta[];
       };
     }[];
@@ -75,10 +77,17 @@ export async function POST(request: Request) {
 
   const mensagens: { m: MensagemMeta; nome?: string }[] = [];
   const status: StatusMeta[] = [];
+  const ecos: EcoMeta[] = [];
   for (const entrada of dados.entry || []) {
     for (const mudanca of entrada.changes || []) {
-      if (mudanca.field !== 'messages' || !mudanca.value) continue;
+      if (!mudanca.value) continue;
       const v = mudanca.value;
+      if (mudanca.field === 'smb_message_echoes') {
+        ecos.push(...(v.message_echoes || []));
+        continue;
+      }
+      // Outros campos (ex.: history, smb_app_state_sync) não são usados.
+      if (mudanca.field !== 'messages') continue;
       for (const m of v.messages || []) {
         const nome = v.contacts?.find((c) => c.wa_id === m.from)?.profile?.name;
         mensagens.push({ m, nome });
@@ -89,6 +98,15 @@ export async function POST(request: Request) {
 
   // A Meta reenvia o webhook se a resposta demorar; processa depois de responder 200.
   after(async () => {
+    // Ecos primeiro: se você já respondeu pelo app, o robô não responde por cima.
+    for (const e of ecos) {
+      try {
+        const r = await registrarEco(e);
+        console.log('[atendimento] eco do app', JSON.stringify(r));
+      } catch (err) {
+        console.error('[atendimento] erro ao registrar eco', e.id, (err as Error).message);
+      }
+    }
     for (const { m, nome } of mensagens) {
       try {
         const r = await processarMensagem(m, nome);
@@ -115,5 +133,5 @@ export async function POST(request: Request) {
     }
   });
 
-  return NextResponse.json({ ok: true, mensagens: mensagens.length, status: status.length });
+  return NextResponse.json({ ok: true, mensagens: mensagens.length, ecos: ecos.length, status: status.length });
 }

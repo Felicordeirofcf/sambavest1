@@ -156,9 +156,8 @@ Defina `ATENDIMENTO_SENHA` e abra `https://SEU-SITE/atendimento`. Mostra as conv
 as mensagens não lidas, os avisos automáticos enviados (com status entregue/lida/falhou) e permite
 **responder** enquanto a janela de 24 h estiver aberta. "Devolver ao robô" tira a marca de "humano".
 
-Importante: um número ligado à API oficial não pode ser usado ao mesmo tempo no app WhatsApp comum. Para
-responder pelo celular use o painel, ou ative a "coexistência" (WhatsApp Business app + API no mesmo
-número) se a Meta oferecer para a sua conta.
+Sem coexistência (5.5), o número ligado à API não funciona no app WhatsApp. Nesse caso, responda pelo
+painel.
 
 ### 5.4 Templates: como criar e aprovar
 Em business.facebook.com → WhatsApp Manager → Modelos de mensagem → Criar modelo:
@@ -188,6 +187,43 @@ Teste cada template, depois de aprovado, gerando um pedido de teste com o seu te
 não chegar, o site manda um e-mail "WhatsApp não entregue" com o motivo dado pela Meta
 (ex.: 132001 = template não existe nesse idioma; 131026 = número sem WhatsApp; 132000 = número
 de variáveis diferente do template).
+
+### 5.5 Coexistência: continuar usando o app WhatsApp Business
+
+Com a coexistência, o número da loja **continua no app WhatsApp Business** (celular e PC) e também fica
+ligado à API. Você atende pelo app como sempre, e o site recebe tudo: guarda no painel, manda os avisos
+automáticos (templates) e responde as dúvidas simples.
+
+**Conectar (feito uma vez, pelo celular que tem o WhatsApp Business):**
+1. Atualize o app WhatsApp Business no celular.
+2. Em developers.facebook.com → seu app → WhatsApp → Configuração da API → **Adicionar número de
+   telefone**, escolha a opção de **conectar um número que já está no app WhatsApp Business**. A Meta
+   mostra um QR code ou manda um aviso para o app; confirme no celular. Aceite compartilhar o histórico
+   de conversas, se perguntar.
+   - Se essa opção não aparecer, a Meta ainda não liberou a coexistência por este caminho para a sua
+     conta. Ela também é oferecida pelos parceiros oficiais da Meta (BSPs). **Não** use a opção de
+     cadastrar o número do zero: isso tira o número do app.
+3. Pegue o **Phone number ID** do número conectado → `WHATSAPP_PHONE_NUMBER_ID`. Gere o token
+   permanente (seção 4) → `WHATSAPP_TOKEN`.
+4. No webhook (5.1), assine os campos **`messages`** e **`smb_message_echoes`**.
+5. Na Vercel: `WHATSAPP_COEXISTENCIA=true`. Faça o deploy.
+
+**Como fica no dia a dia:**
+- Mensagem de cliente: aparece no app, como sempre, e também no painel. Se as respostas automáticas
+  estiverem ligadas, o robô responde o que reconhecer (a resposta aparece no app também).
+- Quando **você** responde pelo app (celular ou PC), o site recebe a cópia ("pelo app" no painel) e o
+  robô fica quieto naquela conversa por 12 h. Assim ele não fala por cima de você.
+- Alertas: por padrão (`WHATSAPP_ALERTAS` vazio) só chegam quando a dúvida precisa de você, porque o
+  resto você já vê no app.
+- Os avisos de pedido (pagamento aprovado, enviado, Pix) saem do mesmo número da loja e aparecem no app.
+
+**Cuidados:**
+- Abra o app WhatsApp Business no celular de vez em quando (a Meta exige uso regular do app, em torno
+  de pelo menos uma vez a cada 14 dias, para manter a coexistência ativa).
+- Alguns recursos do app ficam limitados com a API ligada (ex.: mensagens temporárias, ver uma vez,
+  listas de transmissão). Os grupos continuam só no app e não passam pelo site.
+- Confira, depois de conectar, se o WhatsApp do PC continua conectado. Se cair, conecte de novo pelo QR
+  code no PC.
 
 ## Testar
 

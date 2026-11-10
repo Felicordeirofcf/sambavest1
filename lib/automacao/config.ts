@@ -95,6 +95,12 @@ export const config = {
     templateAlertaDono: env('WHATSAPP_TEMPLATE_ALERTA_DONO'),
     // Não repete o alerta da mesma conversa antes deste intervalo (minutos)
     alertaIntervaloMin: num('WHATSAPP_ALERTA_INTERVALO_MIN', 15),
+    // Coexistência: o número continua no app WhatsApp Business (celular e PC) e também na API.
+    // O site recebe cópia do que você manda pelo app (campo smb_message_echoes).
+    coexistencia: flag('WHATSAPP_COEXISTENCIA', false),
+    // Quando alertar o dono: todas | humano (só quando precisa de uma pessoa) | nenhum.
+    // Padrão: "humano" com coexistência (você já vê tudo no app), "todas" sem.
+    alertas: (env('WHATSAPP_ALERTAS') || (flag('WHATSAPP_COEXISTENCIA', false) ? 'humano' : 'todas')).toLowerCase(),
     painelSenha: env('ATENDIMENTO_SENHA'),
     respostas: {
       // Liga as respostas automáticas (status do pedido, tamanhos, prazo)

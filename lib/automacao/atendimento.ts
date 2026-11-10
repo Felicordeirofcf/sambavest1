@@ -212,6 +212,8 @@ async function alertarDonoEmail(c: Conversa, trecho: string, motivo: string): Pr
 
 /** Avisa o dono. Sem `urgente`, no máximo um alerta por conversa a cada WHATSAPP_ALERTA_INTERVALO_MIN. */
 async function alertarDono(c: Conversa, trecho: string, motivo: string, urgente: boolean): Promise<string[]> {
+  const modo = config.whatsapp.alertas;
+  if (modo === 'nenhum' || (modo === 'humano' && !urgente)) return [];
   if (!urgente && !(await adquirirTrava(`wa:alerta:${chaveTelefone(c.numero)}`, config.whatsapp.alertaIntervaloMin * 60))) {
     return [];
   }
@@ -312,6 +314,31 @@ export async function processarMensagem(m: MensagemMeta, nomeContato?: string): 
   }
   res.alertas = await alertarDono(conversa, trecho, 'Precisa de atendimento', true);
   return res;
+}
+
+// ---------- Coexistência: mensagens que você mandou pelo app WhatsApp Business ----------
+
+export type EcoMeta = MensagemMeta & { to: string };
+
+/**
+ * Registra no histórico uma mensagem enviada pelo app WhatsApp Business (celular ou PC).
+ * Como uma pessoa assumiu a conversa, o robô fica quieto nela por WHATSAPP_HUMANO_SILENCIO_HORAS.
+ */
+export async function registrarEco(m: EcoMeta): Promise<ResultadoMensagem> {
+  const numero = m.to;
+  const res: ResultadoMensagem = { numero };
+  if (!numero) return { ...res, ignorada: 'eco sem destinatário' };
+  if (!(await adquirirTrava(`wa:msg:${m.id}`, 3 * 86_400))) return { ...res, ignorada: 'repetida' };
+  if (m.type === 'reaction') return { ...res, ignorada: 'reação' };
+
+  const { texto } = textoDaMensagem(m);
+  await alterarConversa(numero, (c) => {
+    if (c.mensagens.some((x) => x.id === m.id)) return; // já registrada (enviada pelo site)
+    c.mensagens.push({ id: m.id, de: 'loja', texto: `${texto} (pelo app)`, em: Number(m.timestamp) * 1000 || Date.now() });
+    c.naoLidas = 0;
+    c.humanoAte = Date.now() + config.whatsapp.respostas.silencioHoras * 3_600_000;
+  });
+  return { ...res, humano: true };
 }
 
 /** Resposta digitada no painel por uma pessoa da loja. */

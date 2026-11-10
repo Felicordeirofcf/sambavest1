@@ -74,6 +74,12 @@ export default async function AtendimentoPage({ searchParams }: { searchParams: 
           Upstash não configurado: as conversas ficam só na memória e somem a cada execução.
         </p>
       )}
+      {config.whatsapp.coexistencia && (
+        <p className="mb-4 text-sm bg-green-50 text-green-800 p-3 rounded">
+          Coexistência ligada: você também pode responder pelo app WhatsApp Business (celular ou PC). O que você
+          mandar por lá aparece aqui como &quot;pelo app&quot; e o robô para de responder naquela conversa.
+        </p>
+      )}
       {!config.whatsapp.respostas.ativas && (
         <p className="mb-4 text-sm bg-gray-50 text-gray-700 p-3 rounded">
           Respostas automáticas desligadas (WHATSAPP_RESPOSTAS_AUTOMATICAS). Todas as mensagens ficam para você.
@@ -114,7 +120,7 @@ export default async function AtendimentoPage({ searchParams }: { searchParams: 
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto max-h-[55vh] p-3 flex flex-col gap-2 bg-gray-50">
-                {aberta.mensagens.map((m, i) => (
+                {[...aberta.mensagens].sort((a, b) => a.em - b.em).map((m, i) => (
                   <div
                     key={m.id || i}
                     className={`max-w-[80%] rounded p-2 text-sm whitespace-pre-wrap ${
