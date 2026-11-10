@@ -40,7 +40,7 @@ function codigoRastreioManual(pedido: WcPedido): string | undefined {
   return meta(pedido, M.rastreio) || meta(pedido, '_correios_tracking_code');
 }
 
-export async function processarPedido(id: number): Promise<Relatorio> {
+export async function processarPedido(id: number, opcoes: { rastreioMelhorEnvio?: string } = {}): Promise<Relatorio> {
   const rel: Relatorio = { pedido: id, status: '', feito: [], erros: [] };
 
   if (!(await adquirirTrava(`pedido:${id}`, 120))) {
@@ -157,7 +157,7 @@ export async function processarPedido(id: number): Promise<Relatorio> {
       }
 
       // 6) Rastreio
-      await passo('rastreio', () => verificarRastreio(pedido));
+      await passo('rastreio', () => verificarRastreio(pedido, opcoes.rastreioMelhorEnvio));
     }
 
     if (rel.erros.length) {
@@ -180,11 +180,14 @@ export async function processarPedido(id: number): Promise<Relatorio> {
   }
 }
 
-/** Busca o rastreio (Melhor Envio ou informado à mão), avisa o cliente e conclui o pedido. */
-async function verificarRastreio(pedido: WcPedido): Promise<string | void> {
+/**
+ * Busca o rastreio (Melhor Envio ou informado à mão), avisa o cliente e conclui o pedido.
+ * `codigoInformado` vem do webhook do Melhor Envio, que já traz o código e evita uma consulta.
+ */
+async function verificarRastreio(pedido: WcPedido, codigoInformado?: string): Promise<string | void> {
   if (meta(pedido, M.avisoEnviado)) return;
 
-  let codigo = codigoRastreioManual(pedido);
+  let codigo = codigoRastreioManual(pedido) || codigoInformado;
 
   const idEnvio = meta(pedido, M.meEnvio);
   if (!codigo && idEnvio && integracoes.melhorEnvio()) {
