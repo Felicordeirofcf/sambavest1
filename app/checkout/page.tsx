@@ -165,6 +165,7 @@ export default function CheckoutPage() {
           uf: formData.uf || 'RJ',
         },
         shipping: {
+          id: quoteAny.id,
           method_title: shippingMethodTitle,
           price: shippingQuote.price,
         }

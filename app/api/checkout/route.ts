@@ -104,6 +104,10 @@ export async function POST(request: Request) {
         { key: '_billing_cpf', value: documentoLimpo },
         { key: 'cpf', value: documentoLimpo },
         { key: '_billing_phone', value: clienteFinal.telefone },
+        // Usados pelas automações (etiqueta do Melhor Envio, NF-e no Bling)
+        { key: '_billing_number', value: clienteFinal.numero },
+        { key: '_billing_neighborhood', value: clienteFinal.bairro },
+        ...(shipping?.id ? [{ key: '_sv_melhorenvio_servico', value: String(shipping.id) }] : []),
       ]
     };
 

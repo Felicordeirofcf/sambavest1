@@ -1,0 +1,35 @@
+# Chama as rotinas de automação da loja a cada 30 minutos.
+# (O cron da Vercel no plano gratuito só roda 1x por dia; este workflow cobre o resto.)
+#
+# Configure em GitHub → Settings → Secrets and variables → Actions:
+#   SITE_URL     → ex.: https://sambavest.com
+#   CRON_SECRET  → o mesmo valor da variável CRON_SECRET na Vercel
+name: Automação da loja
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      tarefa:
+        description: 'todas | pedidos | pix | estoque'
+        default: 'todas'
+
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Chamar /api/cron/automacao
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          TAREFA: ${{ github.event.inputs.tarefa || 'todas' }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "SITE_URL ou CRON_SECRET não configurados — nada a fazer."
+            exit 0
+          fi
+          curl -sS --fail-with-body --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/automacao?tarefa=$TAREFA"

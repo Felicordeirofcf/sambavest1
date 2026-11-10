@@ -1,11 +1,17 @@
 // app/api/cliente/route.ts
 import { NextResponse } from 'next/server';
+import { bling } from '../../../lib/automacao/bling';
 
 export const dynamic = 'force-dynamic';
 
-async function getValidAccessToken(): Promise<string | null> {
-  return process.env.BLING_ACCESS_TOKEN || null;
-}
+type ContatoBling = {
+  id: number;
+  nome?: string;
+  email?: string;
+  telefone?: string;
+  numeroDocumento?: string;
+  endereco?: { geral?: { endereco?: string; numero?: string; bairro?: string; municipio?: string; cep?: string; uf?: string } };
+};
 
 export async function GET(request: Request) {
   try {
@@ -17,63 +23,41 @@ export async function GET(request: Request) {
     }
 
     const docLimpo = cpf.replace(/\D/g, '');
-    const accessToken = await getValidAccessToken();
-
-    if (!accessToken) {
-      return NextResponse.json({ success: false, error: 'Token do Bling não configurado.' }, { status: 500 });
-    }
 
     // 🔍 A API v3 do Bling aceita o filtro por número do documento diretamente na query string
-    const response = await fetch(`https://www.bling.com.br/Api/v3/contatos?numeroDocumento=${docLimpo}`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ Erro retornado pela API do Bling:", errorText);
-      return NextResponse.json({ success: false, error: 'Erro ao buscar cliente no Bling.' }, { status: 400 });
-    }
-
-    const json = await response.json();
+    const json = await bling<{ data: ContatoBling[] }>(`/contatos?numeroDocumento=${docLimpo}`);
     const contatos = json.data || [];
 
     if (contatos.length === 0) {
       return NextResponse.json({ success: false, error: 'Cliente não encontrado.' }, { status: 404 });
     }
 
-    const clienteResumo = contatos[0];
-
     // Busca os dados completos do contato utilizando o ID retornado
-    const detalheRes = await fetch(`https://www.bling.com.br/Api/v3/contatos/${clienteResumo.id}`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
-    });
-
-    let dadosCompletos = clienteResumo;
-    if (detalheRes.ok) {
-      const detalheJson = await detalheRes.json();
-      if (detalheJson.data) {
-        dadosCompletos = detalheJson.data;
-      }
+    let dadosCompletos = contatos[0];
+    try {
+      const detalhe = await bling<{ data: ContatoBling }>(`/contatos/${contatos[0].id}`);
+      if (detalhe.data) dadosCompletos = detalhe.data;
+    } catch {
+      // segue com o resumo
     }
+    const end = dadosCompletos.endereco?.geral || {};
 
     const clienteFormatado = {
       nome: dadosCompletos.nome || '',
       email: dadosCompletos.email || '',
       telefone: dadosCompletos.telefone || '',
       numeroDocumento: dadosCompletos.numeroDocumento || docLimpo,
-      endereco: dadosCompletos.endereco?.geral || '',
-      numero: dadosCompletos.endereco?.numero || '',
-      bairro: dadosCompletos.endereco?.bairro || '',
-      cidade: dadosCompletos.endereco?.cidade || '',
-      cep: dadosCompletos.endereco?.cep || '',
-      uf: dadosCompletos.endereco?.uf || 'RJ',
+      endereco: end.endereco || '',
+      numero: end.numero || '',
+      bairro: end.bairro || '',
+      cidade: end.municipio || '',
+      cep: end.cep || '',
+      uf: end.uf || 'RJ',
     };
 
     return NextResponse.json({ success: true, cliente: clienteFormatado });
-  } catch (error: any) {
+  } catch (error) {
     console.error("❌ Erro crítico ao buscar cliente:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
   }
 }
