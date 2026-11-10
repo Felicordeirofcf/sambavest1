@@ -7,7 +7,10 @@
 import { config } from './automacao/config';
 import { me, pacote } from './automacao/melhorenvio';
 
-export const FRETE_GRATIS_A_PARTIR_DE = 300;
+import { FREE_SHIPPING_THRESHOLD } from './shipping';
+
+// Mesmo valor mostrado no site (lib/shipping.ts).
+export const FRETE_GRATIS_A_PARTIR_DE = FREE_SHIPPING_THRESHOLD;
 
 export type CotacaoFrete = {
   id: number;
