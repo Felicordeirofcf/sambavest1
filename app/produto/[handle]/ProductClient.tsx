@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useCartStore } from '../../../store/cartStore';
 import ShippingCalculator from '../../../components/product/ShippingCalculator';
 import { useSearchParams } from 'next/navigation';
+import { rastrear, dadosItens } from '../../../lib/pixel';
 
 export default function ProductClient({ product }: { product: any }) {
   const { addItem, openCart } = useCartStore();
@@ -14,6 +15,18 @@ export default function ProductClient({ product }: { product: any }) {
   const fallbackAssets: string[] = [
     // 'URL_DA_SUA_ARTE_DE_MODELOS_E_MEDIDAS.jpg',
   ];
+
+  // Meta Pixel: visualização do produto (o ID do produto pai casa com item_group_id do catálogo)
+  useEffect(() => {
+    if (!product?.id) return;
+    rastrear('ViewContent', {
+      content_type: 'product_group',
+      content_ids: [String(product.id)],
+      content_name: product.name,
+      currency: 'BRL',
+      value: Number(product.price) || 0,
+    });
+  }, [product?.id, product?.name, product?.price]);
 
   const variantsList = useMemo(() => {
     return Array.isArray(product?.variants) ? product.variants : [];
@@ -154,6 +167,11 @@ export default function ProductClient({ product }: { product: any }) {
       image: finalCartImage,
       size: selectedModel ? `${selectedModel} / ${selectedSize}` : selectedSize,
       quantity: 1,
+    });
+
+    rastrear('AddToCart', {
+      ...dadosItens([{ id: matchedVariant.id, quantidade: 1, preco: currentPrice }]),
+      content_name: product.name,
     });
 
     openCart();

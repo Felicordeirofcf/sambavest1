@@ -99,6 +99,14 @@ export const config = {
     admin: env('EMAIL_ADMIN'),
   },
 
+  meta: {
+    // Mesmo ID do Pixel usado no site
+    pixelId: env('META_PIXEL_ID') || env('NEXT_PUBLIC_FACEBOOK_PIXEL_ID') || '2779685332183949',
+    capiToken: env('META_CAPI_TOKEN'),
+    // Código de teste do Gerenciador de Eventos (aba "Testar eventos"). Apague depois de testar.
+    testEventCode: env('META_TEST_EVENT_CODE'),
+  },
+
   avisos: {
     // "Pedido recebido" (antes do pagamento) é opcional.
     recebido: flag('AVISAR_PEDIDO_RECEBIDO', false),
@@ -120,4 +128,5 @@ export const integracoes = {
   melhorEnvio: () => Boolean(config.melhorEnvio.token),
   whatsapp: () => Boolean(config.whatsapp.token && config.whatsapp.phoneNumberId),
   email: () => Boolean(config.email.resendKey && config.email.remetente),
+  meta: () => Boolean(config.meta.pixelId && config.meta.capiToken),
 };

@@ -7,6 +7,7 @@ import * as bling from './bling';
 import { config, integracoes } from './config';
 import { adquirirTrava, liberarTrava } from './kv';
 import * as melhorEnvio from './melhorenvio';
+import { enviarCompra } from './meta';
 import { alertarLoja, avisarCliente } from './notificacoes';
 import { adicionarNota, linkPagamento, listarPedidos, meta, obterPedido, salvarNoPedido, WcPedido } from './woocommerce';
 
@@ -16,6 +17,7 @@ export const M = {
   avisoEnviado: '_sv_aviso_enviado',
   avisoPix: '_sv_aviso_pix',
   alertaLoja: '_sv_alerta_loja',
+  metaCompra: '_sv_meta_compra',
   blingPedido: '_sv_bling_pedido_id',
   blingNfe: '_sv_bling_nfe_id',
   nfeChave: '_sv_nfe_chave',
@@ -92,6 +94,15 @@ export async function processarPedido(id: number): Promise<Relatorio> {
             `<p><b>${pedido.billing.first_name} ${pedido.billing.last_name}</b> · ${pedido.billing.phone} · ${pedido.billing.email}</p><ul>${itens}</ul><p>Frete: ${pedido.shipping_lines?.[0]?.method_title || '-'} (R$ ${pedido.shipping_total})</p>`
           );
           await salvarNoPedido(pedido, { [M.alertaLoja]: new Date().toISOString() });
+        });
+      }
+
+      // Meta Ads: compra pela API de Conversões
+      if (integracoes.meta() && !meta(pedido, M.metaCompra)) {
+        await passo('meta compra', async () => {
+          const eventId = await enviarCompra(pedido);
+          await salvarNoPedido(pedido, { [M.metaCompra]: eventId });
+          return eventId;
         });
       }
 
@@ -231,6 +242,7 @@ export async function rotinaPedidos(prazo: number): Promise<Relatorio[]> {
     const faltaEtapa =
       !meta(p, M.avisoPago) ||
       !meta(p, M.alertaLoja) ||
+      (integracoes.meta() && !meta(p, M.metaCompra)) ||
       (integracoes.bling() && config.bling.enviarPedidos && !meta(p, M.blingPedido)) ||
       (integracoes.bling() && config.bling.emitirNfe && !!meta(p, M.blingPedido) && !meta(p, M.nfeChave)) ||
       (integracoes.melhorEnvio() && config.melhorEnvio.criarEnvios && !meta(p, M.meEnvio) && melhorEnvio.servicoDoPedido(p)) ||

@@ -33,6 +33,7 @@ export type WcPedido = {
   shipping_total: string;
   discount_total: string;
   date_created_gmt: string;
+  date_paid_gmt?: string | null;
   payment_method: string;
   payment_method_title: string;
   payment_url?: string;

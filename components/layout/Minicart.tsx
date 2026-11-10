@@ -2,6 +2,7 @@
 
 import { useCartStore } from '../../store/cartStore';
 import Link from 'next/link';
+import { rastrear, dadosItens } from '../../lib/pixel';
 
 export default function Minicart() {
   const { items, isOpen, closeCart, removeItem } = useCartStore();
@@ -53,7 +54,13 @@ export default function Minicart() {
               {/* Botão que direciona para a página completa de checkout/endereço */}
               <Link
                 href="/checkout"
-                onClick={closeCart}
+                onClick={() => {
+                  rastrear(
+                    'InitiateCheckout',
+                    dadosItens(items.map((i) => ({ id: i.id, quantidade: i.quantity, preco: i.price })))
+                  );
+                  closeCart();
+                }}
                 className="block w-full py-4 bg-[#C9A227] text-[#0B1B34] text-center font-bold uppercase tracking-widest text-xs hover:bg-[#0B1B34] hover:text-white transition-colors shadow-md"
               >
                 Ir para o Checkout

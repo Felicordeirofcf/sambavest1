@@ -124,3 +124,31 @@ curl -H "Authorization: Bearer $CRON_SECRET" "https://SEU-SITE/api/cron/automaca
 
 A resposta lista cada pedido com o que foi feito e os erros. Os logs também ficam na Vercel
 (Logs → buscar `[automacao]`).
+
+## 5. Meta Ads: rastreamento de compras e catálogo
+
+**Por quê:** o pagamento acontece na página da AppMax, fora do site, então o Pixel do navegador nunca
+via a compra. Sem a compra, o Meta Ads não sabe para quem mostrar o anúncio.
+
+**O que é enviado:**
+- **No navegador (Pixel):** `PageView`, `ViewContent` (página de produto), `AddToCart` e
+  `InitiateCheckout` (botão "Ir para o Checkout").
+- **Pelo servidor (API de Conversões):** `Purchase`, no momento em que o pagamento é aprovado, com o
+  valor real do pedido. E-mail, telefone, nome, cidade, CEP e CPF vão **com hash SHA-256**, como a
+  Meta exige. Também vão os cookies do Pixel (`_fbp`/`_fbc`), o IP e o navegador capturados no
+  checkout, para a venda ser atribuída ao anúncio que a trouxe.
+- **Catálogo:** `https://SEU-SITE/api/feed/meta` (CSV, atualizado a cada 1h). Cada modelo/tamanho é um
+  item, e os IDs batem com os eventos acima. Isso habilita os anúncios de catálogo e o remarketing
+  dinâmico.
+
+**Configurar:**
+1. Gerenciador de Eventos → seu Pixel → Configurações → **API de Conversões → Gerar token de
+   acesso**. Coloque em `META_CAPI_TOKEN` na Vercel. `META_PIXEL_ID` é opcional: o padrão é o Pixel
+   que já está no site.
+2. **Teste:** em Gerenciador de Eventos → Testar eventos, copie o código (ex.: `TEST12345`), coloque
+   em `META_TEST_EVENT_CODE`, faça uma compra de teste e confira o `Purchase` aparecendo. **Depois
+   apague** `META_TEST_EVENT_CODE`, senão as compras não contam para os anúncios.
+3. Gerenciador de Comércio → Catálogo → Fontes de dados → Feed de dados → **URL agendada** →
+   `https://SEU-SITE/api/feed/meta`, de hora em hora. Depois, ligue o catálogo ao Pixel em
+   Catálogo → Eventos.
+4. Em Configurações do Pixel, ative a **correspondência avançada automática**.
