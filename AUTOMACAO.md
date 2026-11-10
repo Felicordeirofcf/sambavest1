@@ -215,8 +215,8 @@ com o código. O cliente é avisado na hora. O campo do plugin "Correios for Woo
    **não** esteja no app WhatsApp comum.
 2. Gere um token permanente (Usuário do sistema no Gerenciador de Negócios) e pegue o
    *Phone number ID*. Coloque em `WHATSAPP_TOKEN` e `WHATSAPP_PHONE_NUMBER_ID`.
-3. Crie e aprove estes **templates** (categoria Utilidade, idioma Português BR). As variáveis precisam
-   ficar nesta ordem:
+3. Crie e aprove os **templates** (categoria **Utilidade**, idioma **Português (BR)**). Os nomes e a
+   ordem das variáveis precisam ser exatamente estes. Textos sugeridos na seção 5.4.
 
 | Template              | Quando                         | Variáveis                                          |
 |-----------------------|--------------------------------|----------------------------------------------------|
@@ -224,9 +224,7 @@ com o código. O cliente é avisado na hora. O campo do plugin "Correios for Woo
 | `pedido_enviado`      | rastreio disponível            | {{1}} nome, {{2}} pedido, {{3}} código, {{4}} link |
 | `lembrete_pix`        | Pix gerado e não pago (1h)     | {{1}} nome, {{2}} pedido, {{3}} valor, {{4}} link  |
 | (opcional) recebido   | pedido criado, antes de pagar  | {{1}} nome, {{2}} pedido, {{3}} valor              |
-
-Exemplo de `pedido_enviado`:
-> Oi, {{1}}! Seu pedido #{{2}} da Samba Vest foi enviado 🥁 Código de rastreio: {{3}}. Acompanhe: {{4}}
+| (opcional) alerta     | alerta de mensagem para você   | {{1}} cliente, {{2}} trecho da mensagem            |
 
 ### E-mail (Resend)
 1. Crie uma conta em resend.com e verifique o domínio `sambavest.com`.
@@ -234,19 +232,123 @@ Exemplo de `pedido_enviado`:
 3. `AVISOS_EMAIL_EVENTOS` define o que também vai por e-mail. O padrão é `enviado,pixLembrete`,
    porque o WooCommerce já manda os e-mails de pagamento aprovado e de pedido concluído.
 
-## Testar
+## 5. Atendimento pelo WhatsApp (mensagens recebidas)
 
-```bash
-curl -H "Authorization: Bearer $CRON_SECRET" "https://SEU-SITE/api/cron/automacao?tarefa=pedidos"
-curl -H "Authorization: Bearer $CRON_SECRET" "https://SEU-SITE/api/cron/automacao?tarefa=estoque"
-```
+Quando um cliente escreve para o número da loja, a Meta avisa o site (`/api/webhooks/whatsapp`). O site:
 
-A tarefa `estoque` só roda com `BLING_SINCRONIZAR_ESTOQUE=true`.
+1. **Guarda a conversa** no Upstash (últimas 60 mensagens por cliente, por 30 dias).
+2. **Avisa você** por e-mail (`EMAIL_ADMIN`) e/ou WhatsApp (`WHATSAPP_NUMERO_DONO`). No máximo um alerta
+   por conversa a cada 15 min (`WHATSAPP_ALERTA_INTERVALO_MIN`); quando a dúvida precisa de uma pessoa,
+   o alerta vai sempre.
+3. **Responde sozinho** as dúvidas simples, se `WHATSAPP_RESPOSTAS_AUTOMATICAS=true`:
+   - *Status do pedido* ("cadê meu pedido", "pedido 1234", "rastreio"): procura no WooCommerce pelo
+     telefone de quem escreveu ou pelo número do pedido. Só responde se o telefone do pedido for o mesmo
+     de quem perguntou. Mostra até 3 pedidos dos últimos 180 dias, com o rastreio.
+   - *Prazo* ("quanto tempo demora", "quando chega", "prazo"): responde "O prazo de envio é de 3 a 7
+     dias úteis." Para mudar, preencha `WHATSAPP_RESPOSTA_PRAZO`.
+   - *Tabela de tamanhos* e *boas-vindas*: só se o texto estiver preenchido em
+     `WHATSAPP_RESPOSTA_TAMANHOS` e `WHATSAPP_RESPOSTA_BOAS_VINDAS`.
+   - Qualquer outra coisa (ou áudio, foto etc.): **passa para você**. A conversa fica marcada como
+     "humano" e o robô não responde mais nela por 12 h (`WHATSAPP_HUMANO_SILENCIO_HORAS`). Se
+     `WHATSAPP_RESPOSTA_HUMANO` estiver preenchido, o cliente recebe esse texto.
 
-A resposta lista cada pedido com o que foi feito e os erros. Os logs também ficam na Vercel
-(Logs → buscar `[automacao]`).
+### 5.1 Ligar o webhook na Meta
+1. Invente um texto qualquer e coloque em `WHATSAPP_VERIFY_TOKEN`.
+2. Em developers.facebook.com → seu app → Configurações do app → Básico, copie a **Chave secreta do
+   aplicativo** para `WHATSAPP_APP_SECRET`. Faça o deploy.
+3. Em WhatsApp → Configuração → Webhook → Editar:
+   - URL de retorno: `https://SEU-SITE/api/webhooks/whatsapp`
+   - Token de verificação: o mesmo `WHATSAPP_VERIFY_TOKEN`
+   - Depois de salvar, em **Campos do webhook**, assine `messages`.
+4. Se o app ainda estiver em modo de desenvolvimento, só chegam mensagens de números cadastrados como
+   teste. Para receber de qualquer cliente, publique o app (modo Ativo).
 
-## 5. Meta Ads: rastreamento de compras e catálogo
+### 5.2 Alertas no seu WhatsApp
+A Meta só deixa a loja mandar texto livre para quem falou com ela nas últimas 24 h. Por isso:
+- Mande qualquer mensagem do seu celular (`WHATSAPP_NUMERO_DONO`) para o número da loja. Isso abre a
+  janela por 24 h e os alertas chegam no seu WhatsApp. Suas mensagens não aparecem como cliente.
+- Fora da janela, o alerta vai pelo template `WHATSAPP_TEMPLATE_ALERTA_DONO` (se você criar um) e
+  sempre por e-mail.
+- Para testar como cliente, use **outro** celular.
+
+### 5.3 Painel `/atendimento`
+Defina `ATENDIMENTO_SENHA` e abra `https://SEU-SITE/atendimento`. Mostra as conversas dos últimos 30 dias,
+as mensagens não lidas, os avisos automáticos enviados (com status entregue/lida/falhou) e permite
+**responder** enquanto a janela de 24 h estiver aberta. "Devolver ao robô" tira a marca de "humano".
+
+O **Simulador do robô** (`/atendimento/simulador`) mostra o que o robô responderia a uma mensagem,
+sem enviar nada. Funciona antes de conectar a Meta (o status do pedido usa o WooCommerce de verdade).
+
+Sem coexistência (5.5), o número ligado à API não funciona no app WhatsApp. Nesse caso, responda pelo
+painel.
+
+### 5.4 Templates: como criar e aprovar
+Em business.facebook.com → WhatsApp Manager → Modelos de mensagem → Criar modelo:
+- Categoria **Utilidade** (aviso sobre um pedido do cliente). Se a Meta reclassificar como Marketing,
+  tire palavras de venda ("promoção", "aproveite").
+- Idioma **Português (BR)** → `pt_BR` (`WHATSAPP_TEMPLATE_IDIOMA`).
+- Nome exatamente como na tabela da seção 4, em minúsculas.
+- Regras que mais reprovam: o texto **não pode começar nem terminar com uma variável**; não pode ter
+  duas variáveis coladas; precisa ter mais texto fixo que variáveis; preencha os **exemplos** de cada
+  variável no formulário.
+
+Textos sugeridos (ajuste à vontade, mantendo a ordem das variáveis):
+
+`pagamento_aprovado`
+> Oi, {{1}}! O pagamento do seu pedido #{{2}} na Samba Vest foi aprovado. Agora vamos separar e enviar, e você recebe o código de rastreio por aqui.
+
+`pedido_enviado`
+> Oi, {{1}}! Seu pedido #{{2}} da Samba Vest foi enviado. Código de rastreio: {{3}}. Acompanhe a entrega em {{4}} . Qualquer dúvida, é só responder esta mensagem.
+
+`lembrete_pix`
+> Oi, {{1}}! O Pix do seu pedido #{{2}} ({{3}}) ainda não foi pago. Para concluir, acesse {{4}} . Se já pagou, pode ignorar esta mensagem.
+
+`alerta_atendimento` (opcional, para você)
+> Nova mensagem no WhatsApp da loja de {{1}}: "{{2}}". Responda pelo painel de atendimento.
+
+Teste cada template, depois de aprovado, gerando um pedido de teste com o seu telefone. Se a mensagem
+não chegar, o site manda um e-mail "WhatsApp não entregue" com o motivo dado pela Meta
+(ex.: 132001 = template não existe nesse idioma; 131026 = número sem WhatsApp; 132000 = número
+de variáveis diferente do template).
+
+### 5.5 Coexistência: continuar usando o app WhatsApp Business
+
+Com a coexistência, o número da loja **continua no app WhatsApp Business** (celular e PC) e também fica
+ligado à API. Você atende pelo app como sempre, e o site recebe tudo: guarda no painel, manda os avisos
+automáticos (templates) e responde as dúvidas simples.
+
+**Conectar (feito uma vez, pelo celular que tem o WhatsApp Business):**
+1. Atualize o app WhatsApp Business no celular.
+2. Em developers.facebook.com → seu app → WhatsApp → Configuração da API → **Adicionar número de
+   telefone**, escolha a opção de **conectar um número que já está no app WhatsApp Business**. A Meta
+   mostra um QR code ou manda um aviso para o app; confirme no celular. Aceite compartilhar o histórico
+   de conversas, se perguntar.
+   - Se essa opção não aparecer, a Meta ainda não liberou a coexistência por este caminho para a sua
+     conta. Ela também é oferecida pelos parceiros oficiais da Meta (BSPs). **Não** use a opção de
+     cadastrar o número do zero: isso tira o número do app.
+3. Pegue o **Phone number ID** do número conectado → `WHATSAPP_PHONE_NUMBER_ID`. Gere o token
+   permanente (seção 4) → `WHATSAPP_TOKEN`.
+4. No webhook (5.1), assine os campos **`messages`** e **`smb_message_echoes`**.
+5. Na Vercel: `WHATSAPP_COEXISTENCIA=true`. Faça o deploy.
+
+**Como fica no dia a dia:**
+- Mensagem de cliente: aparece no app, como sempre, e também no painel. Se as respostas automáticas
+  estiverem ligadas, o robô responde o que reconhecer (a resposta aparece no app também).
+- Quando **você** responde pelo app (celular ou PC), o site recebe a cópia ("pelo app" no painel) e o
+  robô fica quieto naquela conversa por 12 h. Assim ele não fala por cima de você.
+- Alertas: por padrão (`WHATSAPP_ALERTAS` vazio) só chegam quando a dúvida precisa de você, porque o
+  resto você já vê no app.
+- Os avisos de pedido (pagamento aprovado, enviado, Pix) saem do mesmo número da loja e aparecem no app.
+
+**Cuidados:**
+- Abra o app WhatsApp Business no celular de vez em quando (a Meta exige uso regular do app, em torno
+  de pelo menos uma vez a cada 14 dias, para manter a coexistência ativa).
+- Alguns recursos do app ficam limitados com a API ligada (ex.: mensagens temporárias, ver uma vez,
+  listas de transmissão). Os grupos continuam só no app e não passam pelo site.
+- Confira, depois de conectar, se o WhatsApp do PC continua conectado. Se cair, conecte de novo pelo QR
+  code no PC.
+
+## 6. Meta Ads: rastreamento de compras e catálogo
 
 **Por quê:** o pagamento acontece na página da AppMax, fora do site, então o Pixel do navegador nunca
 via a compra. Sem a compra, o Meta Ads não sabe para quem mostrar o anúncio.
@@ -273,3 +375,23 @@ via a compra. Sem a compra, o Meta Ads não sabe para quem mostrar o anúncio.
    `https://SEU-SITE/api/feed/meta`, de hora em hora. Depois, ligue o catálogo ao Pixel em
    Catálogo → Eventos.
 4. Em Configurações do Pixel, ative a **correspondência avançada automática**.
+
+## Testar
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" "https://SEU-SITE/api/cron/automacao?tarefa=pedidos"
+curl -H "Authorization: Bearer $CRON_SECRET" "https://SEU-SITE/api/cron/automacao?tarefa=estoque"
+```
+
+A tarefa `estoque` só roda com `BLING_SINCRONIZAR_ESTOQUE=true`.
+
+A resposta lista cada pedido com o que foi feito e os erros. Os logs também ficam na Vercel
+(Logs → buscar `[automacao]`).
+
+Webhook do WhatsApp (deve devolver `ok`):
+
+```bash
+curl "https://SEU-SITE/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=$WHATSAPP_VERIFY_TOKEN&hub.challenge=ok"
+```
+
+Os logs do atendimento ficam na Vercel (Logs → buscar `[atendimento]`).

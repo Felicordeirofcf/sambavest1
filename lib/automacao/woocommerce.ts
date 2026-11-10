@@ -1,5 +1,6 @@
 // Cliente mínimo da API REST do WooCommerce usado pelas automações.
 import { config } from './config';
+import { chaveTelefone } from './whatsapp';
 
 export type WcMeta = { id?: number; key: string; value: unknown };
 
@@ -156,4 +157,28 @@ export function documentoCliente(pedido: WcPedido): string {
 export function linkPagamento(pedido: WcPedido): string {
   if (pedido.payment_url) return pedido.payment_url;
   return `${config.woo.url}/finalizar-compra/order-pay/${pedido.id}/?pay_for_order=true&key=${pedido.order_key}`;
+}
+
+// ---------- Atendimento (WhatsApp) ----------
+
+/** true se os dois telefones são o mesmo (ignora formatação, +55 e o 9 extra do celular). */
+export function mesmoTelefone(a: string, b: string): boolean {
+  const ka = chaveTelefone(a);
+  return Boolean(ka && ka === chaveTelefone(b));
+}
+
+/**
+ * Pedidos recentes de um telefone, do mais novo para o mais antigo.
+ * A busca do WooCommerce compara texto, e o telefone pode estar salvo como "(21) 99695-9903"
+ * ou "21996959903". Os 4 últimos dígitos aparecem juntos em qualquer formato, então
+ * buscamos por eles e filtramos pelo telefone completo.
+ */
+export async function pedidosDoTelefone(telefone: string, dias = 180): Promise<WcPedido[]> {
+  const d = (telefone || '').replace(/\D/g, '');
+  if (d.length < 10) return [];
+  const depoisDe = new Date(Date.now() - dias * 86_400_000).toISOString();
+  const lote = await wc<WcPedido[]>(
+    `/orders?search=${d.slice(-4)}&after=${depoisDe}&per_page=100&orderby=date&order=desc`
+  );
+  return lote.filter((p) => mesmoTelefone(p.billing?.phone || '', telefone) || mesmoTelefone(p.shipping?.phone || '', telefone));
 }

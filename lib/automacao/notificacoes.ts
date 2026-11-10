@@ -3,6 +3,8 @@
 // WhatsApp: mensagens iniciadas pela empresa precisam de um TEMPLATE aprovado pela Meta.
 // Os templates esperados e a ordem das variáveis estão descritos em AUTOMACAO.md.
 import { config, integracoes } from './config';
+import { registrarSaida } from './conversas';
+import { enviarTemplate, telefoneWhatsapp } from './whatsapp';
 import { WcPedido } from './woocommerce';
 
 export type Evento = 'recebido' | 'pago' | 'enviado' | 'pixLembrete';
@@ -12,12 +14,6 @@ export type DadosAviso = {
   linkRastreio?: string;
   linkPagamento?: string;
 };
-
-function telefoneWhatsapp(telefone: string): string | null {
-  let d = (telefone || '').replace(/\D/g, '');
-  if (d.length === 10 || d.length === 11) d = '55' + d;
-  return d.length >= 12 ? d : null;
-}
 
 function brl(valor: string | number): string {
   return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -48,29 +44,14 @@ async function enviarWhatsapp(evento: Evento, pedido: WcPedido, dados: DadosAvis
   const para = telefoneWhatsapp(pedido.billing.phone || '');
   if (!integracoes.whatsapp() || !template || !para) return false;
 
-  const res = await fetch(`https://graph.facebook.com/v21.0/${config.whatsapp.phoneNumberId}/messages`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${config.whatsapp.token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: para,
-      type: 'template',
-      template: {
-        name: template,
-        language: { code: config.whatsapp.idioma },
-        components: [
-          {
-            type: 'body',
-            parameters: parametrosTemplate(evento, pedido, dados).map((text) => ({ type: 'text', text })),
-          },
-        ],
-      },
-    }),
-  });
-  if (!res.ok) {
-    const erro = await res.json().catch(() => ({}));
-    throw new Error(`WhatsApp (${template}): ${erro.error?.message || res.status}`);
+  const parametros = parametrosTemplate(evento, pedido, dados);
+  try {
+    await enviarTemplate(para, template, parametros);
+  } catch (e) {
+    throw new Error(`WhatsApp (${template}): ${(e as Error).message}`);
   }
+  // Mostra o aviso no histórico da conversa (painel de atendimento). Falha aqui não importa.
+  await registrarSaida(para, `[aviso automático: ${template}] ${parametros.join(' · ')}`, 'aviso').catch(() => {});
   return true;
 }
 
@@ -88,7 +69,7 @@ export async function enviarEmail(para: string, assunto: string, html: string): 
   return true;
 }
 
-function escapar(t: string): string {
+export function escapar(t: string): string {
   return t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 }
 
