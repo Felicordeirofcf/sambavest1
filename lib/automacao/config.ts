@@ -84,6 +84,31 @@ export const config = {
   whatsapp: {
     token: env('WHATSAPP_TOKEN'),
     phoneNumberId: env('WHATSAPP_PHONE_NUMBER_ID'),
+    // Versão da Graph API. Versões antigas saem do ar ~2 anos após o lançamento.
+    apiVersion: env('WHATSAPP_API_VERSION') || 'v23.0',
+    // Webhook de mensagens recebidas (Meta → /api/webhooks/whatsapp)
+    verifyToken: env('WHATSAPP_VERIFY_TOKEN'),
+    appSecret: env('WHATSAPP_APP_SECRET'),
+    // Número do dono (55 + DDD + número) para receber alertas de mensagens novas
+    numeroDono: env('WHATSAPP_NUMERO_DONO'),
+    // Template opcional para alertar o dono quando a janela de 24h dele estiver fechada
+    templateAlertaDono: env('WHATSAPP_TEMPLATE_ALERTA_DONO'),
+    // Não repete o alerta da mesma conversa antes deste intervalo (minutos)
+    alertaIntervaloMin: num('WHATSAPP_ALERTA_INTERVALO_MIN', 15),
+    painelSenha: env('ATENDIMENTO_SENHA'),
+    respostas: {
+      // Liga as respostas automáticas (status do pedido, tamanhos, prazo)
+      ativas: flag('WHATSAPP_RESPOSTAS_AUTOMATICAS', false),
+      // Textos aprovados pelo dono. Vazio = essa dúvida vai para o atendimento humano.
+      // Placeholders aceitos: {nome}, {pedido}, {status}, {rastreio}, {link}, {site}
+      status: env('WHATSAPP_RESPOSTA_STATUS'),
+      tamanhos: env('WHATSAPP_RESPOSTA_TAMANHOS'),
+      prazo: env('WHATSAPP_RESPOSTA_PRAZO'),
+      boasVindas: env('WHATSAPP_RESPOSTA_BOAS_VINDAS'),
+      humano: env('WHATSAPP_RESPOSTA_HUMANO'),
+      // Depois que a conversa vai para o humano, o robô fica quieto por estas horas
+      silencioHoras: num('WHATSAPP_HUMANO_SILENCIO_HORAS', 12),
+    },
     idioma: env('WHATSAPP_TEMPLATE_IDIOMA') || 'pt_BR',
     templates: {
       recebido: env('WHATSAPP_TEMPLATE_RECEBIDO'),
