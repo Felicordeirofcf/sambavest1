@@ -76,7 +76,7 @@ export function classificar(textoOriginal: string): Intencao {
   if (/\b(tamanho|tamanhos|medida|medidas|tabela|veste|vestir|forma pequeno|forma grande|numeracao|pp|gg|exg|xg)\b/.test(t)) {
     return { tipo: 'tamanhos' };
   }
-  if (/\b(prazo|demora|quanto tempo|quantos dias|quando chega|chega em|dias uteis|entrega|frete)\b/.test(t)) {
+  if (/\b(prazo|demora|quanto tempo|quantos dias|quando chega|chega em|dias uteis|entrega|entregam)\b/.test(t)) {
     return { tipo: 'prazo' };
   }
   if (/^((oi+|ola|opa|e ai|eai|bom dia|boa tarde|boa noite|tudo bem|tudo bom|td bem|hello|hi)[\s!.,?]*)+$/.test(t)) {

@@ -126,8 +126,10 @@ Quando um cliente escreve para o número da loja, a Meta avisa o site (`/api/web
    - *Status do pedido* ("cadê meu pedido", "pedido 1234", "rastreio"): procura no WooCommerce pelo
      telefone de quem escreveu ou pelo número do pedido. Só responde se o telefone do pedido for o mesmo
      de quem perguntou. Mostra até 3 pedidos dos últimos 180 dias, com o rastreio.
-   - *Tabela de tamanhos*, *prazo* e *boas-vindas*: só se o texto estiver preenchido em
-     `WHATSAPP_RESPOSTA_TAMANHOS`, `WHATSAPP_RESPOSTA_PRAZO` e `WHATSAPP_RESPOSTA_BOAS_VINDAS`.
+   - *Prazo* ("quanto tempo demora", "quando chega", "prazo"): responde "O prazo de envio é de 3 a 7
+     dias úteis." Para mudar, preencha `WHATSAPP_RESPOSTA_PRAZO`.
+   - *Tabela de tamanhos* e *boas-vindas*: só se o texto estiver preenchido em
+     `WHATSAPP_RESPOSTA_TAMANHOS` e `WHATSAPP_RESPOSTA_BOAS_VINDAS`.
    - Qualquer outra coisa (ou áudio, foto etc.): **passa para você**. A conversa fica marcada como
      "humano" e o robô não responde mais nela por 12 h (`WHATSAPP_HUMANO_SILENCIO_HORAS`). Se
      `WHATSAPP_RESPOSTA_HUMANO` estiver preenchido, o cliente recebe esse texto.

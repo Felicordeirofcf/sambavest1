@@ -109,7 +109,8 @@ export const config = {
       // Placeholders aceitos: {nome}, {pedido}, {status}, {rastreio}, {link}, {site}
       status: env('WHATSAPP_RESPOSTA_STATUS'),
       tamanhos: env('WHATSAPP_RESPOSTA_TAMANHOS'),
-      prazo: env('WHATSAPP_RESPOSTA_PRAZO'),
+      // Prazo informado pelo dono: 3 a 7 dias úteis.
+      prazo: env('WHATSAPP_RESPOSTA_PRAZO') || 'O prazo de envio é de 3 a 7 dias úteis.',
       boasVindas: env('WHATSAPP_RESPOSTA_BOAS_VINDAS'),
       humano: env('WHATSAPP_RESPOSTA_HUMANO'),
       // Depois que a conversa vai para o humano, o robô fica quieto por estas horas
