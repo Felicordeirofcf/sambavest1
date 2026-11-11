@@ -14,6 +14,7 @@ const MENU = [
   { href: '/painel/pedidos', rotulo: 'Pedidos' },
   { href: '/painel/clientes', rotulo: 'Clientes' },
   { href: '/painel/produtos', rotulo: 'Produtos e estoque' },
+  { href: '/painel/financeiro', rotulo: 'Financeiro' },
   { href: '/atendimento', rotulo: 'Atendimento WhatsApp' },
   { href: '/painel/integracoes', rotulo: 'Integrações' },
 ];
@@ -46,7 +47,7 @@ export default async function PainelLayout({ children }: { children: ReactNode }
               </form>
             </nav>
           </aside>
-          <main className="flex-1 min-w-0 p-4 md:p-8">{children}</main>
+          <div className="flex-1 min-w-0 p-4 md:p-8">{children}</div>
         </div>
       ) : (
         children

@@ -7,6 +7,7 @@ import { processarPedido } from '../../lib/automacao/pedidos';
 import { adicionarNota, obterPedido, salvarNoPedido, wc } from '../../lib/automacao/woocommerce';
 import { exigirLogin, sairDoPainel, tentarEntrar } from '../../lib/painel/auth';
 import { limparCache } from '../../lib/painel/dados';
+import { carregarFinanceiro } from '../../lib/painel/financeiro';
 
 const txt = (f: FormData, k: string) => String(f.get(k) || '').trim();
 
@@ -128,4 +129,16 @@ export async function atualizarDados() {
   await limparCache();
   revalidatePath('/painel');
   redirect('/painel');
+}
+
+export async function atualizarFinanceiro() {
+  await exigirLogin();
+  let erro = '';
+  try {
+    await carregarFinanceiro(true);
+  } catch (e) {
+    erro = (e as Error).message;
+  }
+  revalidatePath('/painel/financeiro');
+  redirect(erro ? `/painel/financeiro?erro=${encodeURIComponent(erro)}` : '/painel/financeiro');
 }
