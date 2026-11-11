@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spot Bot · Painel</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#121722; --panel2:#171d2b; --line:#232b3d; --txt:#e6e9f0; --mut:#8b93a7;
+    --acc:#f0b90b; --up:#16c784; --down:#ea3943; --info:#4c8dff; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{position:sticky;top:0;z-index:5;display:flex;gap:16px;align-items:center;justify-content:space-between;
+    padding:14px 24px;background:rgba(11,14,20,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .brand{display:flex;gap:10px;align-items:center;font-weight:700;font-size:17px}
+  .brand .logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--acc),#ff8a00);display:grid;place-items:center;color:#111;font-weight:900}
+  .badge{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.3px}
+  .b-sim{background:rgba(76,141,255,.15);color:var(--info);border:1px solid rgba(76,141,255,.35)}
+  .b-real{background:rgba(234,57,67,.15);color:var(--down);border:1px solid rgba(234,57,67,.45)}
+  .b-on{background:rgba(22,199,132,.15);color:var(--up)} .b-off{background:#20283a;color:var(--mut)}
+  main{max-width:1320px;margin:0 auto;padding:22px 24px 60px;display:grid;gap:18px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+  .kpi .l{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+  .kpi .v{font-size:22px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:18px}
+  @media(max-width:1000px){.grid2{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .card h2{margin:0;font-size:15px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .card h2 small{color:var(--mut);font-weight:400;font-size:12px}
+  .body{padding:14px 16px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th,td{padding:8px 7px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--mut);font-weight:500;font-size:12px}
+  td.why{white-space:normal;color:var(--mut);font-size:12px;max-width:360px}
+  .up{color:var(--up)} .down{color:var(--down)} .mut{color:var(--mut)}
+  .empty{padding:22px;text-align:center;color:var(--mut)}
+  button{cursor:pointer;border:0;border-radius:10px;padding:9px 14px;font-weight:600;font-size:13px;background:#232b3d;color:var(--txt)}
+  button:hover{filter:brightness(1.15)} button:disabled{opacity:.5;cursor:wait}
+  .primary{background:var(--acc);color:#111} .danger{background:var(--down);color:#fff} .ok{background:var(--up);color:#062}
+  .sm{padding:5px 10px;font-size:12px;border-radius:8px}
+  form .sec{margin:4px 0 14px} form .sec h3{font-size:12px;color:var(--acc);text-transform:uppercase;letter-spacing:.7px;margin:0 0 8px}
+  .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+  label{display:grid;gap:4px;font-size:12px;color:var(--mut)}
+  input,select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:8px 10px;font-size:14px;width:100%}
+  input:focus,select:focus{outline:2px solid rgba(240,185,11,.4);border-color:var(--acc)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .log{max-height:280px;overflow:auto;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace}
+  .log div{padding:3px 0;border-bottom:1px dashed #1c2333}
+  .log .error{color:var(--down)} .log .warn{color:var(--acc)}
+  .toast{position:fixed;right:20px;bottom:20px;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--acc);padding:12px 16px;border-radius:10px;max-width:420px;display:none;z-index:9}
+  .warnbox{background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.3);color:#f5d47a;border-radius:10px;padding:10px 12px;font-size:13px}
+  .bt-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-top:12px}
+  .bt-sum div{background:var(--panel2);border-radius:10px;padding:8px 10px} .bt-sum b{display:block;font-size:17px}
+  .scroll{max-height:380px;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="logo">₿</div> Spot Bot <span id="modeBadge" class="badge b-sim">SIMULAÇÃO</span> <span id="runBadge" class="badge b-off">PARADO</span></div>
+  <div class="row">
+    <button id="btnScan">🔍 Varrer agora</button>
+    <button id="btnStart" class="ok">▶ Iniciar robô</button>
+    <button id="btnStop" class="danger" style="display:none">■ Parar</button>
+  </div>
+</header>
+
+<main>
+  <div id="realWarn" class="warnbox" style="display:none">⚠️ MODO REAL ATIVO — o robô envia ordens com seu dinheiro na Binance. Alvo e stop ficam registrados como OCO na própria corretora.</div>
+
+  <section class="kpis">
+    <div class="kpi"><div class="l">Saldo disponível</div><div class="v" id="kCash">—</div></div>
+    <div class="kpi"><div class="l">Resultado acumulado</div><div class="v" id="kPnl">—</div></div>
+    <div class="kpi"><div class="l">Taxa de acerto</div><div class="v" id="kWin">—</div></div>
+    <div class="kpi"><div class="l">Operações</div><div class="v" id="kTrades">—</div></div>
+    <div class="kpi"><div class="l">Posições abertas</div><div class="v" id="kOpen">—</div></div>
+    <div class="kpi"><div class="l">Última varredura</div><div class="v" id="kScan" style="font-size:15px">—</div></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Oportunidades de entrada <small id="scanInfo"></small></h2>
+      <div class="scroll"><table><thead><tr><th>Par</th><th>Score</th><th>Entrada</th><th>Alvo</th><th>Stop</th><th>Por quê</th><th></th></tr></thead>
+        <tbody id="tSignals"></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>Posições abertas</h2>
+      <div class="scroll"><table><thead><tr><th>Par</th><th>Entrada</th><th>Alvo</th><th>Stop</th><th>Valor</th><th>Aberta</th><th></th></tr></thead>
+        <tbody id="tPositions"></tbody></table></div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Configuração <small>salva em settings.json</small></h2>
+      <form id="cfgForm" class="body">
+        <div class="sec"><h3>Estratégia</h3><div class="fields">
+          <label>Lucro líquido alvo (%)<input name="take_profit_pct" type="number" step="0.1" min="0.2" max="20"></label>
+          <label>Stop loss (%)<input name="stop_loss_pct" type="number" step="0.1" min="0.2" max="20"></label>
+          <label>Taxa por lado (%)<input name="fee_pct" type="number" step="0.005" min="0"></label>
+          <label>Tempo máximo na operação (h)<input name="max_hold_hours" type="number" step="1" min="1"></label>
+        </div></div>
+        <div class="sec"><h3>Gestão de risco</h3><div class="fields">
+          <label>Risco por operação (% do saldo)<input name="risk_per_trade_pct" type="number" step="0.05" min="0.05" max="10"></label>
+          <label>Valor máximo por operação<input name="max_position_quote" type="number" step="1" min="1"></label>
+          <label>Máx. posições simultâneas<input name="max_open_positions" type="number" step="1" min="1"></label>
+          <label>Perda máx. diária (%)<input name="daily_max_loss_pct" type="number" step="0.5" min="0.5"></label>
+        </div></div>
+        <div class="sec"><h3>Mercado</h3><div class="fields">
+          <label>Moeda de cotação<input name="quote_asset"></label>
+          <label>Volume mínimo 24h<input name="min_24h_volume_quote" type="number" step="1000000"></label>
+          <label>Quantos pares varrer<input name="top_n_symbols" type="number" min="1" max="150"></label>
+          <label>Somente estes pares (opcional)<input name="symbols_whitelist" placeholder="BTCUSDT,ETHUSDT"></label>
+        </div></div>
+        <div class="sec"><h3>Execução</h3><div class="fields">
+          <label>Intervalo entre varreduras (s)<input name="scan_interval_sec" type="number" min="30"></label>
+          <label>Entradas automáticas<select name="auto_trade"><option value="true">Sim — entra sozinho</option><option value="false">Não — só sinaliza</option></select></label>
+          <label>Saldo inicial da simulação<input name="sim_balance" type="number" step="10" min="10"></label>
+          <label>Servidor<select name="base_url"><option value="https://testnet.binance.vision">Testnet (dinheiro fictício)</option><option value="https://api.binance.com">Produção</option></select></label>
+          <label>Modo<select name="dry_run"><option value="true">Simulação (sem ordens)</option><option value="false">REAL (envia ordens)</option></select></label>
+        </div></div>
+        <div class="row" style="justify-content:space-between">
+          <span class="mut" id="keyInfo"></span>
+          <div class="row"><button type="button" id="btnCheck">🔑 Validar chave</button><button class="primary" type="submit">Salvar configuração</button></div>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Backtest <small>valide antes de arriscar dinheiro</small></h2>
+      <div class="body">
+        <div class="fields">
+          <label>Pares<input id="btSymbols" value="BTCUSDT,ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT"></label>
+          <label>Dias<input id="btDays" type="number" value="60" min="1" max="365"></label>
+        </div>
+        <div class="row" style="margin-top:10px"><button id="btnBacktest" class="primary">Rodar backtest</button><span class="mut" id="btStatus"></span></div>
+        <div id="btResult"></div>
+      </div>
+      <h2 style="border-top:1px solid var(--line)">Log</h2>
+      <div class="body log" id="log"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Histórico de operações</h2>
+    <div class="scroll"><table><thead><tr><th>Fechada</th><th>Par</th><th>Modo</th><th>Entrada</th><th>Saída</th><th>Motivo</th><th>Resultado</th><th>%</th></tr></thead>
+      <tbody id="tHistory"></tbody></table></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const TOKEN = "__BOT_TOKEN__";
+let state = null, formDirty = false;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = (v, d=2) => (v===null||v===undefined||isNaN(v)) ? "—" : Number(v).toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const px = v => Number(v).toPrecision(6).replace(/\.?0+$/,"");
+const ago = ms => { if(!ms) return "—"; const s=(Date.now()-ms)/1000; if(s<60) return Math.round(s)+"s atrás"; if(s<3600) return Math.round(s/60)+" min atrás"; return Math.round(s/3600)+" h atrás"; };
+const dt = ms => new Date(ms).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+const cls = v => v>0 ? "up" : v<0 ? "down" : "";
+
+function toast(msg, bad=false){ const t=$("toast"); t.textContent=msg; t.style.borderLeftColor = bad?"var(--down)":"var(--acc)"; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",4500); }
+
+async function api(path, body={}){
+  const r = await fetch(path,{method:"POST",headers:{"Content-Type":"application/json","X-Bot-Token":TOKEN},body:JSON.stringify(body)});
+  const j = await r.json(); if(!r.ok) throw new Error(j.error||r.status); return j;
+}
+
+function render(){
+  const s = state, c = s.config, q = c.quote_asset;
+  const real = !c.dry_run;
+  $("modeBadge").textContent = real ? "REAL" : "SIMULAÇÃO"; $("modeBadge").className = "badge " + (real?"b-real":"b-sim");
+  $("realWarn").style.display = real ? "block" : "none";
+  $("runBadge").textContent = s.running ? "RODANDO" : "PARADO"; $("runBadge").className = "badge " + (s.running?"b-on":"b-off");
+  $("btnStart").style.display = s.running ? "none" : ""; $("btnStop").style.display = s.running ? "" : "none";
+  $("kCash").textContent = real ? "na Binance" : num(s.sim_cash)+" "+q;
+  $("kPnl").innerHTML = `<span class="${cls(s.stats.pnl_quote)}">${num(s.stats.pnl_quote)} ${esc(q)}</span>`;
+  $("kWin").textContent = s.stats.trades ? s.stats.win_rate+"%" : "—";
+  $("kTrades").textContent = s.stats.trades;
+  $("kOpen").textContent = s.positions.length + " / " + c.max_open_positions;
+  $("kScan").textContent = ago(s.last_scan.at);
+  $("scanInfo").textContent = s.last_scan.at ? `${s.last_scan.analyzed} pares analisados` : "clique em Varrer agora";
+  $("keyInfo").textContent = c.has_keys ? `Chave carregada: ${c.api_key_hint}` : "Sem chave da API (.env) — só simulação/varredura";
+
+  const sig = s.last_scan.signals;
+  $("tSignals").innerHTML = sig.length ? sig.map(x => `<tr><td><b>${esc(x.symbol)}</b></td><td>${x.score}</td><td>${px(x.entry)}</td>
+    <td class="up">${px(x.take_profit)}</td><td class="down">${px(x.stop)}</td><td class="why">${x.reasons.map(esc).join(" · ")}</td>
+    <td><button class="sm primary" data-enter="${esc(x.symbol)}">Entrar</button></td></tr>`).join("")
+    : `<tr><td colspan="7" class="empty">${s.last_scan.at ? "Nenhum setup válido agora. Paciência também é estratégia — o robô espera o próximo." : "Ainda não varreu o mercado."}</td></tr>`;
+
+  $("tPositions").innerHTML = s.positions.length ? s.positions.map(p => `<tr><td><b>${esc(p.symbol)}</b> <span class="badge ${p.mode==="live"?"b-real":"b-sim"}">${p.mode==="live"?"REAL":"SIM"}</span></td>
+    <td>${px(p.entry)}</td><td class="up">${px(p.take_profit)}</td><td class="down">${px(p.stop)}</td><td>${num(p.quote_spent)}</td>
+    <td>${ago(p.opened_at)}</td><td><button class="sm danger" data-close="${esc(p.symbol)}">Fechar</button></td></tr>`).join("")
+    : `<tr><td colspan="7" class="empty">Nenhuma posição aberta.</td></tr>`;
+
+  $("tHistory").innerHTML = s.history.length ? s.history.map(t => `<tr><td>${dt(t.exit_time)}</td><td><b>${esc(t.symbol)}</b></td><td>${t.mode==="live"?"REAL":"SIM"}</td>
+    <td>${px(t.entry)}</td><td>${px(t.exit_price)}</td><td>${esc(t.reason)}</td>
+    <td class="${cls(t.pnl_quote)}">${num(t.pnl_quote)} ${esc(q)}</td><td class="${cls(t.pnl_pct)}">${num(t.pnl_pct)}%</td></tr>`).join("")
+    : `<tr><td colspan="8" class="empty">Sem operações ainda.</td></tr>`;
+
+  $("log").innerHTML = s.logs.map(l => `<div class="${esc(l.level)}"><span class="mut">${new Date(l.at).toLocaleTimeString("pt-BR")}</span> ${esc(l.msg)}</div>`).join("") || '<span class="mut">—</span>';
+
+  if(!formDirty) for(const el of $("cfgForm").elements){ if(el.name && el.name in c) el.value = String(c[el.name]); }
+  const scanJob = s.jobs.scan; $("btnScan").disabled = scanJob && scanJob.status==="running";
+  $("btnScan").textContent = $("btnScan").disabled ? "⏳ Varrendo…" : "🔍 Varrer agora";
+}
+
+async function refresh(){
+  try{ const r = await fetch("/api/status"); state = await r.json(); render(); }catch(e){ /* servidor fora */ }
+}
+
+$("cfgForm").addEventListener("input", () => formDirty = true);
+$("cfgForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  if(data.dry_run === "false" && state.config.dry_run){
+    const typed = prompt("Você está ativando o MODO REAL: o robô vai comprar e vender com seu dinheiro.\nNão há garantia de lucro. Digite REAL para confirmar:");
+    if(typed !== "REAL"){ toast("Modo real NÃO ativado."); return; }
+  }
+  try{ await api("/api/config", data); formDirty=false; toast("Configuração salva ✔"); refresh(); }catch(err){ toast(err.message, true); }
+});
+
+$("btnStart").onclick = async () => { try{ await api("/api/start"); toast("Robô iniciado"); refresh(); }catch(e){ toast(e.message,true); } };
+$("btnStop").onclick = async () => { try{ await api("/api/stop"); toast("Robô parado"); refresh(); }catch(e){ toast(e.message,true); } };
+$("btnScan").onclick = async () => { try{ await api("/api/scan"); toast("Varredura iniciada…"); setTimeout(refresh,500); }catch(e){ toast(e.message,true); } };
+$("btnCheck").onclick = async () => {
+  try{ const r = await api("/api/check-key");
+    toast(r.ok ? `Chave OK · saldo ${num(r.quote_free)} ${state.config.quote_asset}` + (r.withdrawals_enabled===false?" · saque desabilitado ✔":"")
+               : (r.withdrawals_enabled ? "⚠️ Sua chave permite SAQUE — desabilite na Binance!" : "Chave sem permissão de trade"), !r.ok);
+  }catch(e){ toast(e.message,true); }
+};
+
+document.addEventListener("click", async e => {
+  const en = e.target.dataset.enter, cl = e.target.dataset.close;
+  if(en){
+    const real = !state.config.dry_run;
+    if(!confirm(`${real?"[REAL] ":"[SIMULAÇÃO] "}Comprar ${en} agora com alvo e stop configurados?`)) return;
+    e.target.disabled = true;
+    try{ await api("/api/enter",{symbol:en}); toast(`Entrada em ${en} registrada`); }catch(err){ toast(err.message,true); }
+    e.target.disabled = false; refresh();
+  }
+  if(cl){
+    if(!confirm(`Fechar ${cl} a mercado agora?`)) return;
+    try{ await api("/api/close",{symbol:cl}); toast(`${cl} fechada`); }catch(err){ toast(err.message,true); }
+    refresh();
+  }
+});
+
+$("btnBacktest").onclick = async () => {
+  try{
+    await api("/api/backtest",{symbols:$("btSymbols").value, days:$("btDays").value});
+    $("btnBacktest").disabled = true; $("btStatus").textContent = "baixando histórico e simulando…";
+    const poll = setInterval(async () => {
+      const j = await (await fetch("/api/job/backtest")).json();
+      if(j.status === "running") return;
+      clearInterval(poll); $("btnBacktest").disabled = false; $("btStatus").textContent = "";
+      if(j.status === "error"){ toast(j.error,true); return; }
+      const s = j.result.summary, br = s.by_reason || {};
+      $("btResult").innerHTML = `<div class="bt-sum">
+        <div>Operações<b>${s.trades}</b></div><div>Acerto<b>${s.win_rate}%</b></div>
+        <div>Retorno total<b class="${cls(s.total_pct)}">${num(s.total_pct)}%</b></div>
+        <div>Média/op.<b class="${cls(s.avg_pct)}">${num(s.avg_pct,3)}%</b></div>
+        <div>Profit factor<b>${s.profit_factor ?? "—"}</b></div><div>Drawdown máx.<b class="down">${num(s.max_drawdown_pct)}%</b></div>
+        <div>Alvo / Stop / Tempo<b>${br.alvo||0} / ${br.stop||0} / ${br.tempo||0}</b></div></div>
+        <table style="margin-top:10px"><thead><tr><th>Par</th><th>Ops</th><th>Acerto</th><th>Retorno</th><th>DD</th></tr></thead><tbody>
+        ${Object.entries(j.result.per_symbol).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v.trades}</td><td>${v.win_rate}%</td><td class="${cls(v.total_pct)}">${num(v.total_pct)}%</td><td>${num(v.max_drawdown_pct)}%</td></tr>`).join("")}
+        </tbody></table>`;
+    }, 1500);
+  }catch(e){ toast(e.message,true); }
+};
+
+refresh(); setInterval(refresh, 3000);
+</script>
+</body>
+</html>
