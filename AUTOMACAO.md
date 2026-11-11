@@ -410,3 +410,26 @@ curl "https://SEU-SITE/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token
 ```
 
 Os logs do atendimento ficam na Vercel (Logs → buscar `[atendimento]`).
+
+## Painel de gestão (`/painel`)
+
+Abra `https://sambavest.com/painel` e entre com a senha de `PAINEL_SENHA` (ou `ATENDIMENTO_SENHA`, se a
+primeira não existir). O mesmo login libera o atendimento do WhatsApp (`/atendimento`).
+
+- **Visão geral:** faturamento, pedidos pagos, ticket médio e peças vendidas em 7, 30 ou 90 dias, comparando
+  com o período anterior. Também mostra quantos pedidos foram pagos, Pix pagos x gerados, clientes novos x
+  recorrentes, gráfico por dia, produtos mais vendidos, forma de pagamento, estados e conversas do WhatsApp.
+- **Precisa de atenção:** pedidos com erro na automação, pagos há mais de 2 dias sem rastreio, Pix não pago
+  nas últimas 48h, pagos sem pedido no Bling e pagos sem envio no Melhor Envio.
+- **Pedidos:** busca por número, nome, e-mail, CPF, telefone ou produto, com a situação de cada automação
+  (Bling, NF-e, envio, rastreio). No pedido dá para rodar as automações de novo, informar o rastreio (o
+  cliente é avisado), mudar o status, escrever notas e responder o cliente no WhatsApp.
+- **Clientes (CRM):** base montada com os pedidos dos últimos 12 meses, agrupada por CPF, e-mail ou telefone.
+  Os segmentos são VIP, Recorrente, Novo, Inativo e Não comprou. Cada cliente tem o histórico de pedidos, o
+  que costuma comprar e a conversa do WhatsApp.
+- **Produtos e estoque:** estoque de cada variação, vendas no período, por quantos dias o estoque dura, itens
+  esgotados ou com estoque baixo e SKU faltando ou repetido (o Bling liga os produtos pelo SKU).
+- **Integrações:** o que está configurado e ligado em cada sistema.
+
+Os números vêm direto do WooCommerce (a AppMax entra pelo plugin de pagamento) e ficam em cache por 2
+minutos. O botão "Atualizar" busca de novo na hora.
