@@ -197,3 +197,16 @@ export async function lidaCrm(formData: FormData) {
   }
   redirect(`/painel/crm/${chave}`);
 }
+
+/** Move o contato de etapa (usado pelo quadro kanban, sem recarregar a página). */
+export async function moverEtapaCrm(chave: string, etapa: string): Promise<{ ok: boolean }> {
+  await exigirLogin();
+  const k = String(chave || '').replace(/\D/g, '');
+  if (!k || !ETAPAS.some((e) => e.id === etapa)) return { ok: false };
+  const c = await obterContato(k);
+  if (!c) return { ok: false };
+  c.etapa = etapa as typeof c.etapa;
+  await salvarContato(c);
+  revalidatePath('/painel/crm');
+  return { ok: true };
+}

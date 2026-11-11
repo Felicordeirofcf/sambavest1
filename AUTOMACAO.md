@@ -439,7 +439,8 @@ primeira não existir). O mesmo login libera o atendimento do WhatsApp (`/atendi
   Comprou, Pós-venda, Não fechou), etiquetas, notas internas, a conversa completa com resposta (dentro da
   janela de 24h da Meta) e o histórico de pedidos. A lista filtra por não lidas, esperando resposta,
   ainda não compraram, já compraram e com pedido não pago. As mensagens ficam guardadas por 12 meses e o
-  contato não expira.
+  contato não expira. O botão **Quadro (48h)** mostra as conversas com movimento nas últimas 24, 48 ou 72
+  horas em colunas por etapa; arraste o cartão para mudar a etapa (no celular, escolha a etapa no cartão).
 - **Financeiro (Bling):** contas a receber e a pagar. Mostra o que entra e sai nos próximos 30 dias, o saldo
   previsto, o realizado no mês, contas vencidas, fluxo de caixa semana a semana (8 semanas) com saldo
   acumulado e despesas do mês por categoria. Só lê: baixas e lançamentos continuam no Bling. Precisa dos
