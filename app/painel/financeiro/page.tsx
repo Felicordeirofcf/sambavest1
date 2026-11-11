@@ -105,6 +105,23 @@ function Conteudo({ f, ver }: { f: Financeiro; ver?: string }) {
         <Kpi rotulo="Realizado no mês" valor={brl(f.recebidoNoMes - f.pagoNoMes)} ajuda={`recebido ${brl(f.recebidoNoMes)} · pago ${brl(f.pagoNoMes)}`} />
       </div>
 
+      {(() => {
+        const limite = diaLocal(agora - 90 * 86_400_000);
+        const antigasR = vencR.filter((c) => c.vencimento < limite);
+        const antigasP = vencP.filter((c) => c.vencimento < limite);
+        if (!antigasR.length && !antigasP.length) return null;
+        return (
+          <Aviso>
+            Há contas vencidas há mais de 90 dias ainda em aberto no Bling:{' '}
+            {antigasR.length > 0 && <b>{antigasR.length} a receber ({brl(soma(antigasR))})</b>}
+            {antigasR.length > 0 && antigasP.length > 0 && ' e '}
+            {antigasP.length > 0 && <b>{antigasP.length} a pagar ({brl(soma(antigasP))})</b>}. Em geral são vendas já pagas pela AppMax
+            que nunca tiveram baixa. Dê baixa no Bling (Finanças → Contas a receber → filtrar por vencimento → selecionar → Baixar) para o
+            caixa ficar real.
+          </Aviso>
+        );
+      })()}
+
       {(vencR.length > 0 || vencP.length > 0) && (
         <div className="grid md:grid-cols-2 gap-3">
           {vencP.length > 0 && (

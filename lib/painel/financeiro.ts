@@ -125,7 +125,7 @@ async function categorias(): Promise<Map<number, string>> {
 }
 
 export type Financeiro = {
-  receber: Conta[]; // vencimento de 90 dias atrás a 90 dias à frente
+  receber: Conta[]; // vencimento de 90 dias atrás a 90 dias à frente + vencidas em aberto mais antigas
   pagar: Conta[];
   recebidoNoMes: number;
   pagoNoMes: number;
@@ -156,6 +156,33 @@ export async function carregarFinanceiro(forcar = false): Promise<Financeiro> {
   const pagar = (await paginar<ItemPagar>(`/contas/pagar?dataVencimentoInicial=${de}&dataVencimentoFinal=${ate}`))
     .map(dePagar)
     .filter((c) => c.vencimento >= de && c.vencimento <= ate);
+
+  // Vencidas em aberto ANTES da janela de 90 dias (contas antigas que nunca tiveram baixa).
+  const antesDe = somarDias(-91);
+  const ids = new Set([...receber, ...pagar].map((c) => `${c.tipo}-${c.id}`));
+  const novas = (l: Conta[]) =>
+    l.filter((c) => {
+      const k = `${c.tipo}-${c.id}`;
+      if (ids.has(k) || c.vencimento > antesDe || !ABERTA.includes(c.situacao)) return false;
+      ids.add(k);
+      return true;
+    });
+  try {
+    receber.push(
+      ...novas(
+        (await paginar<ItemReceber>(`/contas/receber?situacoes[]=1&situacoes[]=3&tipoFiltroData=V&dataInicial=2015-01-01&dataFinal=${antesDe}`, 20)).map(deReceber)
+      )
+    );
+    for (const situacao of ABERTA) {
+      pagar.push(
+        ...novas(
+          (await paginar<ItemPagar>(`/contas/pagar?situacao=${situacao}&dataVencimentoInicial=2015-01-01&dataVencimentoFinal=${antesDe}`, 10)).map(dePagar)
+        )
+      );
+    }
+  } catch (e) {
+    avisos.push(`Não consegui ler as contas vencidas há mais de 90 dias: ${(e as Error).message}`);
+  }
 
   let recebidoNoMes = 0;
   let pagoNoMes = 0;

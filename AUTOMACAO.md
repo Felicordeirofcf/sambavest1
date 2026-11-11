@@ -433,6 +433,13 @@ primeira não existir). O mesmo login libera o atendimento do WhatsApp (`/atendi
   que costuma comprar e a conversa do WhatsApp.
 - **Produtos e estoque:** estoque de cada variação, vendas no período, por quantos dias o estoque dura, itens
   esgotados ou com estoque baixo e SKU faltando ou repetido (o Bling liga os produtos pelo SKU).
+- **CRM WhatsApp:** todo contato que conversa com a loja vira um cadastro permanente, criado sozinho na
+  primeira mensagem e atualizado a cada nova. Ele é ligado aos pedidos do WooCommerce pelo telefone (com
+  ou sem o 9 extra). Cada contato tem etapa do funil (Novo contato, Em atendimento, Aguardando pagamento,
+  Comprou, Pós-venda, Não fechou), etiquetas, notas internas, a conversa completa com resposta (dentro da
+  janela de 24h da Meta) e o histórico de pedidos. A lista filtra por não lidas, esperando resposta,
+  ainda não compraram, já compraram e com pedido não pago. As mensagens ficam guardadas por 12 meses e o
+  contato não expira.
 - **Financeiro (Bling):** contas a receber e a pagar. Mostra o que entra e sai nos próximos 30 dias, o saldo
   previsto, o realizado no mês, contas vencidas, fluxo de caixa semana a semana (8 semanas) com saldo
   acumulado e despesas do mês por categoria. Só lê: baixas e lançamentos continuam no Bling. Precisa dos

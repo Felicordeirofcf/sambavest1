@@ -9,6 +9,8 @@ import { adicionarNota, obterPedido, salvarNoPedido, wc } from '../../lib/automa
 import { exigirLogin, sairDoPainel, tentarEntrar } from '../../lib/painel/auth';
 import { limparCache } from '../../lib/painel/dados';
 import { carregarFinanceiro } from '../../lib/painel/financeiro';
+import { ETAPAS, obterContato, salvarContato } from '../../lib/painel/crm';
+import { alterarConversa, obterConversa } from '../../lib/automacao/conversas';
 
 const txt = (f: FormData, k: string) => String(f.get(k) || '').trim();
 
@@ -148,4 +150,50 @@ export async function atualizarFinanceiro() {
 export async function conectarBling() {
   await exigirLogin();
   redirect(await linkDeAutorizacao());
+}
+
+// ---------- CRM ----------
+
+function chaveCrm(formData: FormData): string {
+  const chave = txt(formData, 'chave').replace(/\D/g, '');
+  if (!chave) redirect('/painel/crm');
+  return chave;
+}
+
+export async function salvarCrm(formData: FormData) {
+  await exigirLogin();
+  const chave = chaveCrm(formData);
+  const c = await obterContato(chave);
+  if (!c) redirect('/painel/crm');
+  const etapa = txt(formData, 'etapa');
+  if (ETAPAS.some((e) => e.id === etapa)) c.etapa = etapa as typeof c.etapa;
+  const nome = txt(formData, 'nome').slice(0, 80);
+  c.nomeEditado = nome && nome !== c.nome ? nome : undefined;
+  c.etiquetas = [...new Set(txt(formData, 'etiquetas').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 12);
+  await salvarContato(c);
+  redirect(`/painel/crm/${chave}?ok=${encodeURIComponent('Contato salvo.')}`);
+}
+
+export async function notaCrm(formData: FormData) {
+  await exigirLogin();
+  const chave = chaveCrm(formData);
+  const texto = txt(formData, 'nota').slice(0, 2000);
+  const c = await obterContato(chave);
+  if (!c || !texto) redirect(`/painel/crm/${chave}`);
+  c.notas = [{ texto, em: Date.now() }, ...c.notas].slice(0, 100);
+  await salvarContato(c);
+  redirect(`/painel/crm/${chave}?ok=${encodeURIComponent('Nota salva.')}`);
+}
+
+/** Marca a conversa como lida (zera as não lidas no atendimento e no CRM). */
+export async function lidaCrm(formData: FormData) {
+  await exigirLogin();
+  const chave = chaveCrm(formData);
+  const c = await obterContato(chave);
+  if (c && (await obterConversa(c.numero))) {
+    await alterarConversa(c.numero, (conv) => {
+      conv.naoLidas = 0;
+    });
+  }
+  redirect(`/painel/crm/${chave}`);
 }
