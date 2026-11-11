@@ -60,6 +60,12 @@ async function renovarTokens(refreshAtual: string): Promise<Tokens> {
   }
 }
 
+/** Situação dos tokens salvos no KV (sem expor os valores). */
+export async function estadoTokens(): Promise<{ salvosNoKv: boolean; expiraEm?: string }> {
+  const t = await kvGet<Tokens>(CHAVE_TOKENS);
+  return t ? { salvosNoKv: true, expiraEm: new Date(t.expira_em).toISOString() } : { salvosNoKv: false };
+}
+
 async function tokenAtual(forcarRenovacao = false): Promise<string> {
   let tokens = await kvGet<Tokens>(CHAVE_TOKENS);
   if (!tokens) {
@@ -210,7 +216,12 @@ async function atualizarEnderecoContato(id: number, geral: EnderecoBling): Promi
 
 // ---------------- Produtos ----------------
 
-type ProdutoBling = { id: number; codigo?: string; estoque?: { saldoVirtualTotal?: number | string } };
+type ProdutoBling = {
+  id: number;
+  codigo?: string;
+  idProdutoPai?: number;
+  estoque?: { saldoVirtualTotal?: number | string };
+};
 
 // A API v3 filtra por saldo e, segundo a documentação, o padrão é "só saldo positivo".
 // Para enxergar também os produtos zerados e negativos, consultamos os três filtros.
@@ -428,12 +439,14 @@ export async function consultarNfe(idNota: number): Promise<SituacaoNfe> {
 
 // ---------------- Estoque ----------------
 
+export type ProdutoListado = { id: number; idPai?: number; saldo?: number };
+
 /**
- * Mapa código (SKU) → saldo virtual (já descontando reservas) dos produtos ativos do Bling.
- * Produtos zerados ou negativos entram com 0, para o WooCommerce também zerar.
+ * Todos os produtos ativos do Bling com código (SKU), por código. O saldo vem da listagem
+ * quando ela traz; zerados e negativos entram com 0; sem informação fica undefined.
  */
-export async function saldosPorCodigo(): Promise<Map<string, number>> {
-  const produtos = new Map<string, { id: number; saldo?: number }>();
+export async function listarProdutosAtivos(): Promise<Map<string, ProdutoListado>> {
+  const produtos = new Map<string, ProdutoListado>();
   for (const tipo of TIPOS_PRODUTO) {
     for (const filtro of FILTROS_SALDO) {
       for (let pagina = 1; pagina <= 50; pagina++) {
@@ -444,13 +457,22 @@ export async function saldosPorCodigo(): Promise<Map<string, number>> {
           if (!p.codigo || produtos.has(p.codigo)) continue;
           const s = p.estoque?.saldoVirtualTotal;
           const saldo = s !== undefined && s !== null && s !== '' ? Number(s) : filtro === 1 ? undefined : 0;
-          produtos.set(p.codigo, { id: p.id, saldo });
+          produtos.set(p.codigo, { id: p.id, idPai: p.idProdutoPai || undefined, saldo });
         }
         if (!r.data || r.data.length < 100) break;
       }
     }
   }
+  return produtos;
+}
 
+
+/**
+ * Mapa código (SKU) → saldo virtual (já descontando reservas) dos produtos ativos do Bling.
+ * Produtos zerados ou negativos entram com 0, para o WooCommerce também zerar.
+ */
+export async function saldosPorCodigo(): Promise<Map<string, number>> {
+  const produtos = await listarProdutosAtivos();
   // Quem veio sem o saldo na listagem é consultado em GET /estoques/saldos?idsProdutos[]=
   const semSaldo = [...produtos.values()].filter((p) => p.saldo === undefined);
   for (let i = 0; i < semSaldo.length; i += 50) {
