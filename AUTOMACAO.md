@@ -131,6 +131,21 @@ O que acontece se um SKU não existir no Bling:
   Para não vender o que já saiu, configure o Bling para **baixar o estoque pela NF-e** (na natureza
   de operação) **ou** pelo pedido de venda. Escolha só um dos dois, senão a baixa sai em dobro.
 
+### Diagnóstico (só leitura)
+
+Para conferir a configuração sem entrar no WooCommerce nem no Bling: GitHub → Actions → **Automação da
+loja** → Run workflow → tarefa `diagnostico`. O log do passo "Chamar /api/cron/automacao" mostra, com
+`ok` / `atenção` / `erro` em cada item:
+
+- se as chaves estão na Vercel e se os tokens do Bling estão salvos no Upstash;
+- a natureza de operação padrão de venda e as formas de pagamento Pix e cartão no Bling;
+- os SKUs do site que não existem no Bling, e os produtos sem SKU;
+- os produtos sem NCM no Bling (confere até 15);
+- os pedidos pagos dos últimos 15 dias, com o ID no Bling, a NF-e e o erro de cada um.
+
+Nada é alterado. Também funciona com
+`curl -H "Authorization: Bearer $CRON_SECRET" "https://SEU-SITE/api/cron/automacao?tarefa=diagnostico"`.
+
 ### 2.4 Antes de ligar a NF-e: dados fiscais
 
 Confira isto com o seu contador. Um erro aqui gera nota rejeitada ou imposto errado.

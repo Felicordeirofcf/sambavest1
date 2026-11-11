@@ -4,11 +4,13 @@
 //   GET /api/cron/automacao?tarefa=pedidos  → só reprocessa pedidos pagos (Bling, envio, rastreio)
 //   GET /api/cron/automacao?tarefa=pix      → só lembretes de Pix não pago
 //   GET /api/cron/automacao?tarefa=estoque  → só sincroniza estoque Bling → WooCommerce
+//   GET /api/cron/automacao?tarefa=diagnostico → confere a configuração do Bling (só leitura)
 //
 // Protegido por CRON_SECRET: header "Authorization: Bearer <CRON_SECRET>" (a Vercel manda sozinha).
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { config, integracoes } from '../../../../lib/automacao/config';
+import { diagnosticoBling } from '../../../../lib/automacao/diagnostico';
 import { sincronizarEstoque } from '../../../../lib/automacao/estoque';
 import { rotinaPedidos, rotinaPix } from '../../../../lib/automacao/pedidos';
 
@@ -42,6 +44,9 @@ export async function GET(request: Request) {
   if ((tarefa === 'todas' || tarefa === 'estoque') && integracoes.bling() && config.bling.sincronizarEstoque) {
     await rodar('estoque', () => sincronizarEstoque());
   }
+
+  // Só roda quando pedido explicitamente (não entra em "todas").
+  if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());
 
   console.log('[automacao] cron', tarefa, JSON.stringify(resultado));
   return NextResponse.json({ ok: true, tarefa, resultado });
