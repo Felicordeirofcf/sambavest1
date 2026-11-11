@@ -80,9 +80,14 @@ export default async function Crm({ searchParams }: { searchParams: Promise<{ f?
           <h1 className="text-2xl font-semibold">CRM · WhatsApp</h1>
           <p className="text-sm text-slate-500">Todo contato que conversa com a loja entra aqui sozinho, ligado aos pedidos pelo telefone.</p>
         </div>
-        <Link href="/atendimento" className="text-sm px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50">
-          Abrir atendimento
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/painel/crm/quadro" className="text-sm px-3 py-1.5 rounded-lg bg-[#0B1B34] text-white hover:bg-[#C9A227] hover:text-[#0B1B34]">
+            Quadro (48h)
+          </Link>
+          <Link href="/atendimento" className="text-sm px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50">
+            Abrir atendimento
+          </Link>
+        </div>
       </div>
 
       {!integracoes.whatsapp() && (
