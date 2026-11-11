@@ -2,13 +2,13 @@ import { janelaAberta, type Conversa as TConversa } from '../../lib/automacao/co
 import { responderWhatsapp } from '../../app/painel/actions';
 import { dataHora } from './ui';
 
-export function Conversa({ conversa, voltar }: { conversa: TConversa; voltar: string }) {
+export function Conversa({ conversa, voltar, limite = 15 }: { conversa: TConversa; voltar: string; limite?: number }) {
   const aberta = janelaAberta(conversa);
   const AUTOR: Record<string, string> = { cliente: 'Cliente', robo: 'Robô', loja: 'Loja', aviso: 'Aviso' };
   return (
     <div>
-      <ul className="space-y-2 max-h-80 overflow-y-auto mb-3">
-        {conversa.mensagens.slice(-15).map((m, i) => (
+      <ul className={`space-y-2 overflow-y-auto mb-3 ${limite > 15 ? "max-h-[60vh]" : "max-h-80"}`}>
+        {[...conversa.mensagens].sort((a, b) => a.em - b.em).slice(-limite).map((m, i) => (
           <li key={m.id || i} className={`text-sm rounded-lg p-2 max-w-[85%] ${m.de === 'cliente' ? 'bg-slate-100' : 'bg-emerald-50 ml-auto'}`}>
             <div className="text-[11px] text-slate-500">
               {AUTOR[m.de] || m.de} · {dataHora(m.em)}

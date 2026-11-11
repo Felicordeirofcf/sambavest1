@@ -97,7 +97,7 @@ export default async function AtendimentoPage({ searchParams }: { searchParams: 
       )}
       <div className="grid md:grid-cols-[320px_1fr] border rounded min-h-[60vh]">
         <div className="border-r overflow-y-auto max-h-[75vh]">
-          {conversas.length === 0 && <p className="p-4 text-sm text-gray-500">Nenhuma conversa nos últimos 30 dias.</p>}
+          {conversas.length === 0 && <p className="p-4 text-sm text-gray-500">Nenhuma conversa nos últimos 12 meses.</p>}
           {conversas.map((c) => (
             <Item key={c.numero} c={c} ativo={aberta?.numero === c.numero} />
           ))}

@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 const MENU = [
   { href: '/painel', rotulo: 'Visão geral' },
   { href: '/painel/pedidos', rotulo: 'Pedidos' },
+  { href: '/painel/crm', rotulo: 'CRM WhatsApp' },
   { href: '/painel/clientes', rotulo: 'Clientes' },
   { href: '/painel/produtos', rotulo: 'Produtos e estoque' },
   { href: '/painel/financeiro', rotulo: 'Financeiro' },

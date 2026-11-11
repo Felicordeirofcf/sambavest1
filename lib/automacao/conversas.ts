@@ -3,6 +3,7 @@
 //   wa:conversa:<numero>  → a conversa (últimas mensagens), expira 30 dias após a última atividade
 //   wa:conversas          → lista ordenada pelo horário da última mensagem (para o painel)
 import { chaveTelefone } from './whatsapp';
+import { sincronizarCrm } from '../painel/crm';
 import { adquirirTrava, kvGet, kvSet, kvZAdd, kvZRemAbaixoDe, kvZRevRange, liberarTrava } from './kv';
 
 export type Autor = 'cliente' | 'robo' | 'loja' | 'aviso';
@@ -27,8 +28,9 @@ export type Conversa = {
   pedidos?: number[]; // pedidos encontrados para este número
 };
 
-const MAX_MENSAGENS = 60;
-const VALIDADE_S = 30 * 86_400;
+// Histórico guardado por conversa. O CRM (lib/painel/crm.ts) guarda o contato para sempre.
+const MAX_MENSAGENS = 200;
+const VALIDADE_S = 365 * 86_400;
 const INDICE = 'wa:conversas';
 // O mesmo celular pode aparecer com ou sem o 9 extra; a chave ignora essa diferença.
 const idConversa = (numero: string) => chaveTelefone(numero) || numero;
@@ -58,6 +60,8 @@ export async function alterarConversa(numero: string, fn: (c: Conversa) => void)
     c.atualizadaEm = Date.now();
     await kvSet(chave(numero), c, VALIDADE_S);
     await kvZAdd(INDICE, c.atualizadaEm, idConversa(numero));
+    // CRM: todo contato que conversa com a loja vira (ou atualiza) um cadastro permanente
+    await sincronizarCrm(c).catch((e) => console.error('[crm] falha ao sincronizar contato', e));
     return c;
   } finally {
     if (travou) await liberarTrava(`conversa:${idConversa(numero)}`);
