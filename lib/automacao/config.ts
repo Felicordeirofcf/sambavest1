@@ -127,7 +127,8 @@ export const config = {
     // Quando alertar o dono: todas | humano (só quando precisa de uma pessoa) | nenhum.
     // Padrão: "humano" com coexistência (você já vê tudo no app), "todas" sem.
     alertas: (env('WHATSAPP_ALERTAS') || (flag('WHATSAPP_COEXISTENCIA', false) ? 'humano' : 'todas')).toLowerCase(),
-    painelSenha: env('ATENDIMENTO_SENHA'),
+    // Sem senha própria, o atendimento usa a mesma senha do painel de gestão (/painel).
+    painelSenha: env('ATENDIMENTO_SENHA') || env('PAINEL_SENHA'),
     respostas: {
       // Liga as respostas automáticas (status do pedido, tamanhos, prazo)
       ativas: flag('WHATSAPP_RESPOSTAS_AUTOMATICAS', false),

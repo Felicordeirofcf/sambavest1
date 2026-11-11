@@ -48,7 +48,7 @@ export default async function SimuladorPage({ searchParams }: { searchParams: Pr
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold text-[#0B1B34]">Simulador do robô</h1>
-        <Link href="/atendimento" className="text-sm underline text-gray-600">Voltar ao painel</Link>
+        <Link href="/atendimento" className="text-sm underline text-gray-600">Voltar ao atendimento</Link>
       </div>
       <p className="text-sm text-gray-600 mb-4">
         Escreva como se fosse o cliente. Nada é enviado: só mostra o que o robô responderia.

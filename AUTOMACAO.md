@@ -291,7 +291,7 @@ A Meta só deixa a loja mandar texto livre para quem falou com ela nas últimas 
 - Para testar como cliente, use **outro** celular.
 
 ### 5.3 Painel `/atendimento`
-Defina `ATENDIMENTO_SENHA` e abra `https://SEU-SITE/atendimento`. Mostra as conversas dos últimos 30 dias,
+Abra `https://SEU-SITE/atendimento` (ou o item "Atendimento WhatsApp" do painel). A senha é a mesma do painel (`PAINEL_SENHA`); se quiser uma senha só para o atendimento, crie `ATENDIMENTO_SENHA`. O botão "Voltar ao painel" leva de volta ao `/painel`. Mostra as conversas dos últimos 30 dias,
 as mensagens não lidas, os avisos automáticos enviados (com status entregue/lida/falhou) e permite
 **responder** enquanto a janela de 24 h estiver aberta. "Devolver ao robô" tira a marca de "humano".
 
