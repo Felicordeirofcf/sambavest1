@@ -5,10 +5,12 @@
 //   GET /api/cron/automacao?tarefa=pix      → só lembretes de Pix não pago
 //   GET /api/cron/automacao?tarefa=estoque  → só sincroniza estoque Bling → WooCommerce
 //   GET /api/cron/automacao?tarefa=diagnostico → confere a configuração do Bling (só leitura)
+//   GET /api/cron/automacao?modo=fundo     → responde na hora e roda em segundo plano
+//                                            (para o cron-job.org, que espera no máximo 30 s)
 //
 // Protegido por CRON_SECRET: header "Authorization: Bearer <CRON_SECRET>" (a Vercel manda sozinha).
 import crypto from 'node:crypto';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { config, integracoes } from '../../../../lib/automacao/config';
 import { diagnosticoBling } from '../../../../lib/automacao/diagnostico';
 import { sincronizarEstoque } from '../../../../lib/automacao/estoque';
@@ -27,8 +29,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: 'WooCommerce não configurado' }, { status: 500 });
   }
 
-  const tarefa = new URL(request.url).searchParams.get('tarefa') || 'todas';
-  const prazo = Date.now() + 45_000; // deixa folga antes do limite de 60s
+  const params = new URL(request.url).searchParams;
+  const tarefa = params.get('tarefa') || 'todas';
+  const emFundo = params.get('modo') === 'fundo' && tarefa !== 'diagnostico';
+  // Em segundo plano o relógio começa na resposta; o limite da função continua sendo 60 s.
+  const prazo = Date.now() + (emFundo ? 40_000 : 45_000);
   const resultado: Record<string, unknown> = {};
 
   const rodar = async (nome: string, fn: () => Promise<unknown>) => {
@@ -39,15 +44,21 @@ export async function GET(request: Request) {
     }
   };
 
-  if (tarefa === 'todas' || tarefa === 'pedidos') await rodar('pedidos', () => rotinaPedidos(prazo));
-  if (tarefa === 'todas' || tarefa === 'pix') await rodar('pix', () => rotinaPix(prazo));
-  if ((tarefa === 'todas' || tarefa === 'estoque') && integracoes.bling() && config.bling.sincronizarEstoque) {
-    await rodar('estoque', () => sincronizarEstoque());
+  const executar = async () => {
+    if (tarefa === 'todas' || tarefa === 'pedidos') await rodar('pedidos', () => rotinaPedidos(prazo));
+    if (tarefa === 'todas' || tarefa === 'pix') await rodar('pix', () => rotinaPix(prazo));
+    if ((tarefa === 'todas' || tarefa === 'estoque') && integracoes.bling() && config.bling.sincronizarEstoque) {
+      await rodar('estoque', () => sincronizarEstoque());
+    }
+    // Só roda quando pedido explicitamente (não entra em "todas").
+    if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());
+    console.log('[automacao] cron', tarefa, emFundo ? '(segundo plano)' : '', JSON.stringify(resultado));
+  };
+
+  if (emFundo) {
+    after(executar);
+    return NextResponse.json({ ok: true, tarefa, modo: 'fundo', mensagem: 'rotina iniciada em segundo plano' });
   }
-
-  // Só roda quando pedido explicitamente (não entra em "todas").
-  if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());
-
-  console.log('[automacao] cron', tarefa, JSON.stringify(resultado));
+  await executar();
   return NextResponse.json({ ok: true, tarefa, resultado });
 }
