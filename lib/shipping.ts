@@ -11,6 +11,10 @@ export type ShippingQuote = {
   maxDays: number;
   region: string;
   company_picture?: string;
+  /** Preço da cotação antes de aplicar o frete grátis (para recalcular se o subtotal mudar). */
+  originalPrice?: number;
+  /** CEP usado nesta cotação. */
+  cep?: string;
 };
 
 /**

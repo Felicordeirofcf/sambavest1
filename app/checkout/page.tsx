@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import ShippingCalculator from '../../components/product/ShippingCalculator';
-import type { ShippingQuote } from '../../lib/shipping';
+import { FREE_SHIPPING_THRESHOLD, type ShippingQuote } from '../../lib/shipping';
 import Link from 'next/link';
 import Image from 'next/image';
 import { podeOtimizar } from '../../lib/imagem';
@@ -37,6 +37,24 @@ export default function CheckoutPage() {
     uf: '',
   });
 
+  // Máscaras simples para o celular (o cliente digita só números)
+  const soNumeros = (v: string) => v.replace(/\D/g, '');
+  const mascaras: Record<string, (v: string) => string> = {
+    cep: (v) => {
+      const d = soNumeros(v).slice(0, 8);
+      return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+    },
+    telefone: (v) => {
+      const d = soNumeros(v).slice(0, 11);
+      if (d.length <= 2) return d.length ? `(${d}` : '';
+      if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+      if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+      return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    },
+    numeroDocumento: (v) => soNumeros(v).slice(0, 14),
+    uf: (v) => v.replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase(),
+  };
+
   // 🚀 BUSCA DE CEP AUTOMÁTICA (VIACEP)
   const handleBuscarCep = async (cepBuscado: string) => {
     const cepLimpo = cepBuscado.replace(/\D/g, '');
@@ -56,6 +74,10 @@ export default function CheckoutPage() {
           cidade: data.localidade || '',
           uf: data.uf || ''
         }));
+        // Endereço preenchido: leva o cliente direto para o campo "Número"
+        if (data.logradouro) {
+          setTimeout(() => (document.querySelector('input[name="numero"]') as HTMLInputElement | null)?.focus(), 50);
+        }
       }
     } catch (error) {
       console.error("Erro ao buscar CEP:", error);
@@ -65,8 +87,9 @@ export default function CheckoutPage() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const { name } = e.target;
+    const value = mascaras[name] ? mascaras[name](e.target.value) : e.target.value;
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
     // Dispara a busca automática assim que digitar 8 números no CEP
     if (name === 'cep') {
@@ -82,7 +105,7 @@ export default function CheckoutPage() {
     if (items && items.length > 0) return items;
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem('cart-storage');
+        const stored = localStorage.getItem('samba-vest-cart');
         if (stored) {
           const parsed = JSON.parse(stored);
           if (parsed?.state?.items && parsed.state.items.length > 0) {
@@ -105,7 +128,14 @@ export default function CheckoutPage() {
   const descontoPix = isPixSelected ? subtotal * 0.10 : 0;
   const subtotalComDesconto = subtotal - descontoPix;
 
-  const frete = shippingQuote ? shippingQuote.price : 0;
+  // O frete grátis depende do subtotal atual (ex.: trocar Pix por cartão muda o subtotal),
+  // então recalcula aqui com a mesma regra do servidor.
+  const freteGratisAgora = Boolean(
+    shippingQuote &&
+      String(shippingQuote.name).toLowerCase().includes('pac') &&
+      subtotalComDesconto >= FREE_SHIPPING_THRESHOLD
+  );
+  const frete = shippingQuote ? (freteGratisAgora ? 0 : shippingQuote.originalPrice ?? shippingQuote.price) : 0;
   const total = subtotalComDesconto + frete;
 
   const handleFinalizarPedido = async () => {
@@ -116,22 +146,33 @@ export default function CheckoutPage() {
       return;
     }
 
+    const docLimpo = soNumeros(formData.numeroDocumento);
+    const telLimpo = soNumeros(formData.telefone);
+    const cepLimpo = soNumeros(formData.cep);
+    const faltando: string[] = [];
+    if (formData.nome.trim().split(/\s+/).length < 2) faltando.push('Nome completo (nome e sobrenome)');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) faltando.push('E-mail válido');
+    if (telLimpo.length < 10) faltando.push('Telefone / WhatsApp com DDD');
+    if (![11, 14].includes(docLimpo.length)) faltando.push('CPF (11 números) ou CNPJ (14 números)');
+    if (cepLimpo.length !== 8) faltando.push('CEP com 8 números');
+    if (formData.uf.length !== 2) faltando.push('Estado (UF)');
+    if (!formData.endereco.trim()) faltando.push('Endereço');
+    if (!formData.numero.trim()) faltando.push('Número');
+    if (!formData.bairro.trim()) faltando.push('Bairro');
+    if (!formData.cidade.trim()) faltando.push('Cidade');
+
+    if (faltando.length > 0) {
+      alert(`Confira os campos abaixo:\n\n• ${faltando.join('\n• ')}`);
+      return;
+    }
+
     if (!shippingQuote) {
       alert('⚠️ Por favor, calcule o frete informando o seu CEP antes de finalizar o pedido.');
       return;
     }
 
-    if (
-      !formData.nome || 
-      !formData.numeroDocumento || 
-      !formData.email || 
-      !formData.cep || 
-      !formData.endereco || 
-      !formData.numero || 
-      !formData.bairro || 
-      !formData.cidade
-    ) {
-      alert('Por favor, preencha todos os campos obrigatórios de identificação e endereço completo.');
+    if (shippingQuote.cep && shippingQuote.cep !== cepLimpo) {
+      alert('O frete foi calculado para um CEP diferente do CEP do endereço. Calcule o frete de novo com o CEP de entrega.');
       return;
     }
 
@@ -171,7 +212,7 @@ export default function CheckoutPage() {
           bairro: formData.bairro,
           cidade: formData.cidade,
           cep: formData.cep,
-          uf: formData.uf || 'RJ',
+          uf: formData.uf,
         },
         shipping: {
           id: quoteAny.id,
@@ -207,7 +248,6 @@ export default function CheckoutPage() {
     } catch (error: any) {
       console.error(error);
       alert(`❌ Erro ao finalizar: ${error.message}`);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -235,32 +275,35 @@ export default function CheckoutPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Nome Completo *</label>
-                  <input type="text" name="nome" value={formData.nome} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <label htmlFor="checkout-nome" className="block text-xs font-bold uppercase text-gray-600 mb-1">Nome Completo *</label>
+                  <input id="checkout-nome" type="text" name="nome" autoComplete="name" value={formData.nome} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
                 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">E-mail *</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <label htmlFor="checkout-email" className="block text-xs font-bold uppercase text-gray-600 mb-1">E-mail *</label>
+                  <input id="checkout-email" type="email" name="email" autoComplete="email" inputMode="email" value={formData.email} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Telefone / WhatsApp *</label>
-                  <input type="text" name="telefone" value={formData.telefone} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <label htmlFor="checkout-telefone" className="block text-xs font-bold uppercase text-gray-600 mb-1">Telefone / WhatsApp *</label>
+                  <input id="checkout-telefone" type="tel" name="telefone" autoComplete="tel" inputMode="tel" placeholder="(21) 99999-9999" value={formData.telefone} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">CPF ou CNPJ (Somente números) *</label>
-                  <input type="text" name="numeroDocumento" value={formData.numeroDocumento} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <label htmlFor="checkout-numeroDocumento" className="block text-xs font-bold uppercase text-gray-600 mb-1">CPF ou CNPJ (Somente números) *</label>
+                  <input id="checkout-numeroDocumento" type="text" name="numeroDocumento" inputMode="numeric" autoComplete="off" value={formData.numeroDocumento} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">
+                  <label htmlFor="checkout-cep" className="block text-xs font-bold uppercase text-gray-600 mb-1">
                     CEP * {isBuscandoCep && <span className="text-[#C9A227] lowercase normal-case text-[10px] ml-2 animate-pulse">(buscando...)</span>}
                   </label>
                   <input 
-                    type="text" 
+                    id="checkout-cep" type="text" 
                     name="cep" 
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    placeholder="00000-000"
                     value={formData.cep} 
                     onChange={handleInputChange} 
                     required 
@@ -270,35 +313,35 @@ export default function CheckoutPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Estado (UF)</label>
-                  <input type="text" name="uf" value={formData.uf} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <label htmlFor="checkout-uf" className="block text-xs font-bold uppercase text-gray-600 mb-1">Estado (UF)</label>
+                  <input id="checkout-uf" type="text" name="uf" autoComplete="address-level1" maxLength={2} value={formData.uf} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Endereço (Rua, Avenida...) *</label>
-                  <input type="text" name="endereco" value={formData.endereco} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <label htmlFor="checkout-endereco" className="block text-xs font-bold uppercase text-gray-600 mb-1">Endereço (Rua, Avenida...) *</label>
+                  <input id="checkout-endereco" type="text" name="endereco" autoComplete="address-line1" value={formData.endereco} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Número *</label>
-                  <input type="text" name="numero" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <label htmlFor="checkout-numero" className="block text-xs font-bold uppercase text-gray-600 mb-1">Número *</label>
+                  <input id="checkout-numero" type="text" name="numero" inputMode="numeric" autoComplete="off" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Bairro *</label>
-                  <input type="text" name="bairro" value={formData.bairro} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <label htmlFor="checkout-bairro" className="block text-xs font-bold uppercase text-gray-600 mb-1">Bairro *</label>
+                  <input id="checkout-bairro" type="text" name="bairro" autoComplete="address-level3" value={formData.bairro} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold uppercase text-gray-600 mb-1">Cidade *</label>
-                  <input type="text" name="cidade" value={formData.cidade} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <label htmlFor="checkout-cidade" className="block text-xs font-bold uppercase text-gray-600 mb-1">Cidade *</label>
+                  <input id="checkout-cidade" type="text" name="cidade" autoComplete="address-level2" value={formData.cidade} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
               </div>
             </div>
 
             {/* 💳 3. SELEÇÃO DE FORMA DE PAGAMENTO (PIX OU CARTÃO) */}
             <div className="bg-white p-6 shadow-sm rounded-sm">
-              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">3. Forma de Pagamento</h3>
+              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">2. Forma de Pagamento</h3>
               
               <div className="space-y-4">
                 <label className={`flex items-center gap-3 p-4 border rounded cursor-pointer transition-all ${paymentMethod === 'appmax_pix' ? 'border-[#0B1B34] bg-[#0B1B34]/5' : 'border-gray-200'}`}>
@@ -334,7 +377,7 @@ export default function CheckoutPage() {
             </div>
 
             <div className="bg-white p-6 shadow-sm rounded-sm">
-              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">2. Seus Produtos</h3>
+              <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">3. Seus Produtos</h3>
               {activeItems.length === 0 ? (
                 <p className="text-xs text-gray-500 py-4">Seu carrinho está vazio.</p>
               ) : (
@@ -395,7 +438,7 @@ export default function CheckoutPage() {
               </div>
 
               <div className="mb-6">
-                <ShippingCalculator subtotal={subtotalComDesconto} onQuote={setShippingQuote} />
+                <ShippingCalculator subtotal={subtotalComDesconto} onQuote={setShippingQuote} cepExterno={formData.cep} />
               </div>
 
               <div className="bg-[#0B1B34]/5 p-4 mb-6 text-[11px] text-[#0B1B34] leading-relaxed uppercase tracking-wider">

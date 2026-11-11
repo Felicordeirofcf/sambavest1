@@ -75,7 +75,10 @@ export default function ProductCard({ product }: { product: any }) {
   return (
     <div 
       className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_2px_15px_rgba(0,0,0,0.05)] transition-all duration-500 hover:border-[#C9A227] hover:shadow-2xl"
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        router.prefetch(`/produto/${productIdentifier}`);
+      }}
       onMouseLeave={() => {
         setIsHovered(false);
         if (!showMobileMenu) setCurrentImage(imageFrontDefault);
@@ -85,7 +88,10 @@ export default function ProductCard({ product }: { product: any }) {
       {/* Área da Imagem e Link Principal */}
       <div 
         onClick={() => {
-          if (uniqueModels.length > 0 && !showMobileMenu) {
+          // No computador (com mouse) o menu de modelos já aparece ao passar o mouse:
+          // o clique na foto abre o produto direto. No celular, o 1º toque mostra os modelos.
+          const temMouse = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+          if (uniqueModels.length > 0 && !showMobileMenu && !temMouse) {
             setShowMobileMenu(true);
           } else {
             router.push(`/produto/${productIdentifier}`);

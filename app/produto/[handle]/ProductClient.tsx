@@ -105,6 +105,39 @@ export default function ProductClient({ product }: { product: any }) {
   );
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [activeImage, setActiveImage] = useState(0);
+  const [avisoTamanho, setAvisoTamanho] = useState(false);
+
+  const imagemDaVariante = (v: any): string =>
+    typeof v?.image === 'object' ? v?.image?.src || '' : v?.image || '';
+
+  // Foto do modelo escolhido (ex.: Regata mostra a foto da regata)
+  const imagemDoModelo = (modelo: string): string => {
+    const v = variantsList.find(
+      (x: any) => extractModelFromVariant(x).toLowerCase() === modelo.toLowerCase() && imagemDaVariante(x)
+    );
+    return v ? imagemDaVariante(v) : '';
+  };
+
+  const mostrarFotoDoModelo = (modelo: string) => {
+    const img = imagemDoModelo(modelo);
+    const idx = img ? gallery.indexOf(img) : -1;
+    if (idx >= 0) setActiveImage(idx);
+  };
+
+  // Veio da vitrine com ?modelo=Regata: já abre na foto desse modelo
+  useEffect(() => {
+    if (matchedUrlModel) mostrarFotoDoModelo(matchedUrlModel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchedUrlModel]);
+
+  // Tamanho esgotado no WooCommerce (não deixa o cliente escolher e só descobrir no pagamento)
+  const tamanhoEsgotado = (size: string): boolean => {
+    const v = variantsList.find((x: any) => {
+      const mesmoModelo = selectedModel ? extractModelFromVariant(x).toLowerCase() === selectedModel.toLowerCase() : true;
+      return mesmoModelo && extractSizeFromVariant(x).toLowerCase() === size.toLowerCase();
+    });
+    return v?.stock_status === 'outofstock';
+  };
 
   const availableSizes = useMemo(() => {
     const sizesSet = new Set<string>();
@@ -150,7 +183,16 @@ export default function ProductClient({ product }: { product: any }) {
   const precoPix = currentPrice * 0.90;
 
   const handleAddToCart = () => {
-    if (!matchedVariant) return;
+    if (!matchedVariant) {
+      // Avisa o cliente em vez de deixar o botão "morto"
+      setAvisoTamanho(true);
+      document.getElementById('escolha-tamanho')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (matchedVariant.stock_status === 'outofstock') {
+      alert('Este tamanho está esgotado. Escolha outro tamanho.');
+      return;
+    }
 
     // TRAVA DE SEGURANÇA: Garante que o modelo da variação bate com o modelo selecionado na tela
     const variantModelCheck = extractModelFromVariant(matchedVariant);
@@ -159,13 +201,19 @@ export default function ProductClient({ product }: { product: any }) {
       return;
     }
 
-    const finalCartImage = gallery[activeImage] || (typeof matchedVariant?.image === 'object' ? matchedVariant.image?.src : matchedVariant?.image) || '';
+    // Foto da sacola: a do modelo escolhido (nunca a tabela de medidas que estiver aberta na galeria)
+    const finalCartImage =
+      imagemDaVariante(matchedVariant) ||
+      imagemDoModelo(selectedModel) ||
+      gallery.find((_: string, i: number) => i !== sizeGuideIndex) ||
+      gallery[0] ||
+      '';
 
     // CORREÇÃO: Envia SEMPRE o preço base (cheio) para a sacola.
     // O desconto do Pix será calculado apenas na tela de checkout se a forma de pagamento for Pix.
     addItem({
       id: matchedVariant.id,
-      name: `${product.name} ${selectedModel ? `(${selectedModel} -${selectedSize})` : `(${selectedSize})`}`,
+      name: `${product.name} ${selectedModel ? `(${selectedModel} - ${selectedSize})` : `(${selectedSize})`}`,
       price: currentPrice, 
       image: finalCartImage,
       size: selectedModel ? `${selectedModel} / ${selectedSize}` : selectedSize,
@@ -275,6 +323,7 @@ export default function ProductClient({ product }: { product: any }) {
                         onClick={() => {
                           setSelectedModel(model);
                           setSelectedSize('');
+                          mostrarFotoDoModelo(model);
                         }}
                         className={`px-5 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
                           isSelected
@@ -291,20 +340,29 @@ export default function ProductClient({ product }: { product: any }) {
             )}
 
             {availableSizes.length > 0 && (
-              <div className="mb-6">
+              <div className="mb-6" id="escolha-tamanho">
                 <label className="block text-xs font-bold uppercase tracking-widest text-[#0B1B34] mb-2">
                   Escolha o tamanho
                 </label>
                 <div className="flex flex-wrap gap-2.5">
                   {availableSizes.map((size: string) => {
                     const isSelected = selectedSize.toLowerCase() === size.toLowerCase();
+                    const esgotado = tamanhoEsgotado(size);
                     return (
                       <button
                         key={size}
                         type="button"
-                        onClick={() => setSelectedSize(size)}
+                        disabled={esgotado}
+                        aria-pressed={isSelected}
+                        title={esgotado ? 'Esgotado' : undefined}
+                        onClick={() => {
+                          setSelectedSize(size);
+                          setAvisoTamanho(false);
+                        }}
                         className={`h-11 min-w-[48px] px-4 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
-                          isSelected
+                          esgotado
+                            ? 'border-gray-200 bg-gray-100 text-gray-300 line-through cursor-not-allowed'
+                            : isSelected
                             ? 'border-[#0B1B34] bg-[#0B1B34] text-[#C9A227] shadow-md scale-105'
                             : 'border-gray-300 bg-white text-gray-700 hover:border-[#0B1B34] hover:text-[#0B1B34]'
                         }`}
@@ -314,6 +372,12 @@ export default function ProductClient({ product }: { product: any }) {
                     );
                   })}
                 </div>
+
+                {avisoTamanho && !selectedSize && (
+                  <p role="alert" className="mt-2 text-xs font-bold text-red-600">
+                    Escolha um tamanho para adicionar à sacola.
+                  </p>
+                )}
 
                 {sizeGuideIndex >= 0 && (
                   <div className="mt-2">
@@ -331,8 +395,9 @@ export default function ProductClient({ product }: { product: any }) {
 
             <button
               onClick={handleAddToCart}
-              disabled={!matchedVariant}
-              className="w-full py-4 bg-[#C9A227] text-[#0B1B34] uppercase tracking-widest text-sm font-extrabold rounded-xl hover:bg-[#b08d1e] transition-colors disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2 mb-3 cursor-pointer"
+              className={`w-full py-4 uppercase tracking-widest text-sm font-extrabold rounded-xl transition-colors shadow-md ${
+                matchedVariant ? 'bg-[#C9A227] text-[#0B1B34] hover:bg-[#b08d1e]' : 'bg-gray-200 text-gray-400'
+              } flex items-center justify-center gap-2 mb-3 cursor-pointer`}
             >
               <span>🛒</span> {matchedVariant ? 'Adicionar à Sacola' : 'Selecione as Opções'}
             </button>

@@ -14,14 +14,14 @@ export default function Minicart() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-[60] overflow-hidden">
       <div className="absolute inset-0 bg-black/50 transition-opacity" onClick={closeCart} />
 
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
         <div className="w-screen max-w-md bg-white shadow-xl flex flex-col">
           <div className="flex items-center justify-between px-6 py-4 border-b">
             <h2 className="font-heading text-lg font-bold uppercase tracking-widest text-[#0B1B34]">Sua Sacola</h2>
-            <button onClick={closeCart} className="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+            <button onClick={closeCart} aria-label="Fechar sacola" className="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -35,7 +35,7 @@ export default function Minicart() {
                     <div>
                       <div className="flex justify-between">
                         <h4 className="text-xs font-bold uppercase text-[#1E2233]">{item.name}</h4>
-                        <button onClick={() => removeItem(item.id)} className="text-[10px] text-red-500 hover:underline">Remover</button>
+                        <button onClick={() => removeItem(item.id, item.size)} className="text-[10px] text-red-500 hover:underline">Remover</button>
                       </div>
                       <p className="text-[11px] text-gray-500 mt-1">Tam: {item.size} | Qtd: {item.quantity}</p>
                     </div>
