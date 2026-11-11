@@ -2,6 +2,8 @@
 
 import { useCartStore } from '../../store/cartStore';
 import Link from 'next/link';
+import Image from 'next/image';
+import { podeOtimizar } from '../../lib/imagem';
 import { rastrear, dadosItens } from '../../lib/pixel';
 
 export default function Minicart() {
@@ -28,7 +30,7 @@ export default function Minicart() {
             ) : (
               items.map((item) => (
                 <div key={`${item.id}-${item.size}`} className="flex gap-4 py-4 border-b last:border-0">
-                  <img src={item.image} alt={item.name} className="w-16 h-20 object-contain bg-[#FAF7EF] p-1" />
+                  <Image src={item.image} width={64} height={80} unoptimized={!podeOtimizar(item.image)} alt={item.name} className="w-16 h-20 object-contain bg-[#FAF7EF] p-1" />
                   <div className="flex-1 flex flex-col justify-between">
                     <div>
                       <div className="flex justify-between">

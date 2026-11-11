@@ -5,6 +5,9 @@ import { useCartStore } from '../../../store/cartStore';
 import ShippingCalculator from '../../../components/product/ShippingCalculator';
 import { useSearchParams } from 'next/navigation';
 import { rastrear, dadosItens } from '../../../lib/pixel';
+import Image from 'next/image';
+import { podeOtimizar } from '../../../lib/imagem';
+import { WHATSAPP_NUMBER } from '../../../lib/whatsapp';
 
 export default function ProductClient({ product }: { product: any }) {
   const { addItem, openCart } = useCartStore();
@@ -180,7 +183,7 @@ export default function ProductClient({ product }: { product: any }) {
   const displayedImage = gallery[activeImage] || '';
   
   const whatsappMessage = encodeURIComponent(`Olá! Tenho dúvida sobre o produto: ${product?.name} (${selectedModel ? selectedModel : 'Modelo padrão'})`);
-  const whatsappUrl = `https://api.whatsapp.com/send/?phone=5521996959903&text=${whatsappMessage}&type=phone_number&app_absent=0`;
+  const whatsappUrl = `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${whatsappMessage}&type=phone_number&app_absent=0`;
 
   return (
     <div className="w-full min-h-screen bg-[#FAF7EF] text-[#0B1B34]">
@@ -195,9 +198,13 @@ export default function ProductClient({ product }: { product: any }) {
                 </span>
               )}
               {displayedImage && (
-                <img
+                <Image
                   src={displayedImage}
                   alt={product?.name || 'Produto'}
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  unoptimized={!podeOtimizar(displayedImage)}
                   className="w-full h-full object-contain p-6 transition-all duration-300 ease-in-out"
                 />
               )}
@@ -215,7 +222,7 @@ export default function ProductClient({ product }: { product: any }) {
                     }`}
                     aria-label={`Ver imagem ${i + 1}`}
                   >
-                    <img src={img} alt="" className="h-full w-full object-contain p-1" />
+                    <Image src={img} alt="" fill sizes="64px" unoptimized={!podeOtimizar(img)} className="h-full w-full object-contain p-1" />
                   </button>
                 ))}
               </div>

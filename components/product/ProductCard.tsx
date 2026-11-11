@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { podeOtimizar } from '../../lib/imagem';
 import { useRouter } from 'next/navigation';
 
 export default function ProductCard({ product }: { product: any }) {
@@ -63,6 +65,9 @@ export default function ProductCard({ product }: { product: any }) {
   const [isHovered, setIsHovered] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  const imagemExibida =
+    (isHovered || showMobileMenu) && currentImage === imageFrontDefault ? imageBackDefault : currentImage;
+
   // 💰 Cálculo universal do Desconto Pix (10% OFF)
   const productPrice = Number(product.price || 0);
   const precoPix = productPrice * 0.90;
@@ -95,11 +100,16 @@ export default function ProductCard({ product }: { product: any }) {
         )}
 
         {/* IMAGEM DINÂMICA */}
-        <img
-          src={(isHovered || showMobileMenu) && currentImage === imageFrontDefault ? imageBackDefault : currentImage}
-          alt={product.name}
-          className="absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out group-hover:scale-105"
-        />
+        {imagemExibida && (
+          <Image
+            src={imagemExibida}
+            alt={product.name}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            unoptimized={!podeOtimizar(imagemExibida)}
+            className="absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out group-hover:scale-105"
+          />
+        )}
 
         {showMobileMenu && (
           <button

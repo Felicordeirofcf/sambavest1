@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
-import type { ShippingQuote } from '../../lib/shipping';
+import { FREE_SHIPPING_THRESHOLD, type ShippingQuote } from '../../lib/shipping';
 
 export type { ShippingQuote };
 
@@ -73,7 +73,6 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext }
   const handleSelectQuote = (quote: ShippingQuote) => {
     setSelectedQuoteId(quote.id);
     
-    const FREE_SHIPPING_THRESHOLD = 300; 
     let finalQuote: ShippingQuote = { 
       ...quote,
       minDays: quote.delivery_time || 3,
@@ -139,7 +138,7 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext }
                 </div>
               </div>
               <div className="text-sm font-extrabold text-[#0B1B34]">
-                {subtotal >= 300 && quote.name.toLowerCase().includes('pac') 
+                {subtotal >= FREE_SHIPPING_THRESHOLD && quote.name.toLowerCase().includes('pac') 
                   ? <span className="text-green-600">GRÁTIS</span>
                   : `R$ ${quote.price.toFixed(2).replace('.', ',')}`
                 }

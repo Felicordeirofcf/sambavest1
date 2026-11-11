@@ -5,6 +5,8 @@ import { useCartStore } from '../../store/cartStore';
 import ShippingCalculator from '../../components/product/ShippingCalculator';
 import type { ShippingQuote } from '../../lib/shipping';
 import Link from 'next/link';
+import Image from 'next/image';
+import { podeOtimizar } from '../../lib/imagem';
 
 export default function CheckoutPage() {
   const { items, removeItem, clearCart } = useCartStore();
@@ -338,7 +340,7 @@ export default function CheckoutPage() {
               ) : (
                 activeItems.map((item: any) => (
                   <div key={`${item.id}-${item.size}`} className="flex gap-4 py-4 border-b last:border-0">
-                    <img src={item.image} alt={item.name} className="w-20 h-24 object-contain bg-[#FAF7EF] p-1" />
+                    <Image src={item.image} width={80} height={96} unoptimized={!podeOtimizar(item.image)} alt={item.name} className="w-20 h-24 object-contain bg-[#FAF7EF] p-1" />
                     <div className="flex-1 flex flex-col justify-between">
                       <div>
                         <div className="flex justify-between">
