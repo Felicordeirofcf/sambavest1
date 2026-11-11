@@ -1,7 +1,7 @@
 import { Aviso, Kpi, SeletorPeriodo, brl } from '../../../components/painel/ui';
 import { config, integracoes } from '../../../lib/automacao/config';
 import { exigirLogin } from '../../../lib/painel/auth';
-import { estoque, pedidosRecentes } from '../../../lib/painel/dados';
+import { estoque, pedidosRecentes, skusBling } from '../../../lib/painel/dados';
 import { norm, vendasPorVariacao } from '../../../lib/painel/metricas';
 
 export default async function Produtos({ searchParams }: { searchParams: Promise<{ dias?: string; filtro?: string; q?: string }> }) {
@@ -14,11 +14,18 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
   let erro = '';
   let linhas: Awaited<ReturnType<typeof estoque>> = [];
   let vendas = new Map<number, number>();
+  let bling: Map<string, number | null> | null = null;
   try {
-    [linhas, vendas] = await Promise.all([estoque(), pedidosRecentes(dias).then(vendasPorVariacao)]);
+    [linhas, vendas, bling] = await Promise.all([
+      estoque(),
+      pedidosRecentes(dias).then(vendasPorVariacao),
+      integracoes.bling() ? skusBling() : Promise.resolve(null),
+    ]);
   } catch (e) {
     erro = (e as Error).message;
   }
+  const noBling = (sku: string) => (bling ? bling.has(sku.trim().toUpperCase()) : true);
+  const saldoBling = (sku: string) => bling?.get(sku.trim().toUpperCase());
 
   const comVenda = linhas.map((l) => {
     const vendidas = vendas.get(l.variacaoId || l.produtoId) || 0;
@@ -31,6 +38,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
   for (const l of comVenda) if (l.sku) skus.set(l.sku, (skus.get(l.sku) || 0) + 1);
   const duplicados = comVenda.filter((l) => l.sku && (skus.get(l.sku) || 0) > 1);
   const esgotados = comVenda.filter((l) => l.situacao === 'outofstock');
+  const foraDoBling = bling ? comVenda.filter((l) => l.sku && !noBling(l.sku)) : [];
   const baixos = comVenda.filter((l) => l.gerencia && l.quantidade !== null && l.quantidade > 0 && (l.quantidade <= 3 || (l.cobertura !== null && l.cobertura < 14)));
 
   let mostrar = comVenda;
@@ -38,6 +46,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
   if (filtro === 'baixo') mostrar = baixos;
   if (filtro === 'vendidos') mostrar = comVenda.filter((l) => l.vendidas > 0).sort((a, b) => b.vendidas - a.vendidas);
   if (filtro === 'sem-sku') mostrar = [...semSku, ...duplicados];
+  if (filtro === 'fora-bling') mostrar = foraDoBling;
   if (q) mostrar = mostrar.filter((l) => norm(l.produto).includes(q) || norm(l.variacao).includes(q) || norm(l.sku).includes(q));
 
   const filtros = [
@@ -46,6 +55,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
     ['baixo', `Estoque baixo (${baixos.length})`],
     ['esgotados', `Esgotados (${esgotados.length})`],
     ['sem-sku', `SKU faltando/duplicado (${semSku.length + duplicados.length})`],
+    ...(bling ? [['fora-bling', `Fora do Bling (${foraDoBling.length})`]] : []),
   ];
 
   return (
@@ -59,6 +69,14 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
         <Aviso>
           O estoque mostrado é o do WooCommerce. A sincronização Bling → WooCommerce está desligada (BLING_SINCRONIZAR_ESTOQUE).
           {!integracoes.bling() && ' O Bling não está configurado.'}
+        </Aviso>
+      )}
+
+      {foraDoBling.length > 0 && (
+        <Aviso tipo="erro">
+          {foraDoBling.length} variação(ões) à venda no site com SKU que não existe no Bling ({foraDoBling.slice(0, 6).map((l) => l.sku).join(', ')}
+          {foraDoBling.length > 6 ? '…' : ''}). Vendas desses itens entram no Bling sem produto vinculado: sem baixa de estoque e com risco na NF-e.
+          Cadastre o código no Bling igual ao SKU do WooCommerce.
         </Aviso>
       )}
 
@@ -87,6 +105,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
               <th className="px-3 py-2 font-medium">SKU</th>
               <th className="px-3 py-2 font-medium text-right">Preço</th>
               <th className="px-3 py-2 font-medium text-right">Estoque</th>
+              {bling && <th className="px-3 py-2 font-medium text-right">Bling</th>}
               <th className="px-3 py-2 font-medium text-right">Vendidas ({dias}d)</th>
               <th className="px-3 py-2 font-medium text-right">Dura ~</th>
             </tr>
@@ -112,13 +131,18 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
                     <span className="text-slate-400">sob encomenda</span>
                   )}
                 </td>
+                {bling && (
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {!l.sku ? '—' : noBling(l.sku) ? saldoBling(l.sku) ?? '✓' : <span className="text-red-700">não existe</span>}
+                  </td>
+                )}
                 <td className="px-3 py-2 text-right tabular-nums">{l.vendidas || '—'}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{l.cobertura !== null ? `${l.cobertura} dias` : '—'}</td>
               </tr>
             ))}
             {mostrar.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-slate-400">Nada aqui.</td>
+                <td colSpan={7} className="px-3 py-8 text-center text-slate-400">Nada aqui.</td>
               </tr>
             )}
           </tbody>

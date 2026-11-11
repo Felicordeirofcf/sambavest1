@@ -225,3 +225,25 @@ export async function estoque(): Promise<LinhaEstoque[]> {
   }
   return linhas;
 }
+
+// ---------- SKUs do Bling (para cruzar com o WooCommerce) ----------
+
+/** Código (SKU) → saldo no Bling. Cache de 30 min. Null se o Bling não estiver disponível. */
+export async function skusBling(): Promise<Map<string, number | null> | null> {
+  const chave = 'painel:bling:skus';
+  try {
+    const salvo = await kvGet<[string, number | null][]>(chave);
+    if (salvo) return new Map(salvo);
+  } catch {
+    // sem cache
+  }
+  try {
+    const { listarProdutosAtivos } = await import('../automacao/bling');
+    const mapa = await listarProdutosAtivos();
+    const pares = [...mapa].map(([codigo, p]) => [codigo.trim().toUpperCase(), p.saldo ?? null] as [string, number | null]);
+    await kvSet(chave, pares, 1800).catch(() => undefined);
+    return new Map(pares);
+  } catch {
+    return null;
+  }
+}
