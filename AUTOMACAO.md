@@ -48,7 +48,8 @@ e faça um novo deploy.
    segredo em `WC_WEBHOOK_SECRET`.
 4. **Rotina a cada 30 min** (o agendamento do GitHub é "melhor esforço" e às vezes passa horas sem rodar;
    para a Black Friday, cadastre também um cron externo grátis, como o cron-job.org, chamando
-   `https://sambavest.com/api/cron/automacao` a cada 15 min com o cabeçalho
+   `https://sambavest.com/api/cron/automacao?modo=fundo` a cada 15 min (o `modo=fundo` faz o site responder
+   na hora e trabalhar em segundo plano, porque o cron-job.org grátis espera no máximo 30 s) com o cabeçalho
    `Authorization: Bearer <CRON_SECRET>`): no GitHub do projeto, abra Settings → Secrets and variables → Actions e
    crie `SITE_URL` (ex.: `https://sambavest.com`) e `CRON_SECRET` (o mesmo da Vercel). O workflow
    `.github/workflows/automacao.yml` passa a rodar sozinho. Ele também pode ser disparado à mão em
