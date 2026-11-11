@@ -83,7 +83,8 @@ do Pix, altere `METODOS` em `app/api/checkout/route.ts` e o texto do checkout.
    privado / uso próprio**).
    - Link de redirecionamento: `https://SEU-SITE/api/bling/callback` (o domínio que está no ar, com `https`)
    - Escopos: **Contatos**, **Pedidos de Venda**, **Produtos**, **Estoques**, **Notas Fiscais** e
-     **Formas de Pagamento**. Se faltar Formas de Pagamento, o pedido vai sem parcela e o Bling usa a
+     **Formas de Pagamento**. Para o Financeiro do painel, inclua também **Contas a Receber**, **Contas a
+     Pagar** e **Categorias Financeiras**. Se faltar Formas de Pagamento, o pedido vai sem parcela e o Bling usa a
      forma padrão dele.
 3. Copie o Client ID e o Client Secret para `BLING_CLIENT_ID` e `BLING_CLIENT_SECRET` na Vercel e faça o deploy.
 4. Abra o **link de convite** do aplicativo (fica na página do app) logado como administrador da conta
@@ -429,6 +430,11 @@ primeira não existir). O mesmo login libera o atendimento do WhatsApp (`/atendi
   que costuma comprar e a conversa do WhatsApp.
 - **Produtos e estoque:** estoque de cada variação, vendas no período, por quantos dias o estoque dura, itens
   esgotados ou com estoque baixo e SKU faltando ou repetido (o Bling liga os produtos pelo SKU).
+- **Financeiro (Bling):** contas a receber e a pagar. Mostra o que entra e sai nos próximos 30 dias, o saldo
+  previsto, o realizado no mês, contas vencidas, fluxo de caixa semana a semana (8 semanas) com saldo
+  acumulado e despesas do mês por categoria. Só lê: baixas e lançamentos continuam no Bling. Precisa dos
+  escopos de financeiro no aplicativo do Bling (veja a seção 2) e de uma nova autorização. Os dados ficam
+  15 minutos em cache, e o botão "Atualizar do Bling" busca de novo.
 - **Integrações:** o que está configurado e ligado em cada sistema.
 
 Os números vêm direto do WooCommerce (a AppMax entra pelo plugin de pagamento) e ficam em cache por 2
