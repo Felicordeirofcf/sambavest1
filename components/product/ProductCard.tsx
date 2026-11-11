@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { podeOtimizar } from '../../lib/imagem';
 import { useRouter } from 'next/navigation';
 
 export default function ProductCard({ product }: { product: any }) {
@@ -63,6 +65,9 @@ export default function ProductCard({ product }: { product: any }) {
   const [isHovered, setIsHovered] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  const imagemExibida =
+    (isHovered || showMobileMenu) && currentImage === imageFrontDefault ? imageBackDefault : currentImage;
+
   // 💰 Cálculo universal do Desconto Pix (10% OFF)
   const productPrice = Number(product.price || 0);
   const precoPix = productPrice * 0.90;
@@ -70,7 +75,10 @@ export default function ProductCard({ product }: { product: any }) {
   return (
     <div 
       className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_2px_15px_rgba(0,0,0,0.05)] transition-all duration-500 hover:border-[#C9A227] hover:shadow-2xl"
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        router.prefetch(`/produto/${productIdentifier}`);
+      }}
       onMouseLeave={() => {
         setIsHovered(false);
         if (!showMobileMenu) setCurrentImage(imageFrontDefault);
@@ -80,7 +88,10 @@ export default function ProductCard({ product }: { product: any }) {
       {/* Área da Imagem e Link Principal */}
       <div 
         onClick={() => {
-          if (uniqueModels.length > 0 && !showMobileMenu) {
+          // No computador (com mouse) o menu de modelos já aparece ao passar o mouse:
+          // o clique na foto abre o produto direto. No celular, o 1º toque mostra os modelos.
+          const temMouse = typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+          if (uniqueModels.length > 0 && !showMobileMenu && !temMouse) {
             setShowMobileMenu(true);
           } else {
             router.push(`/produto/${productIdentifier}`);
@@ -95,11 +106,16 @@ export default function ProductCard({ product }: { product: any }) {
         )}
 
         {/* IMAGEM DINÂMICA */}
-        <img
-          src={(isHovered || showMobileMenu) && currentImage === imageFrontDefault ? imageBackDefault : currentImage}
-          alt={product.name}
-          className="absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out group-hover:scale-105"
-        />
+        {imagemExibida && (
+          <Image
+            src={imagemExibida}
+            alt={product.name}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            unoptimized={!podeOtimizar(imagemExibida)}
+            className="absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out group-hover:scale-105"
+          />
+        )}
 
         {showMobileMenu && (
           <button

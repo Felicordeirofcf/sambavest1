@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
-import type { ShippingQuote } from '../../lib/shipping';
+import { FREE_SHIPPING_THRESHOLD, type ShippingQuote } from '../../lib/shipping';
 
 export type { ShippingQuote };
 
@@ -16,17 +16,26 @@ interface ShippingCalculatorProps {
     image: string;
     size?: string;
   };
+  /** CEP digitado em outro lugar (ex.: endereço do checkout). Quando completo, o frete é calculado sozinho. */
+  cepExterno?: string;
 }
 
-export default function ShippingCalculator({ subtotal, onQuote, productContext }: ShippingCalculatorProps) {
+const formatarCep = (valor: string) => {
+  const d = valor.replace(/\D/g, '').slice(0, 8);
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+};
+
+export default function ShippingCalculator({ subtotal, onQuote, productContext, cepExterno }: ShippingCalculatorProps) {
   const { items } = useCartStore();
   const [cep, setCep] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [quotes, setQuotes] = useState<ShippingQuote[]>([]);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | number | null>(null);
 
-  const handleCalculate = async () => {
-    const cepLimpo = cep.replace(/\D/g, '');
+  const cepCotado = useRef('');
+
+  const handleCalculate = async (cepInformado?: string) => {
+    const cepLimpo = (cepInformado ?? cep).replace(/\D/g, '');
     if (cepLimpo.length !== 8) {
       alert('Por favor, digite um CEP válido com 8 dígitos.');
       return;
@@ -42,6 +51,7 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext }
       return;
     }
 
+    cepCotado.current = cepLimpo;
     setIsLoading(true);
     setQuotes([]);
     onQuote(null);
@@ -70,15 +80,27 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext }
     }
   };
 
+  // Checkout: quando o cliente termina de digitar o CEP do endereço, calcula o frete para esse mesmo CEP.
+  const ultimoCepExterno = useRef('');
+  useEffect(() => {
+    const limpo = (cepExterno || '').replace(/\D/g, '');
+    if (limpo.length !== 8 || limpo === ultimoCepExterno.current) return;
+    ultimoCepExterno.current = limpo;
+    setCep(formatarCep(limpo));
+    handleCalculate(limpo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cepExterno]);
+
   const handleSelectQuote = (quote: ShippingQuote) => {
     setSelectedQuoteId(quote.id);
     
-    const FREE_SHIPPING_THRESHOLD = 300; 
     let finalQuote: ShippingQuote = { 
       ...quote,
       minDays: quote.delivery_time || 3,
       maxDays: quote.delivery_time || 7,
-      region: 'Nacional'
+      region: 'Nacional',
+      originalPrice: quote.price,
+      cep: cepCotado.current,
     };
 
     if (subtotal >= FREE_SHIPPING_THRESHOLD && quote.name.toLowerCase().includes('pac')) {
@@ -95,16 +117,25 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext }
         <input
           type="text"
           value={cep}
-          onChange={(e) => setCep(e.target.value)}
+          onChange={(e) => setCep(formatarCep(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleCalculate();
+            }
+          }}
           maxLength={9}
+          inputMode="numeric"
+          autoComplete="postal-code"
+          aria-label="CEP para calcular o frete"
           placeholder="00000-000"
-          className="flex-1 border p-3 text-sm rounded bg-white focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]"
+          className="flex-1 min-w-0 border p-3 text-sm rounded bg-white focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]"
         />
         <button
           type="button"
-          onClick={handleCalculate}
-          disabled={isLoading || cep.length < 8}
-          className="px-6 py-3 bg-[#0B1B34] text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-[#C9A227] hover:text-[#0B1B34] transition-colors disabled:bg-gray-400"
+          onClick={() => handleCalculate()}
+          disabled={isLoading || cep.replace(/\D/g, '').length !== 8}
+          className="shrink-0 px-6 py-3 bg-[#0B1B34] text-white text-xs font-bold uppercase tracking-wider rounded hover:bg-[#C9A227] hover:text-[#0B1B34] transition-colors disabled:bg-gray-400"
         >
           {isLoading ? 'Calculando...' : 'Calcular'}
         </button>
@@ -139,7 +170,7 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext }
                 </div>
               </div>
               <div className="text-sm font-extrabold text-[#0B1B34]">
-                {subtotal >= 300 && quote.name.toLowerCase().includes('pac') 
+                {subtotal >= FREE_SHIPPING_THRESHOLD && quote.name.toLowerCase().includes('pac') 
                   ? <span className="text-green-600">GRÁTIS</span>
                   : `R$ ${quote.price.toFixed(2).replace('.', ',')}`
                 }

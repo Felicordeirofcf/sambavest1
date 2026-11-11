@@ -1,23 +1,47 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export default function InstagramReels() {
-  // 🚀 O script do Instagram lê esses embeds e os transforma nos players oficiais automaticamente
+  const secaoRef = useRef<HTMLElement>(null);
+
+  // 🚀 O script do Instagram é pesado: só carrega quando o cliente rola até perto desta seção.
+  // Assim a vitrine (camisas e preços) abre mais rápido, principalmente no celular.
   useEffect(() => {
-    // Carrega o script do Instagram caso ele ainda não exista na página
-    if (!(window as any).instgrm) {
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = '//www.instagram.com/embed.js';
-      document.body.appendChild(script);
-    } else {
-      (window as any).instgrm.Embeds.process();
+    const carregar = () => {
+      if (!(window as any).instgrm) {
+        if (document.getElementById('instagram-embed-js')) return;
+        const script = document.createElement('script');
+        script.id = 'instagram-embed-js';
+        script.async = true;
+        script.src = 'https://www.instagram.com/embed.js';
+        document.body.appendChild(script);
+      } else {
+        (window as any).instgrm.Embeds.process();
+      }
+    };
+
+    const el = secaoRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      carregar();
+      return;
     }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          observer.disconnect();
+          carregar();
+        }
+      },
+      { rootMargin: '600px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   return (
-    <section className="py-16 bg-[#FAF7EF] border-t border-gray-200">
+    <section ref={secaoRef} className="py-16 bg-[#FAF7EF] border-t border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Cabeçalho da Seção */}
