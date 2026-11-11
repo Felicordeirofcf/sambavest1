@@ -18,7 +18,9 @@ function Login({ erro }: { erro?: string }) {
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">
       <form action={login} className="w-full max-w-xs flex flex-col gap-3">
+        <a href="/painel" className="text-sm underline text-gray-600">← Voltar ao painel</a>
         <h1 className="text-xl font-bold text-[#0B1B34]">Atendimento WhatsApp</h1>
+        <p className="text-xs text-gray-500">Use a mesma senha do painel de gestão.</p>
         {!config.whatsapp.painelSenha && (
           <p className="text-sm text-red-600">Defina ATENDIMENTO_SENHA na Vercel para liberar o painel.</p>
         )}
@@ -64,7 +66,12 @@ export default async function AtendimentoPage({ searchParams }: { searchParams: 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-bold text-[#0B1B34]">Atendimento WhatsApp</h1>
+        <div className="flex items-center gap-3">
+          <Link href="/painel" className="text-sm px-3 py-1.5 rounded-lg bg-[#0B1B34] text-white hover:bg-[#C9A227] hover:text-[#0B1B34]">
+            ← Voltar ao painel
+          </Link>
+          <h1 className="text-xl font-bold text-[#0B1B34]">Atendimento WhatsApp</h1>
+        </div>
         <div className="flex gap-4 items-center">
           <Link href="/atendimento/simulador" className="text-sm underline text-gray-600">Simulador do robô</Link>
           <form action={logout}>

@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { config } from '../automacao/config';
 import { kvGet, kvSet } from '../automacao/kv';
 import { entrar as entrarAtendimento, sair as sairAtendimento } from '../automacao/painel';
 
@@ -72,7 +73,7 @@ export async function tentarEntrar(tentativa: string): Promise<'ok' | 'senha' | 
     maxAge: 30 * 86_400,
   });
   // Mesmo login libera o atendimento do WhatsApp (/atendimento), se ele tiver senha configurada.
-  if (process.env.ATENDIMENTO_SENHA) await entrarAtendimento();
+  if (config.whatsapp.painelSenha) await entrarAtendimento();
   return 'ok';
 }
 
