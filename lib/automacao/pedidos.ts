@@ -8,7 +8,7 @@ import { config, integracoes } from './config';
 import { adquirirTrava, liberarTrava } from './kv';
 import * as melhorEnvio from './melhorenvio';
 import { enviarCompra } from './meta';
-import { alertarLoja, avisarCliente } from './notificacoes';
+import { alertarLoja, avisarCliente, escapar } from './notificacoes';
 import { adicionarNota, linkPagamento, listarPedidos, meta, obterPedido, salvarNoPedido, WcPedido } from './woocommerce';
 
 export const M = {
@@ -89,10 +89,13 @@ export async function processarPedido(id: number, opcoes: { rastreioMelhorEnvio?
       }
       if (!meta(pedido, M.alertaLoja)) {
         await passo('alerta loja', async () => {
-          const itens = pedido.line_items.map((i) => `<li>${i.quantity}x ${i.name} (${i.sku || 'sem SKU'})</li>`).join('');
+          // Dados vêm do checkout (digitados pelo cliente): escapados antes de ir para o e-mail.
+          const e = escapar;
+          const itens = pedido.line_items.map((i) => `<li>${i.quantity}x ${e(i.name)} (${e(i.sku || 'sem SKU')})</li>`).join('');
+          const b = pedido.billing;
           await alertarLoja(
             `Novo pedido pago #${pedido.id} — R$ ${pedido.total}`,
-            `<p><b>${pedido.billing.first_name} ${pedido.billing.last_name}</b> · ${pedido.billing.phone} · ${pedido.billing.email}</p><ul>${itens}</ul><p>Frete: ${pedido.shipping_lines?.[0]?.method_title || '-'} (R$ ${pedido.shipping_total})</p>`
+            `<p><b>${e(`${b.first_name} ${b.last_name}`)}</b> · ${e(b.phone || '')} · ${e(b.email || '')}</p><ul>${itens}</ul><p>Frete: ${e(pedido.shipping_lines?.[0]?.method_title || '-')} (R$ ${e(pedido.shipping_total)})</p>`
           );
           await salvarNoPedido(pedido, { [M.alertaLoja]: new Date().toISOString() });
         });
@@ -195,7 +198,7 @@ export async function processarPedido(id: number, opcoes: { rastreioMelhorEnvio?
       if (meta(pedido, M.erro) !== resumo) {
         await salvarNoPedido(pedido, { [M.erro]: resumo }).catch(() => {});
         await adicionarNota(pedido, `⚠️ Automação: ${resumo}`).catch(() => {});
-        await alertarLoja(`Erro na automação do pedido #${pedido.id}`, `<p>${rel.erros.map((e) => `• ${e}`).join('<br>')}</p>`);
+        await alertarLoja(`Erro na automação do pedido #${pedido.id}`, `<p>${rel.erros.map((e) => `• ${escapar(e)}`).join('<br>')}</p>`);
       }
     } else if (meta(pedido, M.erro)) {
       await salvarNoPedido(pedido, { [M.erro]: '' }).catch(() => {});
@@ -230,7 +233,9 @@ async function verificarRastreio(pedido: WcPedido, codigoInformado?: string): Pr
   const canais = await avisarCliente('enviado', pedido, { rastreio: codigo, linkRastreio: link });
   const novoStatus = config.woo.concluirAoEnviar && pedido.status === 'processing' ? 'completed' : undefined;
   await salvarNoPedido(pedido, { [M.rastreio]: codigo, [M.avisoEnviado]: canais.join(',') || 'nenhum canal' }, novoStatus);
-  await adicionarNota(pedido, `Código de rastreio: ${codigo} — ${link}`);
+  // Sem WhatsApp nem e-mail próprio configurados, a nota vai "para o cliente": o WooCommerce
+  // manda por e-mail. Assim o cliente nunca fica sem o código de rastreio.
+  await adicionarNota(pedido, `Seu pedido foi enviado! Código de rastreio: ${codigo} — acompanhe em ${link}`, canais.length === 0);
   return codigo;
 }
 
@@ -273,6 +278,8 @@ export async function rotinaPedidos(prazo: number): Promise<Relatorio[]> {
     else if (!meta(p, M.avisoEnviado) && (meta(p, M.meEnvio) || codigoRastreioManual(p))) soRastreio.push(p);
   }
   soRastreio.sort(() => Math.random() - 0.5);
+  // Mais novos primeiro: num pico de vendas, pedidos travados antigos não podem tomar o lugar dos novos.
+  urgentes.reverse();
 
   const relatorios: Relatorio[] = [];
   for (const p of [...urgentes, ...soRastreio]) {

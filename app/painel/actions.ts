@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { responderPeloPainel } from '../../lib/automacao/atendimento';
+import { linkDeAutorizacao } from '../../lib/automacao/bling';
 import { processarPedido } from '../../lib/automacao/pedidos';
 import { adicionarNota, obterPedido, salvarNoPedido, wc } from '../../lib/automacao/woocommerce';
 import { exigirLogin, sairDoPainel, tentarEntrar } from '../../lib/painel/auth';
@@ -141,4 +142,10 @@ export async function atualizarFinanceiro() {
   }
   revalidatePath('/painel/financeiro');
   redirect(erro ? `/painel/financeiro?erro=${encodeURIComponent(erro)}` : '/painel/financeiro');
+}
+
+/** Abre a autorização do Bling com um "state" de uso único (o callback só aceita assim). */
+export async function conectarBling() {
+  await exigirLogin();
+  redirect(await linkDeAutorizacao());
 }

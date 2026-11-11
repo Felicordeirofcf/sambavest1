@@ -21,6 +21,8 @@ interface CartStore {
   addItem: (item: CartItem) => void;
   removeItem: (id: number | string, size?: string) => void; // Aceita size opcional para remoção precisa
   clearCart: () => void;
+  /** Atualiza os preços com os valores atuais do WooCommerce (chave = id do item). */
+  atualizarPrecos: (precos: Record<string, number>) => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -66,6 +68,13 @@ export const useCartStore = create<CartStore>()(
         })),
         
       clearCart: () => set({ items: [] }),
+
+      atualizarPrecos: (precos) =>
+        set((state) => ({
+          items: state.items.map((item) =>
+            precos[String(item.id)] > 0 && precos[String(item.id)] !== item.price ? { ...item, price: precos[String(item.id)] } : item
+          ),
+        })),
     }),
     {
       name: 'samba-vest-cart',

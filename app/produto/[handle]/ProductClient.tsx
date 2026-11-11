@@ -163,6 +163,13 @@ export default function ProductClient({ product }: { product: any }) {
 
   const matchedVariant = useMemo(() => {
     if (availableModels.length > 0 && !selectedModel) return null;
+    // Produto sem tamanho (simples ou "tamanho único"): a variante é a do modelo escolhido
+    if (availableSizes.length === 0) {
+      const doModelo = variantsList.filter((v: any) =>
+        availableModels.length > 0 ? extractModelFromVariant(v).toLowerCase() === selectedModel.toLowerCase() : true
+      );
+      return doModelo.length === 1 ? doModelo[0] : variantsList.length === 1 ? variantsList[0] : null;
+    }
     if (!selectedSize) return null;
 
     return variantsList.find((v: any) => {
@@ -176,13 +183,19 @@ export default function ProductClient({ product }: { product: any }) {
 
       return matchModel && matchSize;
     }) || null;
-  }, [variantsList, selectedModel, selectedSize, availableModels]);
+  }, [variantsList, selectedModel, selectedSize, availableModels, availableSizes]);
 
-  const baseProductPrice = Number(product?.price || 149.90);
+  const baseProductPrice = Number(product?.price || 0);
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
   const precoPix = currentPrice * 0.90;
+  // Preço "de" (riscado): o da variação escolhida; antes da escolha, o do produto
+  const precoCheio = Number(matchedVariant?.regular_price || product?.regular_price || 0);
 
   const handleAddToCart = () => {
+    if (matchedVariant && !(currentPrice > 0)) {
+      alert('Este item está sem preço no momento. Fale com a gente pelo WhatsApp.');
+      return;
+    }
     if (!matchedVariant) {
       // Avisa o cliente em vez de deixar o botão "morto"
       setAvisoTamanho(true);
@@ -287,9 +300,9 @@ export default function ProductClient({ product }: { product: any }) {
                 <span className="text-2xl font-black text-[#1E2233]">
                   R$ {Number(currentPrice || 0).toFixed(2).replace('.', ',')}
                 </span>
-                {Boolean(product?.regular_price && Number(product.regular_price) > Number(currentPrice)) && (
+                {precoCheio > Number(currentPrice) && (
                   <span className="text-sm text-gray-400 line-through mb-1">
-                    R$ {Number(product.regular_price).toFixed(2).replace('.', ',')}
+                    R$ {precoCheio.toFixed(2).replace('.', ',')}
                   </span>
                 )}
               </div>

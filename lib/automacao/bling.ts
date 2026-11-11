@@ -4,7 +4,8 @@
 // no KV (Upstash). As variáveis BLING_ACCESS_TOKEN / BLING_REFRESH_TOKEN só servem
 // como ponto de partida — depois de autorizar em /api/bling/callback, nem precisam existir.
 import { config } from './config';
-import { adquirirTrava, kvGet, kvSet, liberarTrava } from './kv';
+import crypto from 'node:crypto';
+import { adquirirTrava, kvDel, kvGet, kvSet, liberarTrava } from './kv';
 import { documentoCliente, enderecoEntrega, WcPedido } from './woocommerce';
 
 const API = 'https://api.bling.com.br/Api/v3';
@@ -44,6 +45,33 @@ export function autorizarComCodigo(code: string): Promise<Tokens> {
   return pedirTokens({ grant_type: 'authorization_code', code });
 }
 
+// ---------------- Conexão (OAuth) com "state" ----------------
+// O callback só aceita autorizações iniciadas pelo painel (com login). Assim ninguém consegue
+// conectar outra conta Bling à loja chamando /api/bling/callback com um "code" próprio.
+
+const chaveState = (state: string) => `bling:oauth-state:${state}`;
+
+/** Gera o link de autorização do Bling com um "state" de uso único (vale 15 minutos). */
+export async function linkDeAutorizacao(): Promise<string> {
+  if (!config.bling.clientId) throw new Error('BLING_CLIENT_ID não configurado.');
+  const state = crypto.randomUUID().replace(/-/g, '');
+  await kvSet(chaveState(state), 1, 15 * 60);
+  const u = new URL('https://www.bling.com.br/Api/v3/oauth/authorize');
+  u.searchParams.set('response_type', 'code');
+  u.searchParams.set('client_id', config.bling.clientId);
+  u.searchParams.set('state', state);
+  return u.toString();
+}
+
+/** Confere e consome o "state" recebido no callback. */
+export async function stateValido(state: string | null): Promise<boolean> {
+  if (!state || !/^[a-f0-9]{32}$/.test(state)) return false;
+  const existe = await kvGet<number>(chaveState(state));
+  if (!existe) return false;
+  await kvDel(chaveState(state));
+  return true;
+}
+
 async function renovarTokens(refreshAtual: string): Promise<Tokens> {
   // Evita duas renovações ao mesmo tempo (a segunda invalidaria a primeira).
   const pegou = await adquirirTrava('bling-refresh', 30);
@@ -54,7 +82,11 @@ async function renovarTokens(refreshAtual: string): Promise<Tokens> {
     throw new Error('Bling: renovação de token em andamento, tente novamente.');
   }
   try {
-    return await pedirTokens({ grant_type: 'refresh_token', refresh_token: refreshAtual });
+    // Outra execução pode ter renovado entre a nossa leitura e a trava: nesse caso o
+    // refresh token que temos já foi invalidado pelo Bling, e devemos usar o novo.
+    const salvos = await kvGet<Tokens>(CHAVE_TOKENS);
+    if (salvos && salvos.refresh_token !== refreshAtual && salvos.expira_em - Date.now() > 5 * 60_000) return salvos;
+    return await pedirTokens({ grant_type: 'refresh_token', refresh_token: salvos?.refresh_token || refreshAtual });
   } finally {
     await liberarTrava('bling-refresh');
   }

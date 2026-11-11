@@ -2,6 +2,7 @@ import { Aviso, Cartao, Chip } from '../../../components/painel/ui';
 import { estadoTokens } from '../../../lib/automacao/bling';
 import { config, integracoes } from '../../../lib/automacao/config';
 import { exigirLogin } from '../../../lib/painel/auth';
+import { conectarBling } from '../actions';
 
 type Linha = { nome: string; ok: boolean; detalhe: string; liga?: { rotulo: string; ligado: boolean }[] };
 
@@ -33,7 +34,7 @@ export default async function Integracoes() {
         ? 'Falta BLING_CLIENT_ID / BLING_CLIENT_SECRET'
         : tokens?.salvosNoKv
           ? `Autorizado${tokens.expiraEm ? ` · token renova em ${tokens.expiraEm}` : ''}`
-          : 'Configurado, mas ainda não autorizado: abra o link de convite do aplicativo no Bling.',
+          : 'Configurado, mas ainda não autorizado: clique em "Conectar Bling".',
       liga: [
         { rotulo: 'Enviar pedidos', ligado: config.bling.enviarPedidos },
         { rotulo: 'Emitir NF-e', ligado: config.bling.emitirNfe },
@@ -85,6 +86,14 @@ export default async function Integracoes() {
                 <span className="font-medium">{l.nome}</span>
               </div>
               <p className="text-sm text-slate-500 mt-1">{l.detalhe}</p>
+              {l.nome.startsWith('Bling') && integracoes.bling() && (
+                <form action={conectarBling} className="mt-2">
+                  <button className="text-sm px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50">
+                    {tokens?.salvosNoKv ? 'Reconectar Bling' : 'Conectar Bling'}
+                  </button>
+                  <span className="text-xs text-slate-500 ml-2">Use depois de mudar os escopos do aplicativo no Bling.</span>
+                </form>
+              )}
               {l.liga && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {l.liga.map((x) => (

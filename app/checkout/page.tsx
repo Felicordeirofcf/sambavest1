@@ -16,6 +16,8 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState('appmax_pix');
   const [isBuscandoCep, setIsBuscandoCep] = useState(false);
 
+  const [avisoPrecos, setAvisoPrecos] = useState('');
+
   useEffect(() => {
     setIsMounted(true);
     // Força a atualização da store do Zustand caso use persistência local
@@ -23,6 +25,45 @@ export default function CheckoutPage() {
       useCartStore.persist.rehydrate();
     }
   }, []);
+
+  // A sacola guarda o preço de quando o item foi adicionado. Antes de mostrar o total,
+  // busca o preço atual (promoção que começou ou acabou) e avisa se algo mudou ou esgotou.
+  useEffect(() => {
+    if (!isMounted) return;
+    const atuais = useCartStore.getState().items;
+    if (atuais.length === 0) return;
+    let cancelado = false;
+    fetch('/api/carrinho', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: atuais.map((i) => i.id) }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelado || !data?.success) return;
+        const precos: Record<string, number> = {};
+        const mudou: string[] = [];
+        const esgotados: string[] = [];
+        for (const item of atuais) {
+          const info = data.itens?.[String(item.id)];
+          if (!info) continue;
+          if (!info.disponivel) esgotados.push(item.name);
+          else if (Math.abs(info.preco - item.price) > 0.009) {
+            precos[String(item.id)] = info.preco;
+            mudou.push(item.name);
+          }
+        }
+        if (Object.keys(precos).length) useCartStore.getState().atualizarPrecos(precos);
+        const partes = [];
+        if (mudou.length) partes.push(`O preço de ${mudou.join(', ')} foi atualizado.`);
+        if (esgotados.length) partes.push(`${esgotados.join(', ')} não está mais disponível: remova da sacola para continuar.`);
+        setAvisoPrecos(partes.join(' '));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelado = true;
+    };
+  }, [isMounted]);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -227,7 +268,14 @@ export default function CheckoutPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      let data: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(
+          'O servidor demorou para responder. Antes de tentar de novo, confira seu e-mail: o pedido pode ter sido criado. Se precisar, fale com a gente no WhatsApp.'
+        );
+      }
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Erro ao registrar pedido.');
@@ -324,7 +372,7 @@ export default function CheckoutPage() {
 
                 <div>
                   <label htmlFor="checkout-numero" className="block text-xs font-bold uppercase text-gray-600 mb-1">Número *</label>
-                  <input id="checkout-numero" type="text" name="numero" inputMode="numeric" autoComplete="off" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <input id="checkout-numero" type="text" name="numero" inputMode="text" autoComplete="off" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
@@ -378,6 +426,9 @@ export default function CheckoutPage() {
 
             <div className="bg-white p-6 shadow-sm rounded-sm">
               <h3 className="text-sm font-bold uppercase tracking-widest mb-6 pb-2 border-b text-[#0B1B34]">3. Seus Produtos</h3>
+              {avisoPrecos && (
+                <p role="status" className="mb-3 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded p-2">{avisoPrecos}</p>
+              )}
               {activeItems.length === 0 ? (
                 <p className="text-xs text-gray-500 py-4">Seu carrinho está vazio.</p>
               ) : (
