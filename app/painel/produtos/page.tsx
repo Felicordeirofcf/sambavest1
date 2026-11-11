@@ -15,11 +15,12 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
   let linhas: Awaited<ReturnType<typeof estoque>> = [];
   let vendas = new Map<number, number>();
   let bling: Map<string, number | null> | null = null;
+  let erroBling = '';
   try {
     [linhas, vendas, bling] = await Promise.all([
       estoque(),
       pedidosRecentes(dias).then(vendasPorVariacao),
-      integracoes.bling() ? skusBling() : Promise.resolve(null),
+      integracoes.bling() ? skusBling().then((r) => ((erroBling = r.erro || ''), r.mapa)) : Promise.resolve(null),
     ]);
   } catch (e) {
     erro = (e as Error).message;
@@ -65,6 +66,11 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
         <SeletorPeriodo atual={dias} base="/painel/produtos" extra={`&filtro=${filtro}`} />
       </div>
       {erro && <Aviso tipo="erro">Não consegui ler os produtos: {erro}</Aviso>}
+      {erroBling && (
+        <Aviso tipo="erro">
+          Não consegui comparar com o Bling, por isso a coluna &quot;Bling&quot; não aparece. Motivo: {erroBling}
+        </Aviso>
+      )}
       {!config.bling.sincronizarEstoque && (
         <Aviso>
           O estoque mostrado é o do WooCommerce. A sincronização Bling → WooCommerce está desligada (BLING_SINCRONIZAR_ESTOQUE).

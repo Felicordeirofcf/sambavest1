@@ -228,12 +228,15 @@ export async function estoque(): Promise<LinhaEstoque[]> {
 
 // ---------- SKUs do Bling (para cruzar com o WooCommerce) ----------
 
-/** Código (SKU) → saldo no Bling. Cache de 30 min. Null se o Bling não estiver disponível. */
-export async function skusBling(): Promise<Map<string, number | null> | null> {
+/**
+ * Código (SKU) → saldo no Bling. Cache de 30 min.
+ * Devolve o erro em texto quando o Bling não responde, para a tela mostrar o motivo.
+ */
+export async function skusBling(): Promise<{ mapa: Map<string, number | null> | null; erro?: string }> {
   const chave = 'painel:bling:skus';
   try {
     const salvo = await kvGet<[string, number | null][]>(chave);
-    if (salvo) return new Map(salvo);
+    if (salvo) return { mapa: new Map(salvo) };
   } catch {
     // sem cache
   }
@@ -241,9 +244,11 @@ export async function skusBling(): Promise<Map<string, number | null> | null> {
     const { listarProdutosAtivos } = await import('../automacao/bling');
     const mapa = await listarProdutosAtivos();
     const pares = [...mapa].map(([codigo, p]) => [codigo.trim().toUpperCase(), p.saldo ?? null] as [string, number | null]);
+    if (pares.length === 0) return { mapa: null, erro: 'o Bling não devolveu nenhum produto com código' };
     await kvSet(chave, pares, 1800).catch(() => undefined);
-    return new Map(pares);
-  } catch {
-    return null;
+    return { mapa: new Map(pares) };
+  } catch (e) {
+    console.error('[painel] falha ao listar produtos do Bling', e);
+    return { mapa: null, erro: (e as Error).message };
   }
 }
