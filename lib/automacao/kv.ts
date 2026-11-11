@@ -65,3 +65,37 @@ export async function adquirirTrava(chave: string, segundos: number): Promise<bo
 export async function liberarTrava(chave: string): Promise<void> {
   await kvDel(`trava:${chave}`);
 }
+
+// ---------- Conjunto ordenado (lista de conversas recentes) ----------
+
+const zsets = new Map<string, Map<string, number>>();
+
+export async function kvZAdd(chave: string, pontos: number, membro: string): Promise<void> {
+  if (integracoes.kv()) {
+    await redis(['ZADD', chave, pontos, membro]);
+    return;
+  }
+  if (!zsets.has(chave)) zsets.set(chave, new Map());
+  zsets.get(chave)!.set(membro, pontos);
+}
+
+/** Membros do maior para o menor score. */
+export async function kvZRevRange(chave: string, inicio: number, fim: number): Promise<string[]> {
+  if (integracoes.kv()) {
+    const r = await redis(['ZREVRANGE', chave, inicio, fim]);
+    return Array.isArray(r) ? (r as string[]) : [];
+  }
+  const z = zsets.get(chave);
+  if (!z) return [];
+  return [...z.entries()].sort((a, b) => b[1] - a[1]).slice(inicio, fim + 1).map(([m]) => m);
+}
+
+/** Remove membros com score menor que o limite. */
+export async function kvZRemAbaixoDe(chave: string, limite: number): Promise<void> {
+  if (integracoes.kv()) {
+    await redis(['ZREMRANGEBYSCORE', chave, '-inf', `(${limite}`]);
+    return;
+  }
+  const z = zsets.get(chave);
+  if (z) for (const [m, p] of z) if (p < limite) z.delete(m);
+}
