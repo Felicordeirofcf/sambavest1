@@ -5,10 +5,20 @@ import { metaDadosRastreio } from '../../../lib/automacao/meta';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-// Formas de pagamento aceitas (IDs dos gateways AppMax no WooCommerce) e desconto de cada uma.
-const METODOS: Record<string, { titulo: string; desconto: number }> = {
-  appmax_pix: { titulo: 'Pix -- AppMax', desconto: 0.1 },
-  appmax_credit: { titulo: 'Cartão de Crédito -- AppMax', desconto: 0 },
+// Formas de pagamento aceitas. A chave é o que o checkout do site envia; `gateway` é o ID real
+// do método no WooCommerce (WooCommerce → Configurações → Pagamentos → abrir o método → "&section=ID").
+// Se o plugin da AppMax mudar os IDs, ajuste APPMAX_GATEWAY_PIX / APPMAX_GATEWAY_CARTAO na Vercel.
+const METODOS: Record<string, { gateway: string; titulo: string; desconto: number }> = {
+  appmax_pix: {
+    gateway: process.env.APPMAX_GATEWAY_PIX?.trim() || 'appmax_pix',
+    titulo: 'Pix -- AppMax',
+    desconto: 0.1,
+  },
+  appmax_credit: {
+    gateway: process.env.APPMAX_GATEWAY_CARTAO?.trim() || 'pagamentos_para_woocommerce_com_appmax_credit_card',
+    titulo: 'Cartão de Crédito -- AppMax',
+    desconto: 0,
+  },
 };
 
 const MAX_ITENS = 20;
@@ -174,7 +184,7 @@ export async function POST(request: Request) {
     // 🛍️ PEDIDO CRIADO COMO CONVIDADO (Garante acesso direto à chave de pagamento sem login)
     const wcOrderPayload: any = {
       customer_id: 0,
-      payment_method: metodoEscolhido,
+      payment_method: metodo.gateway,
       payment_method_title: metodo.titulo,
       set_paid: false,
       billing: {
