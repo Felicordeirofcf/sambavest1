@@ -99,3 +99,32 @@ export async function kvZRemAbaixoDe(chave: string, limite: number): Promise<voi
   const z = zsets.get(chave);
   if (z) for (const [m, p] of z) if (p < limite) z.delete(m);
 }
+
+// ---------- Limite de requisições ----------
+
+/**
+ * Conta mais uma requisição na janela e diz se ainda está dentro do limite.
+ * Atômico no Upstash (INCR + EXPIRE). Se o KV falhar, deixa passar (melhor vender que travar a loja).
+ */
+export async function dentroDoLimite(chave: string, maximo: number, janelaS: number): Promise<boolean> {
+  const k = `limite:${chave}`;
+  try {
+    if (integracoes.kv()) {
+      const n = Number(await redis(['INCR', k]));
+      if (n === 1) await redis(['EXPIRE', k, janelaS]);
+      return n <= maximo;
+    }
+    const atual = memoria.get(k);
+    const valido = atual && (!atual.expiraEm || atual.expiraEm > Date.now());
+    const n = (valido ? Number(atual!.valor) : 0) + 1;
+    memoria.set(k, { valor: String(n), expiraEm: valido ? atual!.expiraEm : Date.now() + janelaS * 1000 });
+    return n <= maximo;
+  } catch {
+    return true;
+  }
+}
+
+/** IP do cliente atrás da Vercel. */
+export function ipDe(request: Request): string {
+  return (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || request.headers.get('x-real-ip') || 'desconhecido';
+}

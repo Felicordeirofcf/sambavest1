@@ -46,7 +46,10 @@ e faça um novo deploy.
 
    Para os dois, use a URL `https://SEU-SITE/api/webhooks/woocommerce` e o mesmo **Segredo**. Coloque esse
    segredo em `WC_WEBHOOK_SECRET`.
-4. **Rotina a cada 30 min**: no GitHub do projeto, abra Settings → Secrets and variables → Actions e
+4. **Rotina a cada 30 min** (o agendamento do GitHub é "melhor esforço" e às vezes passa horas sem rodar;
+   para a Black Friday, cadastre também um cron externo grátis, como o cron-job.org, chamando
+   `https://sambavest.com/api/cron/automacao` a cada 15 min com o cabeçalho
+   `Authorization: Bearer <CRON_SECRET>`): no GitHub do projeto, abra Settings → Secrets and variables → Actions e
    crie `SITE_URL` (ex.: `https://sambavest.com`) e `CRON_SECRET` (o mesmo da Vercel). O workflow
    `.github/workflows/automacao.yml` passa a rodar sozinho. Ele também pode ser disparado à mão em
    Actions → Automação da loja → Run workflow. O `vercel.json` ainda roda tudo uma vez por dia como
@@ -87,9 +90,9 @@ do Pix, altere `METODOS` em `app/api/checkout/route.ts` e o texto do checkout.
      Pagar** e **Categorias Financeiras**. Se faltar Formas de Pagamento, o pedido vai sem parcela e o Bling usa a
      forma padrão dele.
 3. Copie o Client ID e o Client Secret para `BLING_CLIENT_ID` e `BLING_CLIENT_SECRET` na Vercel e faça o deploy.
-4. Abra o **link de convite** do aplicativo (fica na página do app) logado como administrador da conta
-   Bling e clique em Autorizar. Ou monte o link você mesmo:
-   `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=SEU_CLIENT_ID&state=sambavest`
+4. Entre no painel do site (`/painel/integracoes`) e clique em **Conectar Bling** (logado no Bling como
+   administrador) e depois em Autorizar. Por segurança, o site só aceita autorizações iniciadas por esse
+   botão: o link de convite do Bling e links montados à mão são recusados.
 5. O Bling volta para `/api/bling/callback`. Se aparecer **"Bling conectado!"**, terminou. O token vale 6 h
    e é renovado sozinho. Se o refresh token ficar 30 dias sem uso, ou se você mudar os escopos, autorize de novo.
 6. (Opcional) Se você tem uma loja "Site" cadastrada no Bling (Preferências → Integrações → Lojas virtuais),

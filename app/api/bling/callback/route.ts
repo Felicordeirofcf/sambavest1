@@ -1,17 +1,27 @@
 // app/api/bling/callback/route.ts
 // Endereço de retorno (redirect) do aplicativo no Bling.
-// Troca o código de autorização pelos tokens e salva no KV — a partir daí os tokens
-// são renovados sozinhos, sem precisar copiar nada para a Vercel.
+// Só aceita autorizações iniciadas pelo botão "Conectar Bling" do painel (/painel/integracoes),
+// que gera um "state" de uso único. Troca o código pelos tokens e salva no KV.
 import { NextResponse } from 'next/server';
-import { autorizarComCodigo } from '../../../../lib/automacao/bling';
+import { autorizarComCodigo, stateValido } from '../../../../lib/automacao/bling';
 import { integracoes } from '../../../../lib/automacao/config';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const code = new URL(request.url).searchParams.get('code');
+  const params = new URL(request.url).searchParams;
+  const code = params.get('code');
   if (!code) {
     return NextResponse.json({ error: 'Código de autorização (code) não encontrado na URL.' }, { status: 400 });
+  }
+  if (!(await stateValido(params.get('state')))) {
+    return NextResponse.json(
+      {
+        error:
+          'Autorização não reconhecida ou expirada. Conecte o Bling pelo painel: sambavest.com/painel/integracoes → "Conectar Bling".',
+      },
+      { status: 400 }
+    );
   }
 
   try {
@@ -24,6 +34,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('❌ Erro no callback do Bling:', error);
-    return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    return NextResponse.json({ error: 'Não foi possível concluir a autorização no Bling. Tente de novo pelo painel.' }, { status: 400 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cotarFrete, freteGratis } from '../../../lib/frete';
+import { dentroDoLimite, ipDe } from '../../../lib/automacao/kv';
 import { metaDadosRastreio } from '../../../lib/automacao/meta';
 
 export const dynamic = 'force-dynamic';
@@ -34,12 +35,23 @@ type ProdutoWc = {
   price: string;
   purchasable: boolean;
   stock_status: string;
+  manage_stock?: boolean | 'parent';
+  stock_quantity?: number | null;
+  backorders?: string;
 };
 
 class ErroCheckout extends Error {}
 
 export async function POST(request: Request) {
   try {
+    // Até 10 pedidos a cada 15 minutos por IP: cliente real não chega perto; robô criando
+    // pedidos falsos (e disparando lembretes de Pix para terceiros) para aqui.
+    if (!(await dentroDoLimite(`checkout:${ipDe(request)}`, 10, 900))) {
+      return NextResponse.json(
+        { success: false, error: 'Muitas tentativas de pedido. Aguarde alguns minutos ou fale com a gente no WhatsApp.' },
+        { status: 429 }
+      );
+    }
     const body = await request.json();
     const { cliente, items, shipping, paymentMethod } = body;
     const listaItens = items || body.itens;
@@ -145,6 +157,15 @@ export async function POST(request: Request) {
       const preco = Number(p.price);
       if (p.status !== 'publish' || !p.purchasable || p.stock_status === 'outofstock' || !(preco > 0)) {
         throw new ErroCheckout(`"${p.name}" não está disponível para compra no momento.`);
+      }
+      const pedida = quantidades.get(p.id)!;
+      const controla = p.manage_stock === true || p.manage_stock === 'parent';
+      if (controla && p.backorders === 'no' && typeof p.stock_quantity === 'number' && p.stock_quantity < pedida) {
+        throw new ErroCheckout(
+          p.stock_quantity > 0
+            ? `Só temos ${p.stock_quantity} unidade(s) de "${p.name}". Ajuste a quantidade na sacola.`
+            : `"${p.name}" acabou de esgotar.`
+        );
       }
       const quantity = quantidades.get(p.id)!;
       const cheio = centavos(preco * quantity);

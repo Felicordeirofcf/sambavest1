@@ -5,6 +5,7 @@
 // lib/automacao/config.ts), o mesmo cliente da API (sandbox e MELHOR_ENVIO_USER_AGENT) e só os
 // serviços de MELHOR_ENVIO_SERVICOS.
 import { config } from './automacao/config';
+import { kvGet, kvSet } from './automacao/kv';
 import { me, pacote } from './automacao/melhorenvio';
 
 import { FREE_SHIPPING_THRESHOLD } from './shipping';
@@ -32,13 +33,20 @@ export async function cotarFrete(
   const totalItens = itens.reduce((acc, item) => acc + Number(item.quantity || 0), 0);
   const valorTotal = itens.reduce((acc, item) => acc + Number(item.price || 0) * Number(item.quantity || 0), 0);
   const servicos = config.melhorEnvio.servicos;
+  const cepDestino = String(cep).replace(/\D/g, '');
+
+  // Cache de 10 min por CEP + peças + faixa de valor (seguro): o mesmo cliente cota na página do
+  // produto, no carrinho e no checkout, e o checkout recota no servidor. Poupa o Melhor Envio no pico.
+  const chaveCache = `frete:${cepDestino}:${totalItens}:${Math.ceil(valorTotal / 50)}`;
+  const emCache = await kvGet<CotacaoFrete[]>(chaveCache).catch(() => null);
+  if (emCache) return emCache;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = await me<any[]>('/me/shipment/calculate', {
     method: 'POST',
     body: {
       from: { postal_code: cepOrigem },
-      to: { postal_code: String(cep).replace(/\D/g, '') },
+      to: { postal_code: cepDestino },
       // Um único pacote com todas as peças — o mesmo que vai para a etiqueta.
       package: pacote(totalItens),
       options: { insurance_value: Number(valorTotal.toFixed(2)), receipt: false, own_hand: false },
@@ -50,7 +58,7 @@ export async function cotarFrete(
     throw new Error('Falha ao calcular frete no Melhor Envio');
   }
 
-  return data
+  const cotacoes: CotacaoFrete[] = data
     .filter((cotacao) => !cotacao.error && cotacao.price)
     .map((cotacao) => ({
       id: Number(cotacao.id),
@@ -60,6 +68,8 @@ export async function cotarFrete(
       company_picture: cotacao.company?.picture,
     }))
     .sort((a, b) => a.price - b.price);
+  if (cotacoes.length) await kvSet(chaveCache, cotacoes, 600).catch(() => undefined);
+  return cotacoes;
 }
 
 /** Mesma regra da calculadora: PAC grátis quando os produtos somam R$ 300 ou mais. */

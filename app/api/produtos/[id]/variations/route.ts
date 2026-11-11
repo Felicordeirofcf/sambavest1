@@ -12,7 +12,7 @@ export async function GET(
     const resolvedParams = await params;
     const { id } = resolvedParams;
 
-    if (!id) {
+    if (!id || !/^\d+$/.test(id)) {
       return NextResponse.json(
         { success: false, error: 'ID do produto pai não informado.' },
         { status: 400 }
