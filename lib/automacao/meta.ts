@@ -125,3 +125,38 @@ export async function enviarCompra(pedido: WcPedido): Promise<string> {
   if (!res.ok) throw new Error(`Meta CAPI: ${json.error?.error_user_msg || json.error?.message || res.status}`);
   return eventId;
 }
+
+// ---------- Origem do pedido (de qual anúncio/campanha o cliente veio) ----------
+
+export const CAMPOS_ORIGEM = {
+  source: '_sv_origem_source',
+  medium: '_sv_origem_medium',
+  campaign: '_sv_origem_campaign',
+  content: '_sv_origem_content',
+} as const;
+
+const textoOrigem = (v: unknown) =>
+  typeof v === 'string' ? v.replace(/[^\w\-.:/ |{}À-ÿ—–]/g, '').trim().slice(0, 80) || undefined : undefined;
+
+/**
+ * Metadados de origem para o pedido: o que o navegador guardou do link (UTM) nos últimos 7 dias;
+ * sem isso, o cookie de clique da Meta (_fbc, criado quando a pessoa clica num anúncio) dos últimos 7 dias.
+ */
+export function metaOrigem(origem: unknown, request: Request): { key: string; value: string }[] {
+  const o = (origem && typeof origem === 'object' ? origem : {}) as Record<string, unknown>;
+  let valores: Record<string, string | undefined> = {
+    [CAMPOS_ORIGEM.source]: textoOrigem(o.source)?.toLowerCase(),
+    [CAMPOS_ORIGEM.medium]: textoOrigem(o.medium),
+    [CAMPOS_ORIGEM.campaign]: textoOrigem(o.campaign),
+    [CAMPOS_ORIGEM.content]: textoOrigem(o.content),
+  };
+  if (!valores[CAMPOS_ORIGEM.source]) {
+    // _fbc = fb.1.<ms do clique>.<fbclid>
+    const fbc = cookie(request.headers.get('cookie') || '', '_fbc');
+    const clique = Number(fbc?.split('.')[2]);
+    if (clique && Date.now() - clique < 7 * 86_400_000) valores = { [CAMPOS_ORIGEM.source]: 'meta', [CAMPOS_ORIGEM.medium]: 'clique' };
+  }
+  return Object.entries(valores)
+    .filter(([, v]) => v)
+    .map(([key, value]) => ({ key, value: value! }));
+}

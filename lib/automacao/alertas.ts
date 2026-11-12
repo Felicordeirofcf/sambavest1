@@ -22,6 +22,7 @@ export const TIPOS_ALERTA = {
   pix: { nome: 'Pix parado sem pagamento', padrao: true },
   estoque: { nome: 'Tamanho acabando', padrao: true },
   resumo: { nome: 'Resumo do dia', padrao: true },
+  anuncio: { nome: 'Anúncio reprovado ou conta parada', padrao: true },
 } as const;
 export type TipoAlerta = keyof typeof TIPOS_ALERTA;
 
@@ -205,10 +206,10 @@ function telefoneLink(p: WcPedido, mensagem: string): string {
 
 // ---------------- Rotina (cron a cada 15 min) ----------------
 
-export type ResultadoAlertas = { pix: number; estoque: number; resumo: boolean };
+export type ResultadoAlertas = { pix: number; estoque: number; resumo: boolean; anuncios: number };
 
 export async function rotinaAlertas(prazo: number): Promise<ResultadoAlertas> {
-  const r: ResultadoAlertas = { pix: 0, estoque: 0, resumo: false };
+  const r: ResultadoAlertas = { pix: 0, estoque: 0, resumo: false, anuncios: 0 };
   if (!alertasLigados()) return r;
   const prefs = await preferenciasAlertas();
 
@@ -251,7 +252,32 @@ export async function rotinaAlertas(prazo: number): Promise<ResultadoAlertas> {
     }
   }
 
-  // 3) Resumo do dia (a partir da hora configurada, uma vez por dia)
+  // 3) Anúncios: reprovado, com problema ou conta parada (ex.: saldo acabou)
+  if (prefs.anuncio && integracoes.metaAds() && Date.now() < prazo) {
+    try {
+      const { anuncios, contaAnuncios, STATUS_CONTA } = await import('./metaAds');
+      const hoje = diaLocal();
+      const [conta, lista] = await Promise.all([contaAnuncios(), anuncios({ desde: hoje, ate: hoje })]);
+      if (conta.status !== 1) {
+        const enviados = await alertarCelular(
+          `📣 Conta de anúncios parada: ${STATUS_CONTA[conta.status] || `situação ${conta.status}`}${conta.saldo ? ` · ${conta.saldo}` : ''}\nOs anúncios não estão rodando. Confira o saldo/pagamento no Gerenciador de Anúncios.\n${linkPainel('/painel/anuncios')}`,
+          { chave: `conta-anuncios:${conta.status}:${hoje}`, ttlS: 2 * 86_400 }
+        );
+        if (enviados.length) r.anuncios++;
+      }
+      for (const a of lista.filter((x) => x.status === 'DISAPPROVED' || x.status === 'WITH_ISSUES')) {
+        const enviados = await alertarCelular(
+          `📣 Anúncio ${a.status === 'DISAPPROVED' ? 'REPROVADO' : 'com problema'}: ${a.nome}${a.motivoReprovacao ? `\nMotivo: ${a.motivoReprovacao.slice(0, 400)}` : ''}\n${linkPainel('/painel/anuncios')}`,
+          { chave: `anuncio:${a.id}:${a.status}`, ttlS: 7 * 86_400 }
+        );
+        if (enviados.length) r.anuncios++;
+      }
+    } catch (e) {
+      console.error('[alertas] anúncios', (e as Error).message);
+    }
+  }
+
+  // 4) Resumo do dia (a partir da hora configurada, uma vez por dia)
   if (prefs.resumo && Date.now() < prazo && horaLocal() >= config.alertas.horaResumo) {
     const hoje = diaLocal();
     try {

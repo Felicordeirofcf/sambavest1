@@ -191,6 +191,13 @@ export const config = {
     testEventCode: env('META_TEST_EVENT_CODE'),
   },
 
+  // Relatórios dos anúncios (Marketing API, só leitura). Token de usuário do sistema com "ads_read".
+  metaAds: {
+    token: env('META_ADS_TOKEN'),
+    conta: (env('META_AD_ACCOUNT_ID') || '315563831612360').replace(/^act_/, ''),
+    versao: env('META_API_VERSION') || 'v23.0',
+  },
+
   avisos: {
     // "Pedido recebido" (antes do pagamento) é opcional.
     recebido: flag('AVISAR_PEDIDO_RECEBIDO', false),
@@ -215,4 +222,5 @@ export const integracoes = {
   email: () => Boolean(config.email.resendKey && config.email.remetente),
   meta: () => Boolean(config.meta.pixelId && config.meta.capiToken),
   telegram: () => Boolean(config.alertas.telegramToken),
+  metaAds: () => Boolean(config.metaAds.token && config.metaAds.conta),
 };

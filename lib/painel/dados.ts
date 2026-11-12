@@ -19,6 +19,8 @@ export type PedidoResumo = {
   freteNome: string;
   cliente: { nome: string; email: string; telefone: string; documento: string; cidade: string; uf: string };
   itens: ItemResumo[];
+  /** De onde o cliente veio (UTM do link ou clique em anúncio da Meta), se soubermos. */
+  origem?: { source: string; medium?: string; campaign?: string; content?: string };
   marcas: {
     bling?: string;
     nfe?: string;
@@ -70,6 +72,9 @@ export function resumir(p: WcPedido): PedidoResumo {
       cidade: b.city || p.shipping?.city || '',
       uf: (b.state || p.shipping?.state || '').toUpperCase(),
     },
+    origem: m('_sv_origem_source')
+      ? { source: m('_sv_origem_source')!, medium: m('_sv_origem_medium'), campaign: m('_sv_origem_campaign'), content: m('_sv_origem_content') }
+      : undefined,
     itens: (p.line_items || []).map((i) => ({
       nome: i.name,
       sku: i.sku || '',

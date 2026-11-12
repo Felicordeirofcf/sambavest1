@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cotarFrete, freteGratis } from '../../../lib/frete';
 import { dentroDoLimite, ipDe } from '../../../lib/automacao/kv';
-import { metaDadosRastreio } from '../../../lib/automacao/meta';
+import { metaDadosRastreio, metaOrigem } from '../../../lib/automacao/meta';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -250,6 +250,7 @@ export async function POST(request: Request) {
         { key: '_sv_melhorenvio_servico', value: String(cotacao.id) },
         // Meta Ads: cookies do Pixel, IP e navegador, usados no evento Purchase quando o pagamento for aprovado
         ...metaDadosRastreio(request, eventId),
+        ...metaOrigem(body.origem, request),
       ]
     };
 
