@@ -166,6 +166,7 @@ export type Anuncio = Numeros & {
   status: string; // effective_status da Meta
   motivoReprovacao?: string;
   miniatura?: string;
+  criadoEm: number; // ms
 };
 
 export async function anuncios(p: Periodo): Promise<Anuncio[]> {
@@ -176,6 +177,7 @@ export async function anuncios(p: Periodo): Promise<Anuncio[]> {
           id: string;
           name: string;
           effective_status: string;
+          created_time?: string;
           campaign?: { name?: string };
           creative?: { thumbnail_url?: string };
           ad_review_feedback?: { global?: Record<string, string> };
@@ -187,8 +189,8 @@ export async function anuncios(p: Periodo): Promise<Anuncio[]> {
       });
     const [lista, ins] = await Promise.all([
       // Miniatura e motivo de reprovação podem exigir mais que "só leitura": tenta sem eles
-      pedirLista('name,effective_status,campaign{name},creative{thumbnail_url},ad_review_feedback').catch((e) =>
-        semPermissao(e) ? pedirLista('name,effective_status,campaign{name}') : Promise.reject(e)
+      pedirLista('name,effective_status,created_time,campaign{name},creative{thumbnail_url},ad_review_feedback').catch((e) =>
+        semPermissao(e) ? pedirLista('name,effective_status,created_time,campaign{name}') : Promise.reject(e)
       ),
       graph<{ data: LinhaInsight[] }>(`${conta()}/insights`, {
         level: 'ad',
@@ -206,9 +208,11 @@ export async function anuncios(p: Periodo): Promise<Anuncio[]> {
         status: a.effective_status,
         motivoReprovacao: a.ad_review_feedback?.global ? Object.values(a.ad_review_feedback.global).join(' ') : undefined,
         miniatura: a.creative?.thumbnail_url,
+        criadoEm: a.created_time ? Date.parse(a.created_time) : 0,
         ...numeros(porId.get(a.id)),
       }))
-      .sort((x, y) => y.gasto - x.gasto || x.nome.localeCompare(y.nome));
+      // Mais recentes primeiro
+      .sort((x, y) => y.criadoEm - x.criadoEm || y.gasto - x.gasto);
   });
 }
 

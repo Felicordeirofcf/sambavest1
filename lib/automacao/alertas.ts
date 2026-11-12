@@ -265,7 +265,9 @@ export async function rotinaAlertas(prazo: number): Promise<ResultadoAlertas> {
         );
         if (enviados.length) r.anuncios++;
       }
-      for (const a of lista.filter((x) => x.status === 'DISAPPROVED' || x.status === 'WITH_ISSUES')) {
+      // Só anúncios recentes (últimos 30 dias): os antigos, de campanhas paradas, não interessam
+      const recentes = lista.filter((x) => !x.criadoEm || Date.now() - x.criadoEm < 30 * 86_400_000);
+      for (const a of recentes.filter((x) => x.status === 'DISAPPROVED' || x.status === 'WITH_ISSUES')) {
         const enviados = await alertarCelular(
           `📣 Anúncio ${a.status === 'DISAPPROVED' ? 'REPROVADO' : 'com problema'}: ${a.nome}${a.motivoReprovacao ? `\nMotivo: ${a.motivoReprovacao.slice(0, 400)}` : ''}\n${linkPainel('/painel/anuncios')}`,
           { chave: `anuncio:${a.id}:${a.status}`, ttlS: 7 * 86_400 }

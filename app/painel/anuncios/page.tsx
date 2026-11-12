@@ -230,7 +230,7 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
 
       {/* Por anúncio */}
       {integracoes.metaAds() && (
-        <Cartao titulo="Cada anúncio">
+        <Cartao titulo="Cada anúncio" acao={<span className="text-xs text-slate-500">os 10 mais recentes</span>}>
           {lista.length === 0 ? (
             <p className="text-sm text-slate-400">Nenhum anúncio encontrado na conta.</p>
           ) : (
@@ -249,7 +249,7 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
                   </tr>
                 </thead>
                 <tbody>
-                  {lista.map((a) => {
+                  {lista.slice(0, 10).map((a) => {
                     const st = NOME_STATUS[a.status] || { rotulo: a.status, tom: 'off' as const };
                     const cor = { ok: 'bg-emerald-50 text-emerald-800', atencao: 'bg-amber-50 text-amber-900', erro: 'bg-red-50 text-red-800', off: 'bg-slate-100 text-slate-600' }[st.tom];
                     const icone = { ok: '●', atencao: '▲', erro: '✕', off: '○' }[st.tom];
