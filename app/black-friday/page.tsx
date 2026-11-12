@@ -29,7 +29,10 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
   const economia = de ? Math.round((1 - preco / de) * 100) : 0;
   const pix = preco * (1 - BF.descontoPix);
   const azul = p.escola === 'beija-flor';
-  const href = p.slug ? `/produto/${p.slug}` : '/categoria/todos';
+  // Sem o produto do WooCommerce não há para onde mandar (as categorias redirecionam para cá):
+  // o cliente compra pelo WhatsApp.
+  const href = p.slug ? `/produto/${p.slug}` : p.produtoId ? `/produto/${p.produtoId}` : null;
+  const zap = `https://wa.me/${BF.whatsapp}?text=${encodeURIComponent(`Quero a ${p.titulo} da Black Friday!`)}`;
 
   return (
     <article
@@ -72,7 +75,16 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
           <p className="text-xs text-white/40">+ frete · do P ao EXG</p>
         </div>
 
-        {fase === 'durante' ? (
+        {fase === 'durante' && !href ? (
+          <a
+            href={zap}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 rounded-xl bg-[#25D366] px-5 py-3.5 text-center text-sm font-black uppercase tracking-widest text-black"
+          >
+            Comprar pelo WhatsApp
+          </a>
+        ) : fase === 'durante' && href ? (
           <Link
             href={href}
             className={`mt-2 rounded-xl px-5 py-3.5 text-center text-sm font-black uppercase tracking-widest text-white transition ${
@@ -81,7 +93,7 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
           >
             Garantir a minha
           </Link>
-        ) : fase === 'antes' ? (
+        ) : fase === 'antes' && href ? (
           <Link
             href={href}
             className="mt-2 rounded-xl border border-white/20 px-5 py-3 text-center text-xs font-bold uppercase tracking-widest text-white/80 hover:bg-white/5"
@@ -100,6 +112,8 @@ export default async function BlackFridayPage() {
   const beija = produtos.find((p) => p.id === 'beija-flor-enredo')!;
   const viradouro = produtos.find((p) => p.id === 'viradouro-enredo')!;
   const algodao = produtos.find((p) => p.id === 'viradouro-algodao')!;
+  const precoVisto = (p: ProdutoBF) => (fase === 'durante' && p.precoAtual ? p.precoAtual : p.precoBlack);
+  const menorEnredo = Math.min(precoVisto(beija), precoVisto(viradouro));
   const vip = `https://wa.me/${BF.whatsapp}?text=${encodeURIComponent('Quero entrar na lista VIP da Black Friday Samba Vest!')}`;
 
   return (
@@ -119,8 +133,8 @@ export default async function BlackFridayPage() {
             Black do <span className="bg-gradient-to-r from-sky-400 via-white to-red-500 bg-clip-text text-transparent">Duelo</span>
           </h1>
           <p className="max-w-xl text-lg text-white/80">
-            <b className="text-sky-300">Beija-Flor</b> × <b className="text-red-400">Viradouro</b>. As camisas enredo 2027 por{' '}
-            <b className="text-white">R$ 99</b>, com +10% de desconto no Pix. Nilópolis ou Niterói: escolha o seu lado.
+            <b className="text-sky-300">Beija-Flor</b> × <b className="text-red-400">Viradouro</b>. As camisas enredo 2027 a partir de{' '}
+            <b className="text-white">{Number.isInteger(menorEnredo) ? `R$ ${menorEnredo}` : brl(menorEnredo)}</b>, com +10% de desconto no Pix. Nilópolis ou Niterói: escolha o seu lado.
           </p>
           {fase === 'antes' && <Contagem alvo={BF.inicio.toISOString()} rotulo="A avenida abre em" />}
           {fase === 'durante' && <Contagem alvo={BF.fim.toISOString()} rotulo="A Black termina em" />}

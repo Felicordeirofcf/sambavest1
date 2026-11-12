@@ -4,11 +4,13 @@
 // anuncia o preço Black antes da campanha e, durante a campanha, mostra o preço real do WooCommerce.
 // Para valer de verdade, agende o "Preço promocional" de cada produto no WooCommerce (27 a 30/11).
 import { kvGet } from './automacao/kv';
+import { faseBF, PERIODO_BF } from './blackfridayPeriodo';
+
+export { faseBF };
+export type { FaseBF } from './blackfridayPeriodo';
 
 export const BF = {
-  // Horário de Brasília
-  inicio: new Date('2026-11-12T00:00:00-03:00'),
-  fim: new Date('2026-11-30T23:59:59-03:00'),
+  ...PERIODO_BF,
   descontoPix: 0.1,
   whatsapp: '5521996959903',
 };
@@ -76,14 +78,6 @@ export type ProdutoBF = OfertaBF & {
   precoAtual?: number;
   encontrado: boolean;
 };
-
-export type FaseBF = 'antes' | 'durante' | 'depois';
-
-export function faseBF(agora = Date.now()): FaseBF {
-  if (agora < BF.inicio.getTime()) return 'antes';
-  if (agora <= BF.fim.getTime()) return 'durante';
-  return 'depois';
-}
 
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
