@@ -296,7 +296,10 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
                 </thead>
                 <tbody>
                   {lista.slice(0, 10).map((a) => {
-                    const st = NOME_STATUS[a.status] || { rotulo: a.status, tom: 'off' as const };
+                    const st =
+                      a.chave === 'PAUSED' && !a.status.includes('PAUSED')
+                        ? { rotulo: 'Desligado (análise pendente)', tom: 'off' as const }
+                        : NOME_STATUS[a.status] || { rotulo: a.status, tom: 'off' as const };
                     const cor = { ok: 'bg-emerald-50 text-emerald-800', atencao: 'bg-amber-50 text-amber-900', erro: 'bg-red-50 text-red-800', off: 'bg-slate-100 text-slate-600' }[st.tom];
                     const icone = { ok: '●', atencao: '▲', erro: '✕', off: '○' }[st.tom];
                     return (

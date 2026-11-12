@@ -164,6 +164,8 @@ export type Anuncio = Numeros & {
   nome: string;
   campanha: string;
   status: string; // effective_status da Meta
+  /** Chave do anúncio no Gerenciador (ACTIVE = ligado, PAUSED = desligado), independente da análise. */
+  chave?: string;
   motivoReprovacao?: string;
   miniatura?: string;
   criadoEm: number; // ms
@@ -177,6 +179,7 @@ export async function anuncios(p: Periodo): Promise<Anuncio[]> {
           id: string;
           name: string;
           effective_status: string;
+          status?: string;
           created_time?: string;
           campaign?: { name?: string };
           creative?: { thumbnail_url?: string };
@@ -189,8 +192,8 @@ export async function anuncios(p: Periodo): Promise<Anuncio[]> {
       });
     const [lista, ins] = await Promise.all([
       // Miniatura e motivo de reprovação podem exigir mais que "só leitura": tenta sem eles
-      pedirLista('name,effective_status,created_time,campaign{name},creative{thumbnail_url},ad_review_feedback').catch((e) =>
-        semPermissao(e) ? pedirLista('name,effective_status,created_time,campaign{name}') : Promise.reject(e)
+      pedirLista('name,status,effective_status,created_time,campaign{name},creative{thumbnail_url},ad_review_feedback').catch((e) =>
+        semPermissao(e) ? pedirLista('name,status,effective_status,created_time,campaign{name}') : Promise.reject(e)
       ),
       graph<{ data: LinhaInsight[] }>(`${conta()}/insights`, {
         level: 'ad',
@@ -206,6 +209,7 @@ export async function anuncios(p: Periodo): Promise<Anuncio[]> {
         nome: a.name,
         campanha: a.campaign?.name || '',
         status: a.effective_status,
+        chave: a.status,
         motivoReprovacao: a.ad_review_feedback?.global ? Object.values(a.ad_review_feedback.global).join(' ') : undefined,
         miniatura: a.creative?.thumbnail_url,
         criadoEm: a.created_time ? Date.parse(a.created_time) : 0,
