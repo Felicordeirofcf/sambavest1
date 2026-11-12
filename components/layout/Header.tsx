@@ -105,6 +105,9 @@ export default function Header() {
               <NavLink href="/categoria/todos" active={pathname.startsWith('/categoria')}>
                 NOSSA LOJA
               </NavLink>
+              <NavLink href="/black-friday" active={pathname.startsWith('/black-friday')}>
+                <span className="text-[#C9A227]">BLACK FRIDAY</span>
+              </NavLink>
             </nav>
           </div>
 
@@ -217,6 +220,10 @@ export default function Header() {
           <Link href="/categoria/todos" onClick={closeMenu} className="px-6 py-4 hover:bg-white/5 hover:text-[#C9A227] transition-colors border-b border-white/5 flex items-center justify-between">
             <span>Coleção</span>
             <span className="text-[#C9A227]">→</span>
+          </Link>
+          <Link href="/black-friday" onClick={closeMenu} className="px-6 py-4 hover:bg-white/5 transition-colors border-b border-white/5 flex items-center justify-between text-[#C9A227]">
+            <span>Black Friday 🥁</span>
+            <span>→</span>
           </Link>
         </nav>
 

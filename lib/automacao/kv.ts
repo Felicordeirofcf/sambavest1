@@ -102,6 +102,15 @@ export async function kvZRemAbaixoDe(chave: string, limite: number): Promise<voi
   if (z) for (const [m, p] of z) if (p < limite) z.delete(m);
 }
 
+/** Soma 1 num contador (atômico no Upstash) e devolve o novo valor. */
+export async function kvIncr(chave: string): Promise<number> {
+  if (integracoes.kv()) return Number(await redis(['INCR', chave]));
+  const atual = memoria.get(chave);
+  const n = (atual ? Number(atual.valor) || 0 : 0) + 1;
+  memoria.set(chave, { valor: String(n), expiraEm: null });
+  return n;
+}
+
 // ---------- Limite de requisições ----------
 
 /**
