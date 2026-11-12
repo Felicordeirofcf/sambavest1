@@ -10,6 +10,11 @@ import { podeOtimizar } from '../../lib/imagem';
 import { descontoPixAtual } from '../../lib/pix';
 import { marcarEtapa, origemAtual } from '../../components/analytics/Etapa';
 
+/** ID único da compra para o Meta Ads (gravado no pedido e usado na API de Conversões). */
+function novoEventId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export default function CheckoutPage() {
   const { items, removeItem, clearCart } = useCartStore();
   const [isMounted, setIsMounted] = useState(false);
@@ -27,6 +32,27 @@ export default function CheckoutPage() {
     if (typeof window !== 'undefined') {
       useCartStore.persist.rehydrate();
     }
+  }, []);
+
+  // Link do e-mail de carrinho abandonado (?recuperar=...): remonta a sacola se ela estiver vazia
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('recuperar');
+    if (!id) return;
+    fetch(`/api/carrinho-abandonado?recuperar=${encodeURIComponent(id)}`)
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; itens?: { id: number; nome: string; qtd: number; preco: number; imagem?: string; tamanho?: string }[] }) => {
+        const loja = useCartStore.getState();
+        if (!d?.ok || !d.itens?.length || loja.items.length > 0) return;
+        for (const i of d.itens) {
+          loja.addItem({ id: i.id, name: i.nome, price: i.preco, image: i.imagem || '', size: i.tamanho || '', quantity: i.qtd });
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('recuperar');
+        window.history.replaceState(null, '', url.toString());
+      });
   }, []);
 
   // A sacola guarda o preço de quando o item foi adicionado. Antes de mostrar o total,
@@ -128,6 +154,33 @@ export default function CheckoutPage() {
     } finally {
       setIsBuscandoCep(false);
     }
+  };
+
+  // Carrinho abandonado: ao sair do campo de e-mail/nome/telefone, guarda a sacola para o lembrete
+  const salvarSacola = () => {
+    const email = formData.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return;
+    const itens = getActiveItems();
+    if (!itens?.length) return;
+    fetch('/api/carrinho-abandonado', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        email,
+        nome: formData.nome,
+        telefone: formData.telefone,
+        origem: origemAtual()?.source,
+        itens: itens.map((i: { id: number; name: string; quantity: number; price: number; image?: string; size?: string }) => ({
+          id: i.id,
+          nome: i.name,
+          qtd: i.quantity,
+          preco: i.price,
+          imagem: i.image,
+          tamanho: i.size,
+        })),
+      }),
+    }).catch(() => {});
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -232,10 +285,7 @@ export default function CheckoutPage() {
       const shippingMethodTitle = quoteAny.name || quoteAny.service || quoteAny.serviceName || 'Frete Correios / Transportadora';
 
       // Identifica esta compra para o Meta Ads (gravado no pedido e usado na API de Conversões)
-      const eventId =
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const eventId = novoEventId();
 
       const payload = {
         eventId,
@@ -330,17 +380,18 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <label htmlFor="checkout-nome" className="block text-xs font-bold uppercase text-gray-600 mb-1">Nome Completo *</label>
-                  <input id="checkout-nome" type="text" name="nome" autoComplete="name" value={formData.nome} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <input id="checkout-nome" type="text" name="nome" autoComplete="name" value={formData.nome} onChange={handleInputChange} onBlur={salvarSacola} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
                 
                 <div>
                   <label htmlFor="checkout-email" className="block text-xs font-bold uppercase text-gray-600 mb-1">E-mail *</label>
-                  <input id="checkout-email" type="email" name="email" autoComplete="email" inputMode="email" value={formData.email} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <input id="checkout-email" type="email" name="email" autoComplete="email" inputMode="email" value={formData.email} onChange={handleInputChange} onBlur={salvarSacola} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <p className="mt-1 text-[11px] text-gray-500">Se você não finalizar, podemos te lembrar por e-mail do que ficou na sacola.</p>
                 </div>
 
                 <div>
                   <label htmlFor="checkout-telefone" className="block text-xs font-bold uppercase text-gray-600 mb-1">Telefone / WhatsApp *</label>
-                  <input id="checkout-telefone" type="tel" name="telefone" autoComplete="tel" inputMode="tel" placeholder="(21) 99999-9999" value={formData.telefone} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <input id="checkout-telefone" type="tel" name="telefone" autoComplete="tel" inputMode="tel" placeholder="(21) 99999-9999" value={formData.telefone} onChange={handleInputChange} onBlur={salvarSacola} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div className="md:col-span-2">

@@ -23,6 +23,8 @@ const METODOS: Record<string, { gateway: string; titulo: string; desconto: numbe
 };
 
 import { descontoPixAtual, DESCONTO_PIX_PADRAO } from '../../../lib/pix';
+import { registrarFalha } from '../../../lib/automacao/monitor';
+import { marcarConvertido } from '../../../lib/automacao/abandono';
 
 const MAX_ITENS = 20;
 const MAX_QTD_POR_ITEM = 20;
@@ -190,6 +192,7 @@ export async function POST(request: Request) {
     // 🚚 FRETE DO SERVIDOR: refaz a cotação no Melhor Envio e usa o preço dela, não o do navegador.
     const servicoId = Number(shipping?.id);
     if (!Number.isInteger(servicoId) || servicoId <= 0) {
+      await registrarFalha('checkout-recusado', 'frete não escolhido');
       return NextResponse.json({ success: false, error: 'Calcule e escolha o frete antes de finalizar.' }, { status: 400 });
     }
     const cotacoes = await cotarFrete(
@@ -198,6 +201,7 @@ export async function POST(request: Request) {
     );
     const cotacao = cotacoes.find((c) => c.id === servicoId);
     if (!cotacao) {
+      await registrarFalha('checkout-recusado', 'frete escolhido não está mais disponível');
       return NextResponse.json(
         { success: false, error: 'A opção de frete escolhida não está mais disponível. Calcule o frete de novo.' },
         { status: 400 }
@@ -266,6 +270,7 @@ export async function POST(request: Request) {
     const wcData = await wcResponse.json();
 
     if (!wcResponse.ok) {
+      await registrarFalha('checkout-erro', `WooCommerce ${wcResponse.status}: ${wcData?.message || ''}`);
       return NextResponse.json(
         { success: false, error: wcData.message || 'Erro ao registrar pedido no WooCommerce.' },
         { status: wcResponse.status || 400 }
@@ -297,6 +302,9 @@ export async function POST(request: Request) {
       paymentUrl = paymentUrl.replace('https://sambavest.com', wcUrl);
     }
 
+    // Quem finalizou deixa de receber lembrete de carrinho abandonado
+    await marcarConvertido(String(clienteFinal.email || ''), Number(wcData.id));
+
     return NextResponse.json({
       success: true,
       message: 'Pedido gerado com sucesso!',
@@ -307,9 +315,11 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     if (error instanceof ErroCheckout) {
+      await registrarFalha('checkout-recusado', error.message);
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
     console.error('Erro no checkout:', error);
+    await registrarFalha('checkout-erro', error?.message || String(error));
     return NextResponse.json(
       { success: false, error: 'Erro interno ao processar o pedido. Tente novamente em instantes.' },
       { status: 500 }

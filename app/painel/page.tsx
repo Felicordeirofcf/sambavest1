@@ -2,7 +2,10 @@ import Link from 'next/link';
 import AutoAtualizar from '../../components/painel/AutoAtualizar';
 import { CardAoVivo, Colunas, EstadoServico, Funil, LinhaServico, MapaBrasil, Medidor, PlacarDuelo } from '../../components/painel/analytics';
 import { Aviso, Barras, Cartao, brl, dataHora } from '../../components/painel/ui';
+import { listarAbandonos } from '../../lib/automacao/abandono';
 import { alertasLigados, chatTelegram } from '../../lib/automacao/alertas';
+import { falhasNosDias, TIPOS_FALHA, type TipoFalha } from '../../lib/automacao/monitor';
+import { ultimaSaude } from '../../lib/automacao/saude';
 import { config, integracoes } from '../../lib/automacao/config';
 import { ultimaExecucao } from '../../lib/automacao/monitor';
 import { telefoneWhatsapp } from '../../lib/automacao/whatsapp';
@@ -130,10 +133,34 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     chatTelegram().catch(() => undefined),
   ]);
   const contaAds = integracoes.metaAds() ? await (await import('../../lib/automacao/metaAds')).contaAnuncios().catch(() => null) : null;
+  const [saude, falhas24h, abandonos] = await Promise.all([
+    ultimaSaude(),
+    falhasNosDias([diaLocal(agora), diaLocal(agora - DIA)]),
+    integracoes.kv() ? listarAbandonos(72).catch(() => []) : Promise.resolve([]),
+  ]);
   const ultimoPago = pedidos.filter(pago).sort((a, b) => quando(b) - quando(a))[0];
   const recusados24h = pedidos.filter((p) => p.status === 'failed' && agora - p.criado < DIA).length;
   const qtdPend = (tipo: string) => pend.find((p) => p.tipo === tipo)?.pedidos.length || 0;
+  const totalFalhas = (Object.keys(falhas24h) as TipoFalha[]).reduce((s, k) => s + falhas24h[k], 0);
+  const servicosSaude: { nome: string; estado: EstadoServico; detalhe: string }[] = (saude?.checks || [])
+    .filter((c) => c.nome !== 'WooCommerce' && c.nome !== 'Banco rápido (Upstash)')
+    .map((c) => ({
+      nome: c.nome,
+      estado: /não configurado/.test(c.detalhe) ? 'off' : c.ok ? 'ok' : 'erro',
+      detalhe: `${c.ok ? `${c.detalhe} em ${(c.ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} s` : c.detalhe} · teste ${haQuanto(saude!.em, agora)}`,
+    }));
   const servicos: { nome: string; estado: EstadoServico; detalhe: string }[] = [
+    ...servicosSaude,
+    {
+      nome: 'Checkout e frete (até 48 h)',
+      estado: falhas24h['frete-erro'] || falhas24h['checkout-erro'] ? 'erro' : totalFalhas ? 'atencao' : 'ok',
+      detalhe: totalFalhas
+        ? (Object.keys(falhas24h) as TipoFalha[])
+            .filter((k) => falhas24h[k])
+            .map((k) => `${TIPOS_FALHA[k]}: ${falhas24h[k]}`)
+            .join(' · ')
+        : 'nenhuma falha de frete ou checkout registrada',
+    },
     {
       nome: 'WooCommerce (loja)',
       estado: erro ? 'erro' : 'ok',
@@ -386,6 +413,48 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
           </ul>
         </Cartao>
       </div>
+
+      <Cartao
+        titulo={`Carrinhos abandonados (72 h): ${abandonos.filter((a) => !a.convertido).length}`}
+        acao={<span className="text-xs text-slate-500">{abandonos.filter((a) => a.convertido).length} recuperado(s) · e-mail automático em 1 h e 24 h</span>}
+      >
+        {abandonos.length === 0 ? (
+          <p className="text-sm text-slate-400">Nenhum carrinho abandonado com e-mail nas últimas 72 h.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 text-sm">
+            {abandonos.slice(0, 10).map((a) => {
+              const wa = a.telefone ? telefoneWhatsapp(a.telefone) : null;
+              const primeiro = (a.nome || '').split(' ')[0];
+              const msg = `Oi${primeiro ? ` ${primeiro}` : ''}! Aqui é da Samba Vest. Vi que você deixou ${a.itens[0]?.nome || 'uma camisa'} na sacola. Posso te ajudar a finalizar?`;
+              return (
+                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                  <span className="min-w-0">
+                    <b>{a.nome || a.email}</b> · {brl(a.total)}
+                    <span className="block truncate text-xs text-slate-500">
+                      {a.itens.map((i) => `${i.qtd}x ${i.nome}`).join(', ')} · {haQuanto(a.atualizadoEm, agora)}
+                      {a.origem ? ` · veio de: ${a.origem}` : ''}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2 text-xs">
+                    {a.convertido ? (
+                      <Link href={`/painel/pedidos/${a.convertido}`} className="rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-800">
+                        ● comprou (#{a.convertido})
+                      </Link>
+                    ) : (
+                      <span className="text-slate-500">{a.sair ? 'pediu para não receber' : a.emails ? `${a.emails} e-mail(s) enviado(s)` : 'e-mail em breve'}</span>
+                    )}
+                    {wa && !a.convertido && (
+                      <a href={`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-[#25D366] px-3 py-1.5 font-bold text-black">
+                        WhatsApp
+                      </a>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Cartao>
 
       {pend.length > 0 && (
         <Cartao titulo="Precisa de atenção">

@@ -15,6 +15,8 @@ const AJUDA: Record<TipoAlerta, string> = {
   estoque: `Tamanho com menos de ${config.alertas.estoqueMinimo} unidades (na Black, só as camisas da Black).`,
   resumo: `Todo dia às ${config.alertas.horaResumo}h: vendas, ticket médio e a mais vendida.`,
   anuncio: 'Anúncio reprovado pela Meta ou conta de anúncios parada (ex.: saldo acabou). Precisa do META_ADS_TOKEN.',
+  saude: 'Testa a cada 15 min a loja, o WooCommerce e o cálculo de frete. Avisa se falhar 2 vezes seguidas e quando voltar.',
+  semanal: 'Toda segunda às 9h: vendas da semana × anterior, mais vendidas, anúncios, carrinhos abandonados e falhas.',
 };
 
 export default async function AlertasPage({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string; link?: string }> }) {
