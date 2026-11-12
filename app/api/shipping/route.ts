@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dentroDoLimite, ipDe } from '../../../lib/automacao/kv';
-import { cotarFrete } from '../../../lib/frete';
+import { cotarFreteDetalhado } from '../../../lib/frete';
 
 export async function POST(request: Request) {
   try {
@@ -19,8 +19,9 @@ export async function POST(request: Request) {
       price: Math.min(2000, Math.max(0, Number(i?.price) || 0)),
     }));
 
-    const opcoesFrete = await cotarFrete(cepLimpo, itens);
-    return NextResponse.json({ success: true, quotes: opcoesFrete });
+    const { cotacoes, indisponiveis } = await cotarFreteDetalhado(cepLimpo, itens);
+    // "indisponiveis" ajuda a entender por que um serviço (ex.: PAC) não apareceu
+    return NextResponse.json({ success: true, quotes: cotacoes, indisponiveis });
   } catch (error) {
     console.error('Erro no cálculo de frete:', error);
     return NextResponse.json({ success: false, error: 'Erro ao calcular frete' }, { status: 500 });

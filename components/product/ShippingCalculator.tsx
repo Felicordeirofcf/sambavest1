@@ -103,7 +103,7 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext, 
       cep: cepCotado.current,
     };
 
-    if (subtotal >= FREE_SHIPPING_THRESHOLD && quote.name.toLowerCase().includes('pac')) {
+    if (subtotal >= FREE_SHIPPING_THRESHOLD && quote.maisBarato) {
       finalQuote.price = 0;
       finalQuote.name = `${quote.name} (FRETE GRÁTIS)`;
     }
@@ -170,7 +170,7 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext, 
                 </div>
               </div>
               <div className="text-sm font-extrabold text-[#0B1B34]">
-                {subtotal >= FREE_SHIPPING_THRESHOLD && quote.name.toLowerCase().includes('pac') 
+                {subtotal >= FREE_SHIPPING_THRESHOLD && quote.maisBarato 
                   ? <span className="text-green-600">GRÁTIS</span>
                   : `R$ ${quote.price.toFixed(2).replace('.', ',')}`
                 }

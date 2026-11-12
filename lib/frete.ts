@@ -19,12 +19,19 @@ export type CotacaoFrete = {
   price: number;
   delivery_time: number;
   company_picture?: string;
+  /** A opção mais barata da cotação: é nela que vale o frete grátis. */
+  maisBarato?: boolean;
 };
 
-export async function cotarFrete(
+export async function cotarFrete(cep: string, itens: { quantity: number; price: number }[]): Promise<CotacaoFrete[]> {
+  return (await cotarFreteDetalhado(cep, itens)).cotacoes;
+}
+
+/** Como cotarFrete, mas também diz quais serviços o Melhor Envio recusou e por quê. */
+export async function cotarFreteDetalhado(
   cep: string,
   itens: { quantity: number; price: number }[]
-): Promise<CotacaoFrete[]> {
+): Promise<{ cotacoes: CotacaoFrete[]; indisponiveis: string[] }> {
   const cepOrigem = (config.melhorEnvio.remetente.cep || '').replace(/\D/g, '');
   if (!config.melhorEnvio.token || !cepOrigem) {
     throw new Error('Faltam credenciais do Melhor Envio (MELHOR_ENVIO_TOKEN / CEP_ORIGEM).');
@@ -37,9 +44,9 @@ export async function cotarFrete(
 
   // Cache de 10 min por CEP + peças + faixa de valor (seguro): o mesmo cliente cota na página do
   // produto, no carrinho e no checkout, e o checkout recota no servidor. Poupa o Melhor Envio no pico.
-  const chaveCache = `frete:${cepDestino}:${totalItens}:${Math.ceil(valorTotal / 50)}`;
+  const chaveCache = `frete:v2:${cepDestino}:${totalItens}:${Math.ceil(valorTotal / 50)}`;
   const emCache = await kvGet<CotacaoFrete[]>(chaveCache).catch(() => null);
-  if (emCache) return emCache;
+  if (emCache) return { cotacoes: emCache, indisponiveis: [] };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = await me<any[]>('/me/shipment/calculate', {
@@ -67,12 +74,21 @@ export async function cotarFrete(
       delivery_time: Number(cotacao.delivery_time),
       company_picture: cotacao.company?.picture,
     }))
-    .sort((a, b) => a.price - b.price);
+    .sort((a, b) => a.price - b.price)
+    .map((c, i) => ({ ...c, maisBarato: i === 0 }));
+  // Serviços que o Melhor Envio não ofereceu para este trecho (ex.: PAC), com o motivo dado por ele
+  const indisponiveis = data
+    .filter((cotacao) => cotacao.error || !cotacao.price)
+    .map((cotacao) => `${cotacao.company?.name || ''} - ${cotacao.name || cotacao.id}: ${cotacao.error || 'sem preço'}`);
+  if (indisponiveis.length) console.warn('[frete] serviços indisponíveis para', cepDestino, JSON.stringify(indisponiveis));
   if (cotacoes.length) await kvSet(chaveCache, cotacoes, 600).catch(() => undefined);
-  return cotacoes;
+  return { cotacoes, indisponiveis };
 }
 
-/** Mesma regra da calculadora: PAC grátis quando os produtos somam R$ 300 ou mais. */
+/**
+ * Mesma regra da calculadora: a opção de frete MAIS BARATA sai grátis quando os produtos somam
+ * R$ 300 ou mais. (Antes era "o PAC", mas o Melhor Envio nem sempre oferece PAC para o trecho.)
+ */
 export function freteGratis(cotacao: CotacaoFrete, subtotalProdutos: number): boolean {
-  return subtotalProdutos >= FRETE_GRATIS_A_PARTIR_DE && cotacao.name.toLowerCase().includes('pac');
+  return subtotalProdutos >= FRETE_GRATIS_A_PARTIR_DE && Boolean(cotacao.maisBarato);
 }

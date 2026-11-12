@@ -75,7 +75,8 @@ e faça um novo deploy.
 O navegador só envia **ID da variação, quantidade, forma de pagamento e serviço de frete**. O servidor
 (`app/api/checkout`) busca o preço atual de cada variação no WooCommerce, aplica os 10% do Pix
 (o pedido mostra o preço cheio e o desconto) e refaz a cotação no Melhor Envio para cobrar o frete
-real (PAC grátis a partir de R$ 300 em produtos, mesma regra da calculadora). Para mudar o desconto
+real (a opção de frete mais barata sai grátis a partir de R$ 300 em produtos, mesma regra da
+calculadora; antes era só o PAC, que o Melhor Envio nem sempre oferece para o trecho). Para mudar o desconto
 do Pix, altere `METODOS` em `app/api/checkout/route.ts` e o texto do checkout.
 
 ## 2. Bling: pedido de venda, NF-e e estoque
