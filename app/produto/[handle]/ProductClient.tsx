@@ -22,30 +22,39 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
   // Classes de cada tema (claro: loja normal; escuro: camisas da Black)
   const T = bk
     ? {
-        pagina: 'bg-black text-white',
+        pagina: azul
+          ? 'text-white bg-[#0B1B34] bg-[radial-gradient(ellipse_90%_55%_at_50%_0%,rgba(56,189,248,0.28)_0%,rgba(11,27,52,0)_70%)]'
+          : 'text-white bg-[#0B1B34] bg-[radial-gradient(ellipse_90%_55%_at_50%_0%,rgba(239,68,68,0.30)_0%,rgba(11,27,52,0)_70%)]',
+        // -mb-20/pb-20: o rodapé tem mt-20; assim o fundo escuro encosta nele sem faixa clara
+        fundo: '-mb-20 pb-20',
+        coluna: 'rounded-3xl border border-white/10 bg-white/[0.06] p-5 sm:p-8 backdrop-blur-sm shadow-[0_20px_60px_-30px_rgba(0,0,0,0.8)]',
+        descricao: 'mx-auto max-w-3xl rounded-3xl bg-white p-6 sm:p-10 text-[#0B1B34] shadow-xl',
         palco: 'rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_50%_35%,#ffffff_0%,#eceef3_55%,#d9dce4_100%)] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]',
         foto: 'object-contain p-5 sm:p-8 drop-shadow-[0_18px_30px_rgba(0,0,0,0.25)]',
-        miniatura: 'bg-white border-white/20',
+        miniatura: 'bg-white border-white/20 opacity-80 hover:opacity-100',
         miniaturaAtiva: azul ? 'border-sky-400 ring-2 ring-sky-400/60' : 'border-red-400 ring-2 ring-red-400/60',
         titulo: 'text-white',
         preco: 'text-white',
-        texto: 'text-white/70',
+        texto: 'text-white/80',
         rotulo: 'text-white/80',
-        opcao: 'border-white/20 bg-white/5 text-white hover:border-white/60',
+        opcao: 'border-white/25 bg-white/10 text-white hover:border-white/70 hover:bg-white/15',
         opcaoSel: azul ? 'border-sky-400 bg-sky-500 text-white shadow-md scale-105' : 'border-red-400 bg-red-600 text-white shadow-md scale-105',
         opcaoOff: 'border-white/10 bg-white/5 text-white/25 line-through cursor-not-allowed',
         link: 'text-white/80 hover:text-[#C9A227]',
         whats: 'bg-white/5 border border-white/20 text-white hover:bg-white/10',
         selos: 'border-white/10 text-white/80',
-        cardInfo: 'bg-white/5 border border-white/10 hover:border-white/40',
+        cardInfo: 'bg-white/[0.07] border border-white/15 hover:border-white/40 hover:bg-white/10',
         cardTitulo: 'text-white',
-        cardTexto: 'text-white/60',
-        divisor: 'border-white/10',
-        prose: 'prose-invert text-white/70',
-        frete: 'rounded-2xl bg-white p-4 text-[#0B1B34]',
+        cardTexto: 'text-white/75',
+        divisor: 'border-white/15',
+        prose: 'text-[#0B1B34]',
+        frete: 'rounded-2xl bg-white p-4 text-[#0B1B34] shadow-lg',
       }
     : {
         pagina: 'bg-[#FAF7EF] text-[#0B1B34]',
+        fundo: '',
+        coluna: '',
+        descricao: '',
         palco: 'rounded-lg border border-gray-200 bg-white shadow-sm',
         foto: 'object-contain p-6',
         miniatura: 'bg-white border-gray-200 hover:border-gray-400',
@@ -325,7 +334,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
   const whatsappUrl = `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${whatsappMessage}&type=phone_number&app_absent=0`;
 
   return (
-    <div className={`w-full min-h-screen ${T.pagina}`}>
+    <div className={`w-full min-h-screen ${T.pagina} ${T.fundo}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
         <div className="flex flex-col md:flex-row gap-10 md:gap-16">
           
@@ -382,7 +391,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
             </div>
 
             {gallery.length > 1 && (
-              <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+              <div className="mt-4 flex gap-3 overflow-x-auto px-1 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:overflow-visible">
                 {gallery.map((img: string, i: number) => (
                   <button
                     key={`${img}-${i}`}
@@ -400,7 +409,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
             )}
           </div>
 
-          <div className="w-full md:w-1/2 flex flex-col justify-center">
+          <div className={`w-full md:w-1/2 flex flex-col justify-center ${T.coluna}`}>
             {black && (
               <p className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-[#C9A227] px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-black">Black Friday</span>
@@ -609,7 +618,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
           {product?.description && (
             <div className={`mt-10 pt-10 border-t ${T.divisor}`}>
               <div 
-                className={`prose max-w-none text-sm leading-relaxed ${T.prose} flex flex-col items-center justify-center [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:shadow-md`}
+                className={`${T.descricao} prose max-w-none text-sm leading-relaxed ${T.prose} flex flex-col items-center justify-center [&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-lg [&_img]:shadow-md`}
                 dangerouslySetInnerHTML={{ __html: product.description }}
               />
             </div>
