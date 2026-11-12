@@ -14,6 +14,8 @@ const SERVICOS_CORREIOS = [1, 2, 17];
 const STATUS_POSTADO = ['posted', 'delivered', 'undelivered', 'paused', 'suspended'];
 
 export function base(): string {
+  // MELHOR_ENVIO_URL só para testes locais
+  if (process.env.MELHOR_ENVIO_URL) return process.env.MELHOR_ENVIO_URL;
   return config.melhorEnvio.sandbox ? 'https://sandbox.melhorenvio.com.br/api/v2' : 'https://melhorenvio.com.br/api/v2';
 }
 

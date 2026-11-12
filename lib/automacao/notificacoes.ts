@@ -57,7 +57,8 @@ async function enviarWhatsapp(evento: Evento, pedido: WcPedido, dados: DadosAvis
 
 export async function enviarEmail(para: string, assunto: string, html: string): Promise<boolean> {
   if (!integracoes.email() || !para) return false;
-  const res = await fetch('https://api.resend.com/emails', {
+  // RESEND_API_URL só para testes locais
+  const res = await fetch(`${process.env.RESEND_API_URL || 'https://api.resend.com'}/emails`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${config.email.resendKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: config.email.remetente, to: [para], subject: assunto, html }),

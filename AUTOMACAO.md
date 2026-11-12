@@ -427,6 +427,26 @@ quem veio do anúncio: visitas, sacola, checkout, **pedidos pagos, faturamento e
   `META_AD_ACCOUNT_ID`). Sem o token, a tela mostra só a parte do site.
 - **Alerta:** "Anúncio reprovado ou conta parada" (Painel → Alertas no celular).
 
+### 5.5 Carrinho abandonado
+
+Quem digita o e-mail no checkout e não finaliza recebe um lembrete por e-mail em **1 h** e outro em
+**24 h** (Resend), com o botão "Finalizar minha compra" que **remonta a sacola**
+(`/checkout?recuperar=…`). Guarda e-mail, nome, telefone (se digitado) e itens por 4 dias; o e-mail tem
+o link "não quero mais receber". Ao finalizar a compra, o carrinho vira "recuperado". O painel (visão
+geral) lista os carrinhos das últimas 72 h com botão de WhatsApp. Rotina: cron (`tarefa=abandono`).
+
+### 5.6 Saúde da loja e diagnóstico de vendas
+
+- **Saúde** (cron, a cada 15 min, `tarefa=saude`): testa a loja, o WooCommerce, o **cálculo de frete**
+  (CEP do Rio) e o Upstash. Falhou 2 vezes seguidas → alerta 🔴 no celular; voltou → 🟢. Se a Vercel
+  inteira cair, este teste também não roda: ligue no cron-job.org o aviso de falha por e-mail.
+- **Falhas que impedem a compra** (contadas por dia): erro de frete, frete sem opção para o CEP, checkout
+  recusado e erro ao criar o pedido. Aparecem no monitoramento e no relatório semanal.
+- **Diagnóstico** (Painel → Anúncios): olha o caminho anúncio → clique → site → camisa → sacola →
+  checkout → pedido → pagamento e as falhas, e diz onde as pessoas desistem e o que fazer.
+- **Relatório da semana**: segunda às 9h no celular (vendas × semana anterior, mais vendidas, anúncios,
+  carrinhos e falhas).
+
 ## 6. Meta Ads: rastreamento de compras e catálogo
 
 **Por quê:** o pagamento acontece na página da AppMax, fora do site, então o Pixel do navegador nunca

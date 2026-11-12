@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import AutoAtualizar from '../../../components/painel/AutoAtualizar';
-import { Colunas, Funil, LinhaServico } from '../../../components/painel/analytics';
+import { Colunas, Diagnostico, Funil, LinhaServico } from '../../../components/painel/analytics';
+import { listarAbandonos } from '../../../lib/automacao/abandono';
+import { falhasNosDias } from '../../../lib/automacao/monitor';
+import { diagnosticar } from '../../../lib/painel/diagnostico';
 import { Aviso, Cartao, Kpi, brl, dataHora, pct } from '../../../components/painel/ui';
 import { config, integracoes } from '../../../lib/automacao/config';
 import { anuncios, contaAnuncios, NOME_STATUS, porDia, STATUS_CONTA, totais, type Periodo } from '../../../lib/automacao/metaAds';
@@ -74,6 +77,22 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
     else errosMeta.push(`lista de anúncios: ${motivo(rLista)}`);
   }
 
+  // ---------- Diagnóstico: por que não estão comprando ----------
+  const [falhas, abandonos] = await Promise.all([falhasNosDias(dias), listarAbandonos(dias.length * 24).catch(() => [])]);
+  const ativos = lista.filter((a) => a.status === 'ACTIVE' && a.criadoEm);
+  const achados = diagnosticar({
+    conta: contaInfo,
+    meta: tot,
+    anuncios: lista,
+    site: funilSite,
+    pedidosCriados: doAnuncio.length,
+    pedidosPagos: doAnuncio.filter(pago).length,
+    pagamentosRecusados: doAnuncio.filter((x) => x.status === 'failed').length,
+    falhas,
+    carrinhosAbandonados: abandonos.filter((a) => !a.convertido && a.origem === 'meta').length,
+    horasDeCampanha: ativos.length ? (agora - Math.min(...ativos.map((a) => a.criadoEm))) / 3_600_000 : 0,
+  });
+
   const gasto = tot?.gasto || 0;
   const roas = gasto > 0 ? faturamentoAnuncio / gasto : null;
   const custoVenda = pagosAnuncio.length ? gasto / pagosAnuncio.length : null;
@@ -134,6 +153,10 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
         </Aviso>
       )}
       {erroSite && <Aviso tipo="erro">Não consegui ler os pedidos do WooCommerce: {erroSite}</Aviso>}
+
+      <Cartao titulo="Por que não estão comprando? (diagnóstico)" acao={<span className="text-xs text-slate-500">{PERIODOS[chave].toLowerCase()}</span>}>
+        <Diagnostico achados={achados} />
+      </Cartao>
 
       {/* Conta */}
       {contaInfo && (

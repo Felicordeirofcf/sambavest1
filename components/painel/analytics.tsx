@@ -357,3 +357,35 @@ export function LinhaServico({ nome, estado, detalhe }: { nome: string; estado: 
     </li>
   );
 }
+
+// ---------- Diagnóstico ----------
+
+export function Diagnostico({ achados }: { achados: { nivel: 'erro' | 'atencao' | 'ok'; titulo: string; detalhe: string; acao: string }[] }) {
+  const estilo = {
+    erro: { cor: 'border-red-200 bg-red-50', icone: '✕', tom: 'text-red-800', rotulo: 'Problema' },
+    atencao: { cor: 'border-amber-200 bg-amber-50', icone: '▲', tom: 'text-amber-900', rotulo: 'Atenção' },
+    ok: { cor: 'border-emerald-200 bg-emerald-50', icone: '●', tom: 'text-emerald-800', rotulo: 'Tudo certo' },
+  };
+  return (
+    <ul className="space-y-2.5">
+      {achados.map((a) => {
+        const e = estilo[a.nivel];
+        return (
+          <li key={a.titulo} className={`rounded-xl border p-3.5 ${e.cor}`}>
+            <p className={`text-sm font-bold ${e.tom}`}>
+              <span aria-hidden className="mr-1.5">
+                {e.icone}
+              </span>
+              <span className="sr-only">{e.rotulo}: </span>
+              {a.titulo}
+            </p>
+            <p className="mt-1 text-sm text-slate-700">{a.detalhe}</p>
+            <p className="mt-1 text-sm text-slate-900">
+              <b>O que fazer:</b> {a.acao}
+            </p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

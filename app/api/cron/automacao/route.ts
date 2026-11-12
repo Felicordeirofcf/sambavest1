@@ -5,6 +5,8 @@
 //   GET /api/cron/automacao?tarefa=pix      → só lembretes de Pix não pago
 //   GET /api/cron/automacao?tarefa=estoque  → só sincroniza estoque Bling → WooCommerce
 //   GET /api/cron/automacao?tarefa=alertas  → só alertas ao dono (Pix parado, estoque, resumo do dia)
+//   GET /api/cron/automacao?tarefa=saude    → só a checagem de saúde (loja, WooCommerce, frete, banco)
+//   GET /api/cron/automacao?tarefa=abandono → só os e-mails de carrinho abandonado
 //   GET /api/cron/automacao?tarefa=diagnostico → confere a configuração do Bling (só leitura)
 //   GET /api/cron/automacao?modo=fundo     → responde na hora e roda em segundo plano
 //                                            (para o cron-job.org, que espera no máximo 30 s)
@@ -15,7 +17,9 @@ import { after, NextResponse } from 'next/server';
 import { config, integracoes } from '../../../../lib/automacao/config';
 import { diagnosticoBling } from '../../../../lib/automacao/diagnostico';
 import { sincronizarEstoque } from '../../../../lib/automacao/estoque';
-import { rotinaAlertas } from '../../../../lib/automacao/alertas';
+import { rotinaAbandono } from '../../../../lib/automacao/abandono';
+import { alertasLigados, preferenciasAlertas, rotinaAlertas } from '../../../../lib/automacao/alertas';
+import { rotinaSaude } from '../../../../lib/automacao/saude';
 import { registrarExecucao } from '../../../../lib/automacao/monitor';
 import { rotinaPedidos, rotinaPix } from '../../../../lib/automacao/pedidos';
 
@@ -53,6 +57,11 @@ export async function GET(request: Request) {
     if ((tarefa === 'todas' || tarefa === 'estoque') && integracoes.bling() && config.bling.sincronizarEstoque) {
       await rodar('estoque', () => sincronizarEstoque());
     }
+    // Saúde primeiro (rápida): loja, WooCommerce, frete e banco
+    if (tarefa === 'todas' || tarefa === 'saude' || tarefa === 'alertas') {
+      await rodar('saude', async () => rotinaSaude(alertasLigados() && (await preferenciasAlertas()).saude));
+    }
+    if (tarefa === 'todas' || tarefa === 'abandono') await rodar('abandono', () => rotinaAbandono(prazo));
     if (tarefa === 'todas' || tarefa === 'alertas') await rodar('alertas', () => rotinaAlertas(prazo));
     // Só roda quando pedido explicitamente (não entra em "todas").
     if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());

@@ -23,6 +23,8 @@ export const TIPOS_ALERTA = {
   estoque: { nome: 'Tamanho acabando', padrao: true },
   resumo: { nome: 'Resumo do dia', padrao: true },
   anuncio: { nome: 'Anúncio reprovado ou conta parada', padrao: true },
+  saude: { nome: 'Loja, WooCommerce ou frete fora do ar', padrao: true },
+  semanal: { nome: 'Relatório da semana (segunda-feira)', padrao: true },
 } as const;
 export type TipoAlerta = keyof typeof TIPOS_ALERTA;
 
@@ -206,10 +208,10 @@ function telefoneLink(p: WcPedido, mensagem: string): string {
 
 // ---------------- Rotina (cron a cada 15 min) ----------------
 
-export type ResultadoAlertas = { pix: number; estoque: number; resumo: boolean; anuncios: number };
+export type ResultadoAlertas = { pix: number; estoque: number; resumo: boolean; anuncios: number; semanal: boolean };
 
 export async function rotinaAlertas(prazo: number): Promise<ResultadoAlertas> {
-  const r: ResultadoAlertas = { pix: 0, estoque: 0, resumo: false, anuncios: 0 };
+  const r: ResultadoAlertas = { pix: 0, estoque: 0, resumo: false, anuncios: 0, semanal: false };
   if (!alertasLigados()) return r;
   const prefs = await preferenciasAlertas();
 
@@ -279,6 +281,17 @@ export async function rotinaAlertas(prazo: number): Promise<ResultadoAlertas> {
     }
   }
 
+  // 5) Relatório da semana: segunda-feira a partir das 9h
+  const diaSemana = new Date().toLocaleDateString('en-US', { timeZone: fuso, weekday: 'short' });
+  if (prefs.semanal && Date.now() < prazo && diaSemana === 'Mon' && horaLocal() >= 9) {
+    try {
+      const enviados = await alertarCelular(await textoSemanal(), { chave: `semanal:${diaLocal()}`, ttlS: 3 * 86_400 });
+      r.semanal = enviados.length > 0;
+    } catch (e) {
+      console.error('[alertas] semanal', (e as Error).message);
+    }
+  }
+
   // 4) Resumo do dia (a partir da hora configurada, uma vez por dia)
   if (prefs.resumo && Date.now() < prazo && horaLocal() >= config.alertas.horaResumo) {
     const hoje = diaLocal();
@@ -321,6 +334,60 @@ export async function textoResumoDoDia(): Promise<string> {
     (top ? `Mais vendida: ${top[0]} (${top[1]})\n` : '') +
     `Pix em aberto hoje: ${pixAbertos}` +
     black +
+    `\n${linkPainel('/painel')}`
+  );
+}
+
+/** Relatório da semana: últimos 7 dias × 7 anteriores, anúncios, carrinhos e falhas. */
+export async function textoSemanal(): Promise<string> {
+  const { pedidosRecentes } = await import('../painel/dados');
+  const { nomeBase } = await import('../painel/metricas');
+  const { falhasNosDias, TIPOS_FALHA } = await import('./monitor');
+  const lista = await pedidosRecentes(30);
+  const agora = Date.now();
+  const pago = (s: string) => s === 'processing' || s === 'completed';
+  const janela = (de: number, ate: number) => lista.filter((p) => pago(p.status) && (p.pago || p.criado) >= agora - de * 86_400_000 && (p.pago || p.criado) < agora - ate * 86_400_000);
+  const semana = janela(7, 0);
+  const anterior = janela(14, 7);
+  const soma = (l: typeof semana) => l.reduce((s, p) => s + p.total, 0);
+  const fat = soma(semana);
+  const fatAnt = soma(anterior);
+  const variacao = fatAnt ? ` (${fat >= fatAnt ? '▲' : '▼'} ${Math.abs(Math.round(((fat - fatAnt) / fatAnt) * 100))}% vs semana anterior)` : '';
+  const pecas = new Map<string, number>();
+  for (const p of semana) for (const i of p.itens) pecas.set(nomeBase(i.nome), (pecas.get(nomeBase(i.nome)) || 0) + i.qtd);
+  const top = [...pecas].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const doAnuncio = semana.filter((p) => p.origem?.source === 'meta');
+  let anuncios = '';
+  if (integracoes.metaAds()) {
+    try {
+      const { totais } = await import('./metaAds');
+      const t = await totais({ desde: diaLocal(agora - 6 * 86_400_000), ate: diaLocal(agora) });
+      const fatAds = soma(doAnuncio);
+      anuncios = `\n📣 Anúncios: gasto ${brl(t.gasto)} · ${t.cliquesLink} cliques · ${doAnuncio.length} venda(s) · retorno ${t.gasto ? (fatAds / t.gasto).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '×' : '—'}`;
+    } catch {
+      // segue sem anúncios
+    }
+  }
+  let carrinhos = '';
+  try {
+    const { listarAbandonos } = await import('./abandono');
+    const ab = await listarAbandonos(7 * 24);
+    carrinhos = `\n🛒 Carrinhos abandonados: ${ab.length} · recuperados: ${ab.filter((a) => a.convertido).length}`;
+  } catch {
+    // sem dados
+  }
+  const dias = Array.from({ length: 7 }, (_, i) => diaLocal(agora - i * 86_400_000));
+  const falhas = await falhasNosDias(dias);
+  const comFalha = (Object.keys(falhas) as (keyof typeof falhas)[]).filter((k) => falhas[k] > 0);
+  const textoFalhas = comFalha.length ? `\n⚠️ Falhas que impediram compras: ${comFalha.map((k) => `${TIPOS_FALHA[k]}: ${falhas[k]}`).join(' · ')}` : '\n✅ Nenhuma falha de frete/checkout registrada';
+  return (
+    `📅 Semana da Samba Vest\n` +
+    `Vendas: ${semana.length} · ${brl(fat)}${variacao}\n` +
+    `Ticket médio: ${brl(semana.length ? fat / semana.length : 0)}\n` +
+    (top.length ? `Mais vendidas: ${top.map(([n, q]) => `${n} (${q})`).join(', ')}` : 'Sem vendas na semana') +
+    anuncios +
+    carrinhos +
+    textoFalhas +
     `\n${linkPainel('/painel')}`
   );
 }

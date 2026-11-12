@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { dentroDoLimite, ipDe } from '../../../lib/automacao/kv';
 import { cotarFreteDetalhado } from '../../../lib/frete';
+import { registrarFalha } from '../../../lib/automacao/monitor';
 
 export async function POST(request: Request) {
   try {
@@ -20,10 +21,13 @@ export async function POST(request: Request) {
     }));
 
     const { cotacoes, indisponiveis } = await cotarFreteDetalhado(cepLimpo, itens);
+    // Sem opção de frete o cliente não consegue comprar: conta para o diagnóstico do painel
+    if (cotacoes.length === 0) await registrarFalha('frete-vazio', `CEP ${cepLimpo.slice(0, 5)}-***`);
     // "indisponiveis" ajuda a entender por que um serviço (ex.: PAC) não apareceu
     return NextResponse.json({ success: true, quotes: cotacoes, indisponiveis });
   } catch (error) {
     console.error('Erro no cálculo de frete:', error);
+    await registrarFalha('frete-erro', (error as Error)?.message || String(error));
     return NextResponse.json({ success: false, error: 'Erro ao calcular frete' }, { status: 500 });
   }
 }
