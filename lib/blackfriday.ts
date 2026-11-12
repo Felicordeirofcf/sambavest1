@@ -27,7 +27,7 @@ export type OfertaBF = {
   /** Usa sempre a foto local (frente da camisa), e não a 1ª foto do WooCommerce. */
   fotoFrenteLocal?: boolean;
   /**
-   * Foto de alguém VESTINDO a camisa (topo da página). Coloque o arquivo em public/products/ e o
+   * Foto de alguém VESTINDO a camisa (cards de baixo da página; o topo mostra só a peça). Coloque o arquivo em public/products/ e o
    * caminho aqui, ex.: '/products/vestida-beija-flor.jpg'. Sem ela, mostra a foto da camisa.
    */
   fotoVestida?: string;

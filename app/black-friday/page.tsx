@@ -29,7 +29,7 @@ function linkCompra(p: ProdutoBF): string | null {
   return base && p.modelo ? `${base}?modelo=${encodeURIComponent(p.modelo)}` : base;
 }
 
-/** Camisa do topo: foto grande (vestida, se houver) e botão de comprar visível sem rolar. */
+/** Camisa do topo: só a foto da peça (a foto vestida fica nos cards de baixo) e botão de comprar visível sem rolar. */
 function CamisaTopo({ p, fase }: { p: ProdutoBF; fase: ReturnType<typeof faseBF> }) {
   const azul = p.escola === 'beija-flor';
   const href = linkCompra(p);
@@ -45,12 +45,12 @@ function CamisaTopo({ p, fase }: { p: ProdutoBF; fase: ReturnType<typeof faseBF>
     >
       <span className={`relative block aspect-[4/5] sm:aspect-[4/3] ${azul ? 'bg-sky-950/50' : 'bg-red-950/50'}`}>
         <Image
-          src={p.fotoVestida || p.imagem}
-          alt={`${p.titulo}${p.fotoVestida ? ' vestida' : ''}`}
+          src={p.imagem}
+          alt={p.titulo}
           fill
           priority
           sizes="(max-width: 640px) 50vw, 360px"
-          className={p.fotoVestida ? 'object-cover object-top' : 'object-contain p-2 transition-transform duration-500 group-hover:scale-105'}
+          className="object-contain p-2 transition-transform duration-500 group-hover:scale-105"
         />
         <span className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white ${azul ? 'bg-sky-600' : 'bg-red-600'}`}>
           {azul ? 'Beija-Flor' : 'Viradouro'}
