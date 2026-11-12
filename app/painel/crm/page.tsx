@@ -77,7 +77,7 @@ export default async function Crm({ searchParams }: { searchParams: Promise<{ f?
     <div className="space-y-4 max-w-7xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">CRM · WhatsApp</h1>
+          <h1 className="text-2xl md:text-3xl">CRM · WhatsApp</h1>
           <p className="text-sm text-slate-500">Todo contato que conversa com a loja entra aqui sozinho, ligado aos pedidos pelo telefone.</p>
         </div>
         <div className="flex gap-2">

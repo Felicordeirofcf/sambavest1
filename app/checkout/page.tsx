@@ -173,7 +173,7 @@ export default function CheckoutPage() {
   // então recalcula aqui com a mesma regra do servidor.
   const freteGratisAgora = Boolean(
     shippingQuote &&
-      String(shippingQuote.name).toLowerCase().includes('pac') &&
+      shippingQuote.maisBarato &&
       subtotalComDesconto >= FREE_SHIPPING_THRESHOLD
   );
   const frete = shippingQuote ? (freteGratisAgora ? 0 : shippingQuote.originalPrice ?? shippingQuote.price) : 0;

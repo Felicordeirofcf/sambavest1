@@ -78,7 +78,7 @@ export default function Quadro({ colunas, cartoes, agora }: { colunas: Coluna[];
                 setArrastando(null);
                 if (chave) mover(chave, col.id);
               }}
-              className={`flex-1 min-w-[13rem] rounded-xl border p-2 transition-colors ${sobre === col.id ? 'bg-amber-50 border-amber-300' : 'bg-slate-100/70 border-slate-200'}`}
+              className={`flex-1 min-w-[10.5rem] rounded-xl border p-2 transition-colors ${sobre === col.id ? 'bg-amber-50 border-amber-300' : 'bg-slate-100/70 border-slate-200'}`}
             >
               <h2 className="flex justify-between items-center px-1 pb-2 text-sm font-semibold text-slate-700">
                 {col.nome}

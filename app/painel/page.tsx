@@ -12,6 +12,11 @@ const PERIODOS = [7, 30, 90];
 /** Hora da consulta (página dinâmica, renderizada a cada acesso). */
 const agoraMs = () => Date.now();
 
+function saudacao(ms: number): string {
+  const h = Number(new Date(ms).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', hour12: false })) % 24;
+  return h < 12 ? 'Bom dia!' : h < 18 ? 'Boa tarde!' : 'Boa noite!';
+}
+
 export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ dias?: string }> }) {
   await exigirLogin();
   const dias = PERIODOS.includes(Number((await searchParams).dias)) ? Number((await searchParams).dias) : 30;
@@ -69,8 +74,9 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     <div className="space-y-6 max-w-7xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Visão geral</h1>
-          <p className="text-sm text-slate-500">Últimos {dias} dias · atualizado {dataHora(agoraMs())}</p>
+          <p className="text-sm font-semibold text-[var(--sv-ouro-escuro)]">{saudacao(agoraMs())}</p>
+          <h1 className="text-3xl md:text-4xl">Como a loja está indo</h1>
+          <p className="text-sm text-slate-500 mt-1">Últimos {dias} dias · atualizado {dataHora(agoraMs())}</p>
         </div>
         <div className="flex items-center gap-2">
           <SeletorPeriodo atual={dias} base="/painel" />

@@ -30,7 +30,7 @@ export default async function Cliente({
     <div className="space-y-4 max-w-6xl">
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/painel/clientes" className="text-sm text-slate-500 underline">← Clientes</Link>
-        <h1 className="text-2xl font-semibold">{c.nome}</h1>
+        <h1 className="text-2xl md:text-3xl">{c.nome}</h1>
         <SeloSegmento s={c.segmento} />
       </div>
       {ok && <Aviso tipo="ok">{ok}</Aviso>}

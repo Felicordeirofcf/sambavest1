@@ -15,6 +15,8 @@ export type ShippingQuote = {
   originalPrice?: number;
   /** CEP usado nesta cotação. */
   cep?: string;
+  /** Opção mais barata: é a que fica grátis acima do valor mínimo. */
+  maisBarato?: boolean;
 };
 
 /**

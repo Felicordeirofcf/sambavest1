@@ -44,7 +44,7 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
 
   return (
     <div className="space-y-4 max-w-7xl">
-      <h1 className="text-2xl font-semibold">Clientes</h1>
+      <h1 className="text-2xl md:text-3xl">Clientes</h1>
       <p className="text-sm text-slate-500">
         Base montada a partir dos pedidos do WooCommerce dos últimos 12 meses (agrupados por CPF, e-mail ou telefone).
       </p>

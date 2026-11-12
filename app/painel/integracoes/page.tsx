@@ -75,7 +75,7 @@ export default async function Integracoes() {
 
   return (
     <div className="space-y-4 max-w-4xl">
-      <h1 className="text-2xl font-semibold">Integrações</h1>
+      <h1 className="text-2xl md:text-3xl">Integrações</h1>
       <p className="text-sm text-slate-500">Situação de cada sistema ligado à loja. As chaves ficam na Vercel (Settings → Environment Variables).</p>
       <Cartao>
         <ul className="divide-y divide-slate-100">

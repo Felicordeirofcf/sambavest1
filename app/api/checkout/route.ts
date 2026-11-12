@@ -11,7 +11,7 @@ export const revalidate = 0;
 // Se o plugin da AppMax mudar os IDs, ajuste APPMAX_GATEWAY_PIX / APPMAX_GATEWAY_CARTAO na Vercel.
 const METODOS: Record<string, { gateway: string; titulo: string; desconto: number }> = {
   appmax_pix: {
-    gateway: process.env.APPMAX_GATEWAY_PIX?.trim() || 'appmax_pix',
+    gateway: process.env.APPMAX_GATEWAY_PIX?.trim() || 'pagamentos_para_woocommerce_com_appmax_pix',
     titulo: 'Pix -- AppMax',
     desconto: 0.1,
   },

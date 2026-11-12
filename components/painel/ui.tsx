@@ -14,10 +14,10 @@ export const dataCurta = (ms: number) =>
 
 export function Cartao({ titulo, children, acao, className = '' }: { titulo?: string; children: ReactNode; acao?: ReactNode; className?: string }) {
   return (
-    <section className={`bg-white rounded-xl border border-slate-200 p-5 ${className}`}>
+    <section className={`bg-white rounded-xl border border-slate-200 p-5 md:p-6 ${className}`}>
       {(titulo || acao) && (
         <div className="flex items-center justify-between mb-4 gap-2">
-          {titulo && <h2 className="text-sm font-semibold text-slate-700">{titulo}</h2>}
+          {titulo && <h2 className="sv-display text-base font-bold text-slate-900">{titulo}</h2>}
           {acao}
         </div>
       )}
@@ -28,16 +28,19 @@ export function Cartao({ titulo, children, acao, className = '' }: { titulo?: st
 
 export function Kpi({ rotulo, valor, delta, ajuda }: { rotulo: string; valor: string; delta?: number | null; ajuda?: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
-      <p className="text-xs text-slate-500">{rotulo}</p>
-      <p className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">{valor}</p>
-      <p className="text-xs mt-1 h-4">
+    <div className="bg-white border border-slate-200 rounded-xl p-4 md:p-5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">{rotulo}</p>
+      <p className="sv-display text-[1.35rem] sm:text-[1.7rem] md:text-3xl font-bold text-slate-900 mt-1.5 tabular-nums leading-none break-words">{valor}</p>
+      <p className="text-xs mt-2.5 min-h-5">
         {delta !== undefined && delta !== null ? (
-          <span className={delta >= 0 ? 'text-emerald-700' : 'text-red-700'}>
-            {delta >= 0 ? '▲' : '▼'} {pct(Math.abs(delta))} <span className="text-slate-500">vs período anterior</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className={`px-1.5 py-0.5 rounded-md font-semibold ${delta >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+              {delta >= 0 ? '▲' : '▼'} {pct(Math.abs(delta))}
+            </span>
+            <span className="text-slate-500">vs período anterior</span>
           </span>
         ) : (
-          <span className="text-slate-400">{ajuda || ''}</span>
+          <span className="text-slate-500">{ajuda || ''}</span>
         )}
       </p>
     </div>

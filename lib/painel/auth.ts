@@ -5,7 +5,7 @@ import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { config } from '../automacao/config';
 import { kvGet, kvSet } from '../automacao/kv';
-import { entrar as entrarAtendimento, sair as sairAtendimento } from '../automacao/painel';
+import { entrar as entrarAtendimento, logado as logadoAtendimento, sair as sairAtendimento } from '../automacao/painel';
 
 const COOKIE = 'sv_painel';
 const TENTATIVAS = 8;
@@ -69,7 +69,7 @@ export async function tentarEntrar(tentativa: string): Promise<'ok' | 'senha' | 
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    path: '/painel',
+    path: '/', // vale também no /atendimento: um login só
     maxAge: 30 * 86_400,
   });
   // Mesmo login libera o atendimento do WhatsApp (/atendimento), se ele tiver senha configurada.
@@ -78,6 +78,13 @@ export async function tentarEntrar(tentativa: string): Promise<'ok' | 'senha' | 
 }
 
 export async function sairDoPainel(): Promise<void> {
-  (await cookies()).delete({ name: COOKIE, path: '/painel' });
+  const jar = await cookies();
+  jar.delete({ name: COOKIE, path: '/' });
+  jar.delete({ name: COOKIE, path: '/painel' }); // logins antigos
   await sairAtendimento();
+}
+
+/** Atendimento WhatsApp: basta estar logado no painel (ou no login antigo do atendimento). */
+export async function acessoAtendimento(): Promise<boolean> {
+  return (await logado()) || (await logadoAtendimento());
 }

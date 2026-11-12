@@ -44,7 +44,7 @@ export default async function QuadroCrm({ searchParams }: { searchParams: Promis
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">CRM · Quadro</h1>
+          <h1 className="text-2xl md:text-3xl">CRM · Quadro</h1>
           <p className="text-sm text-slate-500">
             Conversas com movimento nas últimas {horas} horas ({cartoes.length}). Arraste o cartão para mudar a etapa; clique no nome para abrir a conversa.
           </p>
