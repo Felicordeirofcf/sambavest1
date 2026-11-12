@@ -213,7 +213,13 @@ export type ResultadoAlertas = { pix: number; estoque: number; resumo: boolean; 
 
 export async function rotinaAlertas(prazo: number): Promise<ResultadoAlertas> {
   const r: ResultadoAlertas = { pix: 0, estoque: 0, resumo: false, anuncios: 0, semanal: false };
-  if (!alertasLigados()) return r;
+  if (!alertasLigados()) {
+    // Sem celular conectado: as melhorias continuam sendo calculadas para o painel
+    if (integracoes.metaAds() && horaLocal() >= 8 && horaLocal() < 22) {
+      r.melhorias = await rotinaMelhorias(false).catch((e) => (console.error('[alertas] melhorias', (e as Error).message), 0));
+    }
+    return r;
+  }
   const prefs = await preferenciasAlertas();
 
   // 1) Pix gerado e não pago há mais de X minutos (até 6 h: depois disso o lembrete ao cliente cuida)
