@@ -461,7 +461,10 @@ via a compra. Sem a compra, o Meta Ads não sabe para quem mostrar o anúncio.
   checkout, para a venda ser atribuída ao anúncio que a trouxe.
 - **Catálogo:** `https://SEU-SITE/api/feed/meta` (CSV, atualizado a cada 1h). Cada modelo/tamanho é um
   item, e os IDs batem com os eventos acima. Isso habilita os anúncios de catálogo e o remarketing
-  dinâmico.
+  dinâmico. Vai junto: preço cheio e promocional com o **período da promoção** (`sale_price_effective_date`,
+  das datas agendadas no WooCommerce), link que já abre o modelo (`?modelo=`), gênero (a partir do modelo:
+  Masculino/Feminino/Unissex), faixa etária e `custom_label_0 = black_friday` nos itens em promoção da
+  Black (para um conjunto de produtos só deles). Itens sem preço, sem foto ou ocultos ficam de fora.
 
 **Configurar:**
 1. Gerenciador de Eventos → seu Pixel → Configurações → **API de Conversões → Gerar token de

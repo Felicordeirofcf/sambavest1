@@ -20,6 +20,19 @@ async function redis(comando: (string | number)[]): Promise<unknown> {
   return json.result;
 }
 
+// Leitura que pode ficar em cache por alguns segundos: usada por páginas com ISR
+// (fetch sem cache numa página estática derruba a renderização em produção).
+export async function kvGetCacheado<T>(chave: string, segundos = 60): Promise<T | null> {
+  if (!integracoes.kv()) return kvGet<T>(chave);
+  const res = await fetch(`${config.kv.url!.replace(/\/$/, '')}/get/${encodeURIComponent(chave)}`, {
+    headers: { Authorization: `Bearer ${config.kv.token}` },
+    next: { revalidate: segundos },
+  });
+  const json = (await res.json()) as { result?: unknown; error?: string };
+  if (!res.ok || json.error) throw new Error(`KV: ${json.error || res.status}`);
+  return typeof json.result === 'string' ? (JSON.parse(json.result) as T) : null;
+}
+
 export async function kvGet<T>(chave: string): Promise<T | null> {
   if (integracoes.kv()) {
     const r = await redis(['GET', chave]);

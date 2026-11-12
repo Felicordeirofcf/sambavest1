@@ -3,7 +3,7 @@
 // O preço cobrado SEMPRE vem do WooCommerce (o checkout recalcula no servidor). Esta página só
 // anuncia o preço Black antes da campanha e, durante a campanha, mostra o preço real do WooCommerce.
 // Para valer de verdade, agende o "Preço promocional" de cada produto no WooCommerce (27 a 30/11).
-import { kvGet, kvMGet } from './automacao/kv';
+import { kvGet, kvGetCacheado, kvMGet } from './automacao/kv';
 import { faseBF, PERIODO_BF } from './blackfridayPeriodo';
 
 export { faseBF };
@@ -62,7 +62,7 @@ export const OFERTAS: OfertaBF[] = [
     precoBlack: 99,
     imagemReserva: '/products/viradouro27.webp',
     fotoFrenteLocal: true,
-    combina: (n) => tem(n, 'viradouro') && naoTem(n, 'algod', '2025', '2026', ...outrosModelos),
+    combina: (n) => tem(n, 'viradouro') && naoTem(n, 'algod', '2025', '2026', 'retro', '80 anos', ...outrosModelos),
   },
   {
     id: 'viradouro-algodao',
@@ -262,3 +262,17 @@ export async function placarDuelo(): Promise<Record<EscolaDuelo, number>> {
 }
 
 export const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/**
+ * Se este produto do WooCommerce é uma camisa da Black (pelo ID fixo ou pelo nome), devolve a oferta
+ * e a foto vestida escolhida no painel. Usado na página da camisa (tema escuro + fotos na ordem certa).
+ */
+export async function ofertaDoProduto(produto: { id: number; name: string }): Promise<{ oferta: OfertaBF; fotoVestida?: string } | null> {
+  const nome = semAcento(produto.name || '');
+  const oferta =
+    OFERTAS.find((o) => o.produtoId && o.produtoId === Number(produto.id)) ||
+    OFERTAS.find((o) => !o.produtoId && o.combina(nome));
+  if (!oferta) return null;
+  const escolhida = await kvGetCacheado<string>(chaveFotoVestida(oferta.id), 120).catch(() => null);
+  return { oferta, fotoVestida: escolhida || oferta.fotoVestida };
+}

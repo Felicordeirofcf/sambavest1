@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import ProdutoComModelo from './ProdutoComModelo';
+import { BF, ofertaDoProduto } from '../../../lib/blackfriday';
+import { faseBF } from '../../../lib/blackfridayPeriodo';
 
 // Página guardada em cache (ISR): o cliente recebe a página pronta na hora e ela é refeita em
 // segundo plano no máximo a cada 2 min. Preço e estoque são conferidos de novo na sacola e no checkout.
@@ -103,6 +105,9 @@ export default async function ProductPage({ params }: { params: Promise<{ handle
   if (!dados) notFound();
   const { product, variations } = dados;
 
+  // Camisa da Black durante a campanha: tema escuro (igual à página da Black) e fotos na ordem certa
+  const black = faseBF() === 'durante' ? await ofertaDoProduto(product).catch(() => null) : null;
+
   // Monta a galeria base de imagens
   const baseImages: string[] = product.images && product.images.length > 0 ? product.images.map((img: any) => img.src) : [];
 
@@ -124,7 +129,14 @@ export default async function ProductPage({ params }: { params: Promise<{ handle
     regular_price: Number(product.regular_price || 0),
     description: product.description || '',
     short_description: product.short_description || '',
-    images: baseImages.length > 0 ? baseImages : [''],
+    images: (() => {
+      if (!black) return baseImages.length > 0 ? baseImages : [''];
+      // Frente da camisa primeiro (no WooCommerce a 1ª foto às vezes é a das costas), depois a vestida
+      const frente = black.oferta.fotoFrenteLocal ? [black.oferta.imagemReserva] : [];
+      const vestida = black.fotoVestida ? [black.fotoVestida] : [];
+      const todas = [...new Set([...frente, ...vestida, ...baseImages])].filter(Boolean);
+      return todas.length ? todas : [''];
+    })(),
     image: baseImages[0] || '',
     categories: product.categories ? product.categories.map((cat: any) => cat.slug) : [],
     attributes: product.attributes
@@ -193,7 +205,10 @@ export default async function ProductPage({ params }: { params: Promise<{ handle
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
-      <ProdutoComModelo product={productFormatado} />
+      <ProdutoComModelo
+        product={productFormatado}
+        black={black ? { fim: BF.fim.toISOString(), escola: black.oferta.escola, enredo: black.oferta.enredo } : undefined}
+      />
     </>
   );
 }
