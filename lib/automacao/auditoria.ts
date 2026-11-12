@@ -66,6 +66,13 @@ export async function auditoria(): Promise<Record<string, unknown>> {
       r.falhasOntemEHoje = falhas;
     })(),
 
+    // 4b) Melhorias sugeridas (só os códigos: os textos podem ter valores em R$)
+    (async () => {
+      const { lerMelhorias } = await import('./melhorias');
+      const m = await lerMelhorias();
+      r.melhorias = m ? { minAtras: minutosAtras(m.em), codigos: m.lista.map((x) => `${x.nivel}:${x.id.split(':')[0]}`) } : null;
+    })(),
+
     // 5) Feed do catálogo da Meta
     (async () => {
       const res = await fetch(`${config.siteUrl}/api/feed/meta`, { cache: 'no-store', signal: AbortSignal.timeout(40_000) });

@@ -23,6 +23,7 @@ export const TIPOS_ALERTA = {
   estoque: { nome: 'Tamanho acabando', padrao: true },
   resumo: { nome: 'Resumo do dia', padrao: true },
   anuncio: { nome: 'Anúncio reprovado ou conta parada', padrao: true },
+  melhoria: { nome: 'Melhorias nos anúncios (a cada 3 h, das 8h às 22h)', padrao: true },
   saude: { nome: 'Loja, WooCommerce ou frete fora do ar', padrao: true },
   semanal: { nome: 'Relatório da semana (segunda-feira)', padrao: true },
 } as const;
@@ -208,7 +209,7 @@ function telefoneLink(p: WcPedido, mensagem: string): string {
 
 // ---------------- Rotina (cron a cada 15 min) ----------------
 
-export type ResultadoAlertas = { pix: number; estoque: number; resumo: boolean; anuncios: number; semanal: boolean };
+export type ResultadoAlertas = { pix: number; estoque: number; resumo: boolean; anuncios: number; semanal: boolean; melhorias?: number };
 
 export async function rotinaAlertas(prazo: number): Promise<ResultadoAlertas> {
   const r: ResultadoAlertas = { pix: 0, estoque: 0, resumo: false, anuncios: 0, semanal: false };
@@ -278,6 +279,15 @@ export async function rotinaAlertas(prazo: number): Promise<ResultadoAlertas> {
       }
     } catch (e) {
       console.error('[alertas] anúncios', (e as Error).message);
+    }
+  }
+
+  // 3b) Melhorias dos anúncios: a cada 3 h, das 8h às 22h
+  if (integracoes.metaAds() && Date.now() < prazo && horaLocal() >= 8 && horaLocal() < 22) {
+    try {
+      r.melhorias = await rotinaMelhorias(prefs.melhoria);
+    } catch (e) {
+      console.error('[alertas] melhorias', (e as Error).message);
     }
   }
 
@@ -390,4 +400,45 @@ export async function textoSemanal(): Promise<string> {
     textoFalhas +
     `\n${linkPainel('/painel')}`
   );
+}
+
+/** Recalcula as melhorias (no máximo a cada 3 h), salva para o painel e manda as novas do dia. */
+export async function rotinaMelhorias(enviar: boolean, forcar = false): Promise<number> {
+  const { gerarMelhorias, lerMelhorias, salvarMelhorias, INTERVALO_MELHORIAS_MS } = await import('./melhorias');
+  const ultima = await lerMelhorias();
+  if (!forcar && ultima && Date.now() - ultima.em < INTERVALO_MELHORIAS_MS) return 0;
+  const { anuncios, contaAnuncios } = await import('./metaAds');
+  const { somaFunil } = await import('../painel/funil');
+  const { PERIODO_BF } = await import('../blackfridayPeriodo');
+  const dias = [2, 1, 0].map((d) => diaLocal(Date.now() - d * 86_400_000));
+  const [conta, ads, site] = await Promise.all([
+    contaAnuncios().catch(() => null),
+    anuncios({ desde: dias[0], ate: dias[2] }),
+    somaFunil(dias, 'meta'),
+  ]);
+  const lista = gerarMelhorias({
+    agora: Date.now(),
+    conta,
+    anuncios: ads,
+    siteAnuncio: site,
+    capiLigado: integracoes.meta(),
+    calendario: {
+      inicio: PERIODO_BF.inicio.getTime(),
+      fim: PERIODO_BF.fim.getTime(),
+      ultimosDias: Date.parse('2026-11-27T00:00:00-03:00'),
+      ultimoDia: Date.parse('2026-11-30T00:00:00-03:00'),
+    },
+  });
+  await salvarMelhorias(lista);
+  if (!enviar || !lista.length) return 0;
+  // Cada sugestão vai para o celular no máximo 1 vez por dia, todas numa mensagem só
+  const hoje = diaLocal();
+  const novas = [];
+  for (const m of lista) if (await adquirirTrava(`alerta:melhoria:${m.id}:${hoje}`, 2 * 86_400).catch(() => true)) novas.push(m);
+  if (!novas.length) return 0;
+  const icone = { erro: '🔴', atencao: '🟡', ok: '🟢' } as const;
+  await alertarCelular(
+    `📈 Melhorias nos anúncios\n\n${novas.map((m) => `${icone[m.nivel]} ${m.titulo}\n${m.detalhe}\n👉 ${m.acao}`).join('\n\n')}\n\n${linkPainel('/painel/anuncios')}`.slice(0, 3900)
+  );
+  return novas.length;
 }

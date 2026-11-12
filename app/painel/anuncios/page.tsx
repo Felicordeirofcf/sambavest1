@@ -3,6 +3,8 @@ import AutoAtualizar from '../../../components/painel/AutoAtualizar';
 import { Colunas, Diagnostico, Funil, LinhaServico } from '../../../components/painel/analytics';
 import { listarAbandonos } from '../../../lib/automacao/abandono';
 import { falhasNosDias } from '../../../lib/automacao/monitor';
+import { lerMelhorias } from '../../../lib/automacao/melhorias';
+import { rotinaMelhorias } from '../../../lib/automacao/alertas';
 import { diagnosticar } from '../../../lib/painel/diagnostico';
 import { Aviso, Cartao, Kpi, brl, dataHora, pct } from '../../../components/painel/ui';
 import { config, integracoes } from '../../../lib/automacao/config';
@@ -75,6 +77,13 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
     else errosMeta.push(`números por dia: ${motivo(rSerie)}`);
     if (rLista.status === 'fulfilled') lista = rLista.value;
     else errosMeta.push(`lista de anúncios: ${motivo(rLista)}`);
+  }
+
+  // ---------- Melhorias (monitor a cada 3 h; se ainda não rodou, calcula agora) ----------
+  let melhorias = integracoes.metaAds() ? await lerMelhorias() : null;
+  if (integracoes.metaAds() && !melhorias) {
+    await rotinaMelhorias(false).catch(() => 0);
+    melhorias = await lerMelhorias();
   }
 
   // ---------- Diagnóstico: por que não estão comprando ----------
@@ -153,6 +162,20 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
         </Aviso>
       )}
       {erroSite && <Aviso tipo="erro">Não consegui ler os pedidos do WooCommerce: {erroSite}</Aviso>}
+
+      {melhorias && (
+        <Cartao
+          titulo="Melhorias sugeridas para chegar a mais clientes"
+          acao={<span className="text-xs text-slate-500">analisado {dataHora(melhorias.em)} · atualiza a cada 3 h</span>}
+        >
+          {melhorias.lista.length ? (
+            <Diagnostico achados={melhorias.lista} />
+          ) : (
+            <p className="text-sm text-slate-600">Nenhuma melhoria pendente agora. Os anúncios seguem o calendário e os números estão saudáveis.</p>
+          )}
+          <p className="mt-3 text-xs text-slate-500">✕ corrigir já · ▲ vale ajustar · ● oportunidade. As novas vão para o seu celular (Painel → Alertas).</p>
+        </Cartao>
+      )}
 
       <Cartao titulo="Por que não estão comprando? (diagnóstico)" acao={<span className="text-xs text-slate-500">{PERIODOS[chave].toLowerCase()}</span>}>
         <Diagnostico achados={achados} />
