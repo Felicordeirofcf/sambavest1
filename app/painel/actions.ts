@@ -334,5 +334,5 @@ export async function escolherFotoVestida(formData: FormData) {
   }
   const { revalidatePath } = await import('next/cache');
   revalidatePath('/black-friday');
-  redirect('/painel/fotos-black?ok=' + encodeURIComponent(url ? 'Foto escolhida! O topo da Black já mostra essa foto.' : 'Voltou para a foto da camisa.'));
+  redirect('/painel/fotos-black?ok=' + encodeURIComponent(url ? 'Foto escolhida! Os cards da Black já mostram essa foto.' : 'Voltou para a foto da camisa.'));
 }

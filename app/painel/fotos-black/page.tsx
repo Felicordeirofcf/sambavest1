@@ -16,12 +16,12 @@ export default async function FotosBlackPage({ searchParams }: { searchParams: P
       <div>
         <h1 className="text-2xl md:text-3xl">Fotos da Black</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Estas são todas as fotos das camisas da Black no WooCommerce (galeria e fotos de cada modelo). Clique em <b>&quot;Usar no topo&quot;</b> na
-          foto de alguém <b>vestindo</b> a camisa: ela passa a aparecer no topo da{' '}
+          Estas são todas as fotos das camisas da Black no WooCommerce (galeria e fotos de cada modelo). Clique em <b>&quot;Usar nos cards&quot;</b> na
+          foto de alguém <b>vestindo</b> a camisa: ela passa a aparecer nos cards de cada camisa (mais abaixo) da{' '}
           <Link href="/black-friday" target="_blank" className="text-sky-800 underline">
             página da Black
           </Link>{' '}
-          na hora.
+          na hora. O topo da página continua mostrando só a camisa.
         </p>
       </div>
       {ok && <Aviso tipo="ok">{ok}</Aviso>}
@@ -41,7 +41,7 @@ export default async function FotosBlackPage({ searchParams }: { searchParams: P
                   <button className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs">Voltar para a foto da camisa</button>
                 </form>
               ) : (
-                <span className="text-xs text-slate-500">no topo: foto da camisa</span>
+                <span className="text-xs text-slate-500">nos cards: foto da camisa</span>
               )
             }
           >
@@ -66,7 +66,7 @@ export default async function FotosBlackPage({ searchParams }: { searchParams: P
                           disabled={escolhida}
                           className={`w-full rounded-lg px-2 py-1.5 text-xs font-semibold ${escolhida ? 'bg-emerald-50 text-emerald-800' : 'bg-[#0B1B34] text-white'}`}
                         >
-                          {escolhida ? '● No topo' : 'Usar no topo'}
+                          {escolhida ? '● Nos cards' : 'Usar nos cards'}
                         </button>
                       </form>
                     </li>
