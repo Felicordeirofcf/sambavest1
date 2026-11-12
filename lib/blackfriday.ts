@@ -58,9 +58,9 @@ export const OFERTAS: OfertaBF[] = [
   {
     id: 'viradouro-algodao',
     escola: 'viradouro',
-    titulo: 'Camisa Viradouro Vermelha de Algodão',
-    enredo: 'Vermelho e branco de Niterói',
-    descricao: 'Camisa vermelha 100% algodão, para usar o ano inteiro.',
+    titulo: 'Camisa Viradouro Retrô 80 Anos',
+    enredo: 'Retrô 80 anos',
+    descricao: 'Edição comemorativa dos 80 anos, camisa vermelha para usar o ano inteiro.',
     precoBlack: 150,
     imagemReserva: '/products/viradouro27.webp',
     produtoId: 794,
