@@ -143,7 +143,7 @@ export default async function BlackFridayPage() {
       {/* O DUELO */}
       <section className="mx-auto max-w-6xl px-4 py-12">
         <div className="mb-8 text-center">
-          <h2 className="text-3xl font-black uppercase sm:text-4xl">Qual é a sua bandeira?</h2>
+          <h2 className="text-3xl font-black uppercase sm:text-4xl">Qual é a sua escola de samba favorita?</h2>
           <p className="mt-2 text-white/60">Vote no duelo e veja quem está ganhando no placar ao vivo.</p>
         </div>
         <Duelo inicial={placar} />

@@ -23,6 +23,8 @@ export type OfertaBF = {
   descricao: string;
   precoBlack: number;
   imagemReserva: string;
+  /** ID do produto no WooCommerce: quando informado, usa esse produto (nome, foto, preço e link). */
+  produtoId?: number;
   /** Escolhe o produto do WooCommerce pelo nome (minúsculo, sem acento). */
   combina: (nome: string) => boolean;
 };
@@ -59,8 +61,9 @@ export const OFERTAS: OfertaBF[] = [
     enredo: 'Vermelho e branco de Niterói',
     descricao: 'Camisa vermelha 100% algodão, para usar o ano inteiro.',
     precoBlack: 150,
-    imagemReserva: '/products/camisa_viradouro_grio.webp',
-    combina: (n) => tem(n, 'viradouro', 'algod'),
+    imagemReserva: '/products/viradouro27.webp',
+    produtoId: 794,
+    combina: () => false,
   },
 ];
 
@@ -86,6 +89,25 @@ const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
 
 type WcProduto = { id: number; name: string; slug: string; price: string; regular_price: string; images?: { src: string }[] };
 
+function credenciaisWoo() {
+  const url = process.env.NEXT_PUBLIC_WC_URL || 'https://api.sambavest.com';
+  const key = process.env.WC_CONSUMER_KEY;
+  const secret = process.env.WC_CONSUMER_SECRET;
+  if (!key || !secret) return null;
+  return { url, headers: { Authorization: 'Basic ' + Buffer.from(`${key}:${secret}`).toString('base64') } };
+}
+
+async function produtoWooPorId(id: number): Promise<WcProduto | null> {
+  const c = credenciaisWoo();
+  if (!c) return null;
+  try {
+    const res = await fetch(`${c.url}/wp-json/wc/v3/products/${id}`, { headers: c.headers, next: { revalidate: 120 } });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 async function produtosWoo(): Promise<WcProduto[]> {
   const url = process.env.NEXT_PUBLIC_WC_URL || 'https://api.sambavest.com';
   const key = process.env.WC_CONSUMER_KEY;
@@ -105,15 +127,25 @@ async function produtosWoo(): Promise<WcProduto[]> {
 }
 
 export async function produtosBF(): Promise<ProdutoBF[]> {
-  const woo = await produtosWoo();
-  const usados = new Set<number>();
-  return OFERTAS.map((o) => {
-    const p = woo.find((w) => !usados.has(w.id) && o.combina(semAcento(w.name)));
+  const [woo, ...porId] = await Promise.all([produtosWoo(), ...OFERTAS.map((o) => (o.produtoId ? produtoWooPorId(o.produtoId) : null))]);
+  const usados = new Set<number>(porId.filter(Boolean).map((p) => p!.id));
+  return OFERTAS.map((o, i) => {
+    const fixo = porId[i];
+    const p = fixo || (o.produtoId ? undefined : woo.find((w) => !usados.has(w.id) && o.combina(semAcento(w.name))));
     if (!p) return { ...o, imagem: o.imagemReserva, encontrado: false };
     usados.add(p.id);
     const atual = Number(p.price) || undefined;
     const cheio = Number(p.regular_price) || atual;
-    return { ...o, slug: p.slug, imagem: p.images?.[0]?.src || o.imagemReserva, precoCheio: cheio, precoAtual: atual, encontrado: true };
+    return {
+      ...o,
+      // Produto escolhido pelo ID: o nome que vale é o do WooCommerce
+      titulo: fixo ? p.name : o.titulo,
+      slug: p.slug || String(p.id),
+      imagem: p.images?.[0]?.src || o.imagemReserva,
+      precoCheio: cheio,
+      precoAtual: atual,
+      encontrado: true,
+    };
   });
 }
 
