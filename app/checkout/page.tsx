@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { podeOtimizar } from '../../lib/imagem';
 import { descontoPixAtual } from '../../lib/pix';
-import { marcarEtapa } from '../../components/analytics/Etapa';
+import { marcarEtapa, origemAtual } from '../../components/analytics/Etapa';
 
 export default function CheckoutPage() {
   const { items, removeItem, clearCart } = useCartStore();
@@ -239,6 +239,8 @@ export default function CheckoutPage() {
 
       const payload = {
         eventId,
+        // De qual anúncio/campanha o cliente veio (últimos 7 dias), para medir o retorno dos anúncios
+        origem: origemAtual(),
         paymentMethod: paymentMethod,
         items: carrinhoAtual.map((item: any) => ({
           id: item.id,

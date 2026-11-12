@@ -129,6 +129,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     ultimaExecucao('alerta'),
     chatTelegram().catch(() => undefined),
   ]);
+  const contaAds = integracoes.metaAds() ? await (await import('../../lib/automacao/metaAds')).contaAnuncios().catch(() => null) : null;
   const ultimoPago = pedidos.filter(pago).sort((a, b) => quando(b) - quando(a))[0];
   const recusados24h = pedidos.filter((p) => p.status === 'failed' && agora - p.criado < DIA).length;
   const qtdPend = (tipo: string) => pend.find((p) => p.tipo === tipo)?.pedidos.length || 0;
@@ -173,6 +174,15 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
           : integracoes.telegram() && !chat
             ? 'robô criado, falta conectar o seu Telegram'
             : 'pronto, nenhum alerta enviado ainda',
+    },
+    {
+      nome: 'Anúncios (Meta)',
+      estado: !integracoes.metaAds() ? 'off' : contaAds === null ? 'atencao' : contaAds.status === 1 ? 'ok' : 'erro',
+      detalhe: !integracoes.metaAds()
+        ? 'cadastre o META_ADS_TOKEN para ver gasto e cliques'
+        : contaAds === null
+          ? 'não consegui ler a conta de anúncios agora'
+          : `${contaAds.status === 1 ? 'conta ativa' : 'conta parada'}${contaAds.saldo ? ` · ${contaAds.saldo}` : ''}`,
     },
     {
       nome: 'Banco rápido (Upstash)',

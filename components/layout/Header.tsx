@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { useCartStore } from '../../store/cartStore';
-import { marcarEtapa } from '../analytics/Etapa';
+import { marcarEtapa, registrarOrigem } from '../analytics/Etapa';
 
 function NavLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
@@ -33,7 +33,9 @@ export default function Header() {
 
   // Funil (anônimo): conta a visita à loja uma vez por dia; o painel não conta
   useEffect(() => {
-    if (!pathname.startsWith('/painel') && !pathname.startsWith('/atendimento')) marcarEtapa('visita');
+    if (pathname.startsWith('/painel') || pathname.startsWith('/atendimento')) return;
+    registrarOrigem();
+    marcarEtapa('visita');
   }, [pathname]);
 
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);

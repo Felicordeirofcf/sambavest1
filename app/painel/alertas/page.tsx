@@ -14,6 +14,7 @@ const AJUDA: Record<TipoAlerta, string> = {
   pix: `Pix gerado e não pago há mais de ${config.alertas.pixMinutos} min, com link para chamar no WhatsApp.`,
   estoque: `Tamanho com menos de ${config.alertas.estoqueMinimo} unidades (na Black, só as camisas da Black).`,
   resumo: `Todo dia às ${config.alertas.horaResumo}h: vendas, ticket médio e a mais vendida.`,
+  anuncio: 'Anúncio reprovado pela Meta ou conta de anúncios parada (ex.: saldo acabou). Precisa do META_ADS_TOKEN.',
 };
 
 export default async function AlertasPage({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string; link?: string }> }) {

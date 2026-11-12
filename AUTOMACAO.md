@@ -413,6 +413,20 @@ contagem anônima (`/api/evento`, 1 por navegador por etapa por dia, sem dados p
 monitoramento das integrações: última execução do cron, último webhook do WooCommerce, último
 pagamento aprovado, pendências de Bling/Melhor Envio e último alerta enviado.
 
+### 5.4 Painel de anúncios (Meta)
+
+Painel → **Anúncios**: gasto, exibições, alcance, cliques, CTR, custo por clique e adições ao carrinho
+(números da Meta, atualizados a cada ~5 min), por anúncio e por dia, mais o que aconteceu no site com
+quem veio do anúncio: visitas, sacola, checkout, **pedidos pagos, faturamento e retorno (ROAS)**.
+
+- **Origem do pedido:** o site guarda por 7 dias a origem da visita (UTM do link ou `fbclid`) e grava no
+  pedido (`_sv_origem_source`, `_campaign`, `_content`). Sem UTM, usa o cookie de clique da Meta (`_fbc`).
+  Para saber qual anúncio vendeu, use nos anúncios os parâmetros de URL
+  `utm_source=meta&utm_medium=pago&utm_campaign=black_duelo&utm_content={{ad.name}}`.
+- **Números da Meta:** precisam de `META_ADS_TOKEN` (usuário do sistema com `ads_read` na conta
+  `META_AD_ACCOUNT_ID`). Sem o token, a tela mostra só a parte do site.
+- **Alerta:** "Anúncio reprovado ou conta parada" (Painel → Alertas no celular).
+
 ## 6. Meta Ads: rastreamento de compras e catálogo
 
 **Por quê:** o pagamento acontece na página da AppMax, fora do site, então o Pixel do navegador nunca
