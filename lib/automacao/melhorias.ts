@@ -26,7 +26,8 @@ const pct = (v: number) => `${(v * 100).toLocaleString('pt-BR', { maximumFractio
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const sem = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const PARADOS = ['PAUSED', 'CAMPAIGN_PAUSED', 'ADSET_PAUSED', 'DISAPPROVED'];
-const ligado = (a: Anuncio) => !PARADOS.includes(a.status);
+// Desligado na chave (mesmo que a Meta ainda mostre "em análise") conta como parado
+const ligado = (a: Anuncio) => a.chave !== 'PAUSED' && !PARADOS.includes(a.status);
 const EM_ANALISE = ['PENDING_REVIEW', 'IN_PROCESS', 'PREAPPROVED'];
 
 /** Regras puras (testáveis): recebe os números e devolve as sugestões. */
@@ -93,7 +94,7 @@ export function gerarMelhorias(e: EntradaMelhorias): Melhoria[] {
   }
 
   // 2) Análise demorando
-  const presos = ads.filter((a) => EM_ANALISE.includes(a.status) && a.criadoEm && agora - a.criadoEm > 24 * 3_600_000);
+  const presos = ads.filter((a) => ligado(a) && EM_ANALISE.includes(a.status) && a.criadoEm && agora - a.criadoEm > 24 * 3_600_000);
   if (presos.length) {
     r.push({
       id: 'analise-24h',

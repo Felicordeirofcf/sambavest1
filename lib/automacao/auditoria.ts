@@ -36,6 +36,7 @@ export async function auditoria(): Promise<Record<string, unknown>> {
         return {
           nome: a.nome,
           status: NOME_STATUS[a.status]?.rotulo || a.status,
+          chave: a.chave === 'PAUSED' ? 'desligado' : a.chave === 'ACTIVE' ? 'ligado' : a.chave || '?',
           reprovacao: a.motivoReprovacao || undefined,
           hoje: { impressoes: a.impressoes, cliquesLink: a.cliquesLink, sacola: a.sacola, checkout: a.checkout, compras: a.compras },
           ontem: o ? { impressoes: o.impressoes, cliquesLink: o.cliquesLink, sacola: o.sacola, checkout: o.checkout, compras: o.compras } : null,
