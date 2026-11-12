@@ -75,6 +75,8 @@ export type ProdutoBF = OfertaBF & {
   precoCheio?: number;
   /** Preço que o WooCommerce cobra agora (com ou sem promoção). */
   precoAtual?: number;
+  /** ID do produto no WooCommerce. */
+  wooId?: number;
   /** Modelo da variação em promoção (abre a página do produto já nele). */
   modelo?: string;
   /** Todos os modelos no preço da Black (ex.: Masculino e Feminino). */
@@ -202,6 +204,7 @@ export async function produtosBF(): Promise<ProdutoBF[]> {
       ...o,
       // Produto escolhido pelo ID: o nome que vale é o do WooCommerce
       titulo: fixo ? p.name : o.titulo,
+      wooId: p.id,
       slug: p.slug || String(p.id),
       imagem: p.images?.[0]?.src || o.imagemReserva,
       precoCheio: cheio,

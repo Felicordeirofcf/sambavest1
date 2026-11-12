@@ -387,6 +387,32 @@ sozinho, só o que você escreve no painel.
 **Cuidados:** não é oficial. Atenda 1 a 1 e não use para disparos em massa, o WhatsApp pode bloquear o
 número. Se a API oficial (`WHATSAPP_TOKEN`) também estiver ligada, as respostas saem pela oficial.
 
+### 5.2 Alertas no celular do dono
+
+Painel → **Alertas no celular**. Cada alerta pode ser ligado ou pausado (o de **venda paga começa
+pausado**):
+
+| Alerta | Quando |
+|---|---|
+| Venda paga | cada pedido pago (itens, cidade e total do dia) |
+| Pagamento recusado | pedido com status "Falhou" |
+| Erro em pedido | falha ao mandar para o Bling, criar envio, etiqueta etc. (1 vez por dia por erro) |
+| Pix parado | Pix gerado e não pago há mais de 30 min (`ALERTA_PIX_MINUTOS`), com link para chamar o cliente |
+| Tamanho acabando | menos de 3 unidades (`ALERTA_ESTOQUE_MINIMO`); na Black, só das camisas da Black |
+| Resumo do dia | às 21h (`ALERTA_HORA_RESUMO`): vendas, ticket médio, mais vendida e placar da Black |
+
+Canais: **Telegram** (`TELEGRAM_BOT_TOKEN`; crie o robô no @BotFather e conecte pelo botão do
+painel) e **WhatsApp pessoal** (`ALERTA_WHATSAPP_NUMERO`, enviado pela Evolution). Pix parado,
+estoque e resumo rodam na rotina do cron (a cada 15 min no cron-job.org); venda, recusa e erro
+chegam na hora pelo webhook do WooCommerce. Nenhum alerta se repete.
+
+### 5.3 Funil e monitoramento
+
+A visão geral do painel mostra o funil (visitou → abriu camisa → sacola → checkout → pagou) com
+contagem anônima (`/api/evento`, 1 por navegador por etapa por dia, sem dados pessoais) e o
+monitoramento das integrações: última execução do cron, último webhook do WooCommerce, último
+pagamento aprovado, pendências de Bling/Melhor Envio e último alerta enviado.
+
 ## 6. Meta Ads: rastreamento de compras e catálogo
 
 **Por quê:** o pagamento acontece na página da AppMax, fora do site, então o Pixel do navegador nunca

@@ -6,6 +6,7 @@ import ShippingCalculator from '../../../components/product/ShippingCalculator';
 import { useSearchParams } from 'next/navigation';
 import { rastrear, dadosItens } from '../../../lib/pixel';
 import { descontoPixAtual } from '../../../lib/pix';
+import { marcarEtapa } from '../../../components/analytics/Etapa';
 import Image from 'next/image';
 import { podeOtimizar } from '../../../lib/imagem';
 import { WHATSAPP_NUMBER } from '../../../lib/whatsapp';
@@ -23,6 +24,7 @@ export default function ProductClient({ product }: { product: any }) {
   // Meta Pixel: visualização do produto (o ID do produto pai casa com item_group_id do catálogo)
   useEffect(() => {
     if (!product?.id) return;
+    marcarEtapa('produto');
     rastrear('ViewContent', {
       content_type: 'product_group',
       content_ids: [String(product.id)],
@@ -235,6 +237,7 @@ export default function ProductClient({ product }: { product: any }) {
       quantity: 1,
     });
 
+    marcarEtapa('sacola');
     rastrear('AddToCart', {
       ...dadosItens([{ id: matchedVariant.id, quantidade: 1, preco: currentPrice }]),
       content_name: product.name,

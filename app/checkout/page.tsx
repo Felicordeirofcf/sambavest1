@@ -8,6 +8,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { podeOtimizar } from '../../lib/imagem';
 import { descontoPixAtual } from '../../lib/pix';
+import { marcarEtapa } from '../../components/analytics/Etapa';
 
 export default function CheckoutPage() {
   const { items, removeItem, clearCart } = useCartStore();
@@ -21,6 +22,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setIsMounted(true);
+    marcarEtapa('checkout');
     // Força a atualização da store do Zustand caso use persistência local
     if (typeof window !== 'undefined') {
       useCartStore.persist.rehydrate();

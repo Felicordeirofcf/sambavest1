@@ -11,3 +11,9 @@ export function faseBF(agora = Date.now()): FaseBF {
   if (agora <= PERIODO_BF.fim.getTime()) return 'durante';
   return 'depois';
 }
+
+/** Dias de calendário até o fim (0 = hoje é o último dia), no horário de Brasília. */
+export function diasAteFimBF(agora = Date.now()): number {
+  const dia = (ms: number) => new Date(new Date(ms).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) + 'T00:00:00Z').getTime();
+  return Math.max(0, Math.round((dia(PERIODO_BF.fim.getTime()) - dia(agora)) / 86_400_000));
+}

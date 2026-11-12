@@ -6,6 +6,7 @@
 import crypto from 'node:crypto';
 import { after, NextResponse } from 'next/server';
 import { config } from '../../../../lib/automacao/config';
+import { registrarExecucao } from '../../../../lib/automacao/monitor';
 import { processarPedido } from '../../../../lib/automacao/pedidos';
 
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
   after(async () => {
     try {
       const rel = await processarPedido(id!);
+      await registrarExecucao('webhook-woo', true, `pedido #${id}`);
       console.log('[automacao] webhook', JSON.stringify(rel));
     } catch (e) {
       console.error('[automacao] webhook falhou', id, (e as Error).message);

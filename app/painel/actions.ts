@@ -260,3 +260,57 @@ export async function desconectarWhatsapp(formData: FormData) {
   }
   voltarWhats('WhatsApp desconectado do painel. O celular continua funcionando normalmente.');
 }
+
+// ---------- Alertas no celular ----------
+
+function voltarAlertas(msg: string, tipo: 'ok' | 'erro' = 'ok'): never {
+  redirect(`/painel/alertas?${tipo}=${encodeURIComponent(msg)}`);
+}
+
+export async function gerarLinkTelegram() {
+  await exigirLogin();
+  const { linkConexaoTelegram } = await import('../../lib/automacao/alertas');
+  let link = '';
+  try {
+    link = (await linkConexaoTelegram()).link;
+  } catch (e) {
+    voltarAlertas((e as Error).message, 'erro');
+  }
+  redirect(`/painel/alertas?link=${encodeURIComponent(link)}`);
+}
+
+export async function confirmarTelegram() {
+  await exigirLogin();
+  const { confirmarConexaoTelegram } = await import('../../lib/automacao/alertas');
+  let nome = '';
+  try {
+    nome = await confirmarConexaoTelegram();
+  } catch (e) {
+    voltarAlertas((e as Error).message, 'erro');
+  }
+  voltarAlertas(`Telegram conectado (${nome}). Mandei uma mensagem de confirmação para você.`);
+}
+
+export async function salvarAlertas(formData: FormData) {
+  await exigirLogin();
+  const { TIPOS_ALERTA, salvarPreferenciasAlertas } = await import('../../lib/automacao/alertas');
+  const prefs = {} as Record<keyof typeof TIPOS_ALERTA, boolean>;
+  for (const t of Object.keys(TIPOS_ALERTA) as (keyof typeof TIPOS_ALERTA)[]) prefs[t] = formData.get(t) === 'on';
+  await salvarPreferenciasAlertas(prefs);
+  voltarAlertas('Preferências salvas.');
+}
+
+export async function testarAlerta() {
+  await exigirLogin();
+  const { alertarCelular, textoResumoDoDia } = await import('../../lib/automacao/alertas');
+  let canais: string[] = [];
+  try {
+    canais = await alertarCelular(`🔔 Teste do painel Samba Vest
+
+${await textoResumoDoDia()}`);
+  } catch (e) {
+    voltarAlertas((e as Error).message, 'erro');
+  }
+  if (!canais.length) voltarAlertas('Nenhum canal enviou. Conecte o Telegram (ou o WhatsApp pela Evolution) primeiro.', 'erro');
+  voltarAlertas(`Alerta de teste enviado por: ${canais.join(' e ')}.`);
+}

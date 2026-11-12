@@ -8,6 +8,7 @@ import { config, integracoes } from './config';
 import { adquirirTrava, liberarTrava } from './kv';
 import * as melhorEnvio from './melhorenvio';
 import { enviarCompra } from './meta';
+import { alertaErroPedido, alertaPagamentoRecusado, alertaVenda } from './alertas';
 import { alertarLoja, avisarCliente, escapar } from './notificacoes';
 import { adicionarNota, linkPagamento, listarPedidos, meta, obterPedido, salvarNoPedido, WcPedido } from './woocommerce';
 
@@ -69,6 +70,9 @@ export async function processarPedido(id: number, opcoes: { rastreioMelhorEnvio?
       }
     };
 
+    // 0) Pagamento recusado: avisa o dono (uma vez por pedido)
+    if (pedido.status === 'failed') await alertaPagamentoRecusado(pedido);
+
     // 1) Pedido recebido (aguardando pagamento)
     if (pedido.status === 'pending' && config.avisos.recebido && !meta(pedido, M.avisoRecebido)) {
       await passo('aviso recebido', async () => {
@@ -98,6 +102,8 @@ export async function processarPedido(id: number, opcoes: { rastreioMelhorEnvio?
             `<p><b>${e(`${b.first_name} ${b.last_name}`)}</b> · ${e(b.phone || '')} · ${e(b.email || '')}</p><ul>${itens}</ul><p>Frete: ${e(pedido.shipping_lines?.[0]?.method_title || '-')} (R$ ${e(pedido.shipping_total)})</p>`
           );
           await salvarNoPedido(pedido, { [M.alertaLoja]: new Date().toISOString() });
+          // Celular do dono (Telegram/WhatsApp), se o aviso de venda estiver ligado no painel
+          await alertaVenda(pedido);
         });
       }
 
@@ -199,6 +205,7 @@ export async function processarPedido(id: number, opcoes: { rastreioMelhorEnvio?
         await salvarNoPedido(pedido, { [M.erro]: resumo }).catch(() => {});
         await adicionarNota(pedido, `⚠️ Automação: ${resumo}`).catch(() => {});
         await alertarLoja(`Erro na automação do pedido #${pedido.id}`, `<p>${rel.erros.map((e) => `• ${escapar(e)}`).join('<br>')}</p>`);
+        await alertaErroPedido(pedido.id, rel.erros);
       }
     } else if (meta(pedido, M.erro)) {
       await salvarNoPedido(pedido, { [M.erro]: '' }).catch(() => {});

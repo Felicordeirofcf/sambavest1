@@ -162,6 +162,21 @@ export const config = {
     webhookToken: env('EVOLUTION_WEBHOOK_TOKEN'),
   },
 
+  // Alertas para o celular do dono (venda, Pix parado, estoque, erros, resumo do dia)
+  alertas: {
+    // Robô do Telegram (crie no @BotFather). O chat é conectado pelo painel (/painel/alertas).
+    telegramToken: env('TELEGRAM_BOT_TOKEN'),
+    telegramChatId: env('TELEGRAM_CHAT_ID'),
+    // WhatsApp pessoal (55 + DDD + número), enviado pela Evolution quando ela estiver ligada
+    whatsappNumero: env('ALERTA_WHATSAPP_NUMERO') || env('WHATSAPP_NUMERO_DONO'),
+    // Hora do resumo do dia (horário de Brasília)
+    horaResumo: num('ALERTA_HORA_RESUMO', 21),
+    // Pix parado há mais de X minutos vira alerta
+    pixMinutos: num('ALERTA_PIX_MINUTOS', 30),
+    // Tamanho com menos de X unidades vira alerta
+    estoqueMinimo: num('ALERTA_ESTOQUE_MINIMO', 3),
+  },
+
   email: {
     resendKey: env('RESEND_API_KEY'),
     remetente: env('EMAIL_REMETENTE'),
@@ -199,4 +214,5 @@ export const integracoes = {
   evolution: () => Boolean(config.evolution.url && config.evolution.apiKey && config.evolution.webhookToken),
   email: () => Boolean(config.email.resendKey && config.email.remetente),
   meta: () => Boolean(config.meta.pixelId && config.meta.capiToken),
+  telegram: () => Boolean(config.alertas.telegramToken),
 };
