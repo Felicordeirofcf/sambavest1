@@ -4,6 +4,7 @@
 //   GET /api/cron/automacao?tarefa=pedidos  → só reprocessa pedidos pagos (Bling, envio, rastreio)
 //   GET /api/cron/automacao?tarefa=pix      → só lembretes de Pix não pago
 //   GET /api/cron/automacao?tarefa=estoque  → só sincroniza estoque Bling → WooCommerce
+//   GET /api/cron/automacao?tarefa=alertas  → só alertas ao dono (Pix parado, estoque, resumo do dia)
 //   GET /api/cron/automacao?tarefa=diagnostico → confere a configuração do Bling (só leitura)
 //   GET /api/cron/automacao?modo=fundo     → responde na hora e roda em segundo plano
 //                                            (para o cron-job.org, que espera no máximo 30 s)
@@ -14,6 +15,8 @@ import { after, NextResponse } from 'next/server';
 import { config, integracoes } from '../../../../lib/automacao/config';
 import { diagnosticoBling } from '../../../../lib/automacao/diagnostico';
 import { sincronizarEstoque } from '../../../../lib/automacao/estoque';
+import { rotinaAlertas } from '../../../../lib/automacao/alertas';
+import { registrarExecucao } from '../../../../lib/automacao/monitor';
 import { rotinaPedidos, rotinaPix } from '../../../../lib/automacao/pedidos';
 
 export const dynamic = 'force-dynamic';
@@ -50,8 +53,11 @@ export async function GET(request: Request) {
     if ((tarefa === 'todas' || tarefa === 'estoque') && integracoes.bling() && config.bling.sincronizarEstoque) {
       await rodar('estoque', () => sincronizarEstoque());
     }
+    if (tarefa === 'todas' || tarefa === 'alertas') await rodar('alertas', () => rotinaAlertas(prazo));
     // Só roda quando pedido explicitamente (não entra em "todas").
     if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());
+    const falhas = Object.entries(resultado).filter(([, v]) => v && typeof v === 'object' && 'erro' in (v as object));
+    await registrarExecucao('cron', falhas.length === 0, falhas.map(([k, v]) => `${k}: ${(v as { erro: string }).erro}`).join(' | ') || tarefa);
     console.log('[automacao] cron', tarefa, emFundo ? '(segundo plano)' : '', JSON.stringify(resultado));
   };
 

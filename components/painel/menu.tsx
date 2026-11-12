@@ -20,6 +20,7 @@ const ICONES: Record<string, ReactNode> = {
   atendimento: ic(<><path d="M4 13v-1a8 8 0 0 1 16 0v1" /><rect x="3" y="13" width="4" height="6" rx="1.5" /><rect x="17" y="13" width="4" height="6" rx="1.5" /></>),
   produtos: ic(<><path d="M8 4 4 7l2 3 2-1v11h8V9l2 1 2-3-4-3-2 2h-4L8 4Z" /></>),
   integracoes: ic(<><path d="M9 7V4M15 7V4M7 7h10v4a5 5 0 0 1-10 0V7ZM12 16v4" /></>),
+  alertas: ic(<><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z" /><path d="M10 20a2 2 0 0 0 4 0" /></>),
   woo: ic(<><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></>),
 };
 
@@ -30,6 +31,7 @@ const GRUPOS: { titulo: string; itens: { href: string; rotulo: string; icone: st
       { href: '/painel', rotulo: 'Visão geral', icone: 'geral' },
       { href: '/painel/pedidos', rotulo: 'Pedidos', icone: 'pedidos' },
       { href: '/painel/financeiro', rotulo: 'Financeiro', icone: 'financeiro' },
+      { href: '/painel/alertas', rotulo: 'Alertas no celular', icone: 'alertas' },
     ],
   },
   {
