@@ -50,7 +50,7 @@ function CamisaTopo({ p, fase }: { p: ProdutoBF; fase: ReturnType<typeof faseBF>
           fill
           priority
           sizes="(max-width: 640px) 50vw, 360px"
-          className={p.fotoVestida ? 'object-cover' : 'object-contain p-2 transition-transform duration-500 group-hover:scale-105'}
+          className={p.fotoVestida ? 'object-cover object-top' : 'object-contain p-2 transition-transform duration-500 group-hover:scale-105'}
         />
         <span className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white ${azul ? 'bg-sky-600' : 'bg-red-600'}`}>
           {azul ? 'Beija-Flor' : 'Viradouro'}
@@ -90,11 +90,11 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
     >
       <div className={`relative ${destaque ? 'aspect-square' : 'aspect-square md:w-1/2'} ${azul ? 'bg-sky-950/40' : 'bg-red-950/40'}`}>
         <Image
-          src={p.imagem}
+          src={p.fotoVestida || p.imagem}
           alt={p.titulo}
           fill
           sizes="(max-width: 768px) 100vw, 50vw"
-          className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+          className={p.fotoVestida ? 'object-cover object-top' : 'object-contain p-4 transition-transform duration-500 group-hover:scale-105'}
         />
         {economia > 0 && (
           <span className="absolute left-4 top-4 rotate-[-6deg] rounded-xl bg-[#C9A227] px-3 py-1.5 text-lg font-black leading-none text-black shadow-lg">

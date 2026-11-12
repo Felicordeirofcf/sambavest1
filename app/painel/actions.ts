@@ -314,3 +314,25 @@ ${await textoResumoDoDia()}`);
   if (!canais.length) voltarAlertas('Nenhum canal enviou. Conecte o Telegram (ou o WhatsApp pela Evolution) primeiro.', 'erro');
   voltarAlertas(`Alerta de teste enviado por: ${canais.join(' e ')}.`);
 }
+
+// ---------- Fotos da Black (foto vestida no topo da página) ----------
+
+export async function escolherFotoVestida(formData: FormData) {
+  await exigirLogin();
+  const { OFERTAS, chaveFotoVestida, produtosBF } = await import('../../lib/blackfriday');
+  const oferta = txt(formData, 'oferta');
+  const url = txt(formData, 'url');
+  if (!OFERTAS.some((o) => o.id === oferta)) redirect('/painel/fotos-black?erro=' + encodeURIComponent('Camisa inválida.'));
+  const { kvDel, kvSet } = await import('../../lib/automacao/kv');
+  if (!url) {
+    await kvDel(chaveFotoVestida(oferta));
+  } else {
+    // Só aceita fotos que são mesmo deste produto no WooCommerce
+    const p = (await produtosBF()).find((x) => x.id === oferta);
+    if (!p?.galeria?.includes(url)) redirect('/painel/fotos-black?erro=' + encodeURIComponent('Essa foto não é deste produto.'));
+    await kvSet(chaveFotoVestida(oferta), url);
+  }
+  const { revalidatePath } = await import('next/cache');
+  revalidatePath('/black-friday');
+  redirect('/painel/fotos-black?ok=' + encodeURIComponent(url ? 'Foto escolhida! O topo da Black já mostra essa foto.' : 'Voltou para a foto da camisa.'));
+}

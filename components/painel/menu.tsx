@@ -22,6 +22,7 @@ const ICONES: Record<string, ReactNode> = {
   integracoes: ic(<><path d="M9 7V4M15 7V4M7 7h10v4a5 5 0 0 1-10 0V7ZM12 16v4" /></>),
   alertas: ic(<><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z" /><path d="M10 20a2 2 0 0 0 4 0" /></>),
   anuncios: ic(<><path d="M4 10v4h3l6 4V6l-6 4H4Z" /><path d="M17 9a4 4 0 0 1 0 6" /></>),
+  fotos: ic(<><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="m21 16-5-5-8 8" /></>),
   woo: ic(<><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></>),
 };
 
@@ -49,6 +50,7 @@ const GRUPOS: { titulo: string; itens: { href: string; rotulo: string; icone: st
     titulo: 'Loja',
     itens: [
       { href: '/painel/produtos', rotulo: 'Produtos e estoque', icone: 'produtos' },
+      { href: '/painel/fotos-black', rotulo: 'Fotos da Black', icone: 'fotos' },
       { href: '/painel/integracoes', rotulo: 'Integrações', icone: 'integracoes' },
       { href: 'https://api.sambavest.com/wp-admin/', rotulo: 'WooCommerce', icone: 'woo', externo: true },
     ],
