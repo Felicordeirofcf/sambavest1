@@ -11,7 +11,6 @@ export type { FaseBF } from './blackfridayPeriodo';
 
 export const BF = {
   ...PERIODO_BF,
-  descontoPix: 0.1,
   whatsapp: '5521996959903',
 };
 

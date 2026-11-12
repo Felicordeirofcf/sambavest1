@@ -7,6 +7,7 @@ import { FREE_SHIPPING_THRESHOLD, type ShippingQuote } from '../../lib/shipping'
 import Link from 'next/link';
 import Image from 'next/image';
 import { podeOtimizar } from '../../lib/imagem';
+import { descontoPixAtual } from '../../lib/pix';
 
 export default function CheckoutPage() {
   const { items, removeItem, clearCart } = useCartStore();
@@ -166,7 +167,8 @@ export default function CheckoutPage() {
   
   // 💰 Cálculo Dinâmico do Desconto Pix (10% OFF se a opção selecionada for Pix)
   const isPixSelected = paymentMethod === 'appmax_pix';
-  const descontoPix = isPixSelected ? subtotal * 0.10 : 0;
+  const pctPix = descontoPixAtual();
+  const descontoPix = isPixSelected ? subtotal * pctPix : 0;
   const subtotalComDesconto = subtotal - descontoPix;
 
   // O frete grátis depende do subtotal atual (ex.: trocar Pix por cartão muda o subtotal),
@@ -402,7 +404,7 @@ export default function CheckoutPage() {
                     className="accent-[#0B1B34]" 
                   />
                   <div>
-                    <span className="block text-sm font-bold text-[#0B1B34]">Pix <span className="text-xs text-emerald-600 font-bold ml-1">(10% de Desconto)</span></span>
+                    <span className="block text-sm font-bold text-[#0B1B34]">Pix {pctPix > 0 && <span className="text-xs text-emerald-600 font-bold ml-1">({Math.round(pctPix * 100)}% de Desconto)</span>}</span>
                     <span className="text-xs text-gray-500">Aprova na hora e gera o QR Code / Copia e Cola.</span>
                   </div>
                 </label>
@@ -445,8 +447,8 @@ export default function CheckoutPage() {
                         <p className="text-xs text-gray-500 italic">Qtd: {item.quantity}</p>
                       </div>
                       <p className="text-sm font-bold text-[#1E2233]">
-                        R$ {(isPixSelected ? item.price * 0.90 : item.price).toFixed(2).replace('.', ',')}
-                        {isPixSelected && <span className="text-[10px] text-emerald-600 ml-1 font-normal">(pix)</span>}
+                        R$ {(isPixSelected ? item.price * (1 - pctPix) : item.price).toFixed(2).replace('.', ',')}
+                        {isPixSelected && pctPix > 0 && <span className="text-[10px] text-emerald-600 ml-1 font-normal">(pix)</span>}
                       </p>
                     </div>
                   </div>
@@ -465,9 +467,9 @@ export default function CheckoutPage() {
                   <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
                 </div>
 
-                {isPixSelected && (
+                {isPixSelected && pctPix > 0 && (
                   <div className="flex justify-between text-emerald-600 font-medium">
-                    <span>Desconto Pix (10%)</span>
+                    <span>Desconto Pix ({Math.round(pctPix * 100)}%)</span>
                     <span>- R$ {descontoPix.toFixed(2).replace('.', ',')}</span>
                   </div>
                 )}
