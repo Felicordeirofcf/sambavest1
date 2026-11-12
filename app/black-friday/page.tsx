@@ -30,7 +30,9 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
   const azul = p.escola === 'beija-flor';
   // Sem o produto do WooCommerce não há para onde mandar (as categorias redirecionam para cá):
   // o cliente compra pelo WhatsApp.
-  const href = p.slug ? `/produto/${p.slug}` : p.produtoId ? `/produto/${p.produtoId}` : null;
+  const base = p.slug ? `/produto/${p.slug}` : p.produtoId ? `/produto/${p.produtoId}` : null;
+  const href = base && p.modelo ? `${base}?modelo=${encodeURIComponent(p.modelo)}` : base;
+  const tamanhos = p.tamanhos?.length ? (p.tamanhos.length === 1 ? `tamanho ${p.tamanhos[0]}` : `tamanhos ${p.tamanhos.join(', ')}`) : 'do P ao EXG';
   const zap = `https://wa.me/${BF.whatsapp}?text=${encodeURIComponent(`Quero a ${p.titulo} da Black Friday!`)}`;
 
   return (
@@ -79,7 +81,7 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
               Economize {brl(de - preco)}
             </p>
           )}
-          <p className="mt-1 text-xs text-white/40">+ frete · do P ao EXG</p>
+          <p className="mt-1 text-xs text-white/40">+ frete · {p.modelos?.length ? `${p.modelos.join(' e ')}, ` : ''}{tamanhos}</p>
         </div>
 
         {fase === 'durante' && !href ? (

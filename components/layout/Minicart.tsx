@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -10,6 +11,33 @@ export default function Minicart() {
   const { items, isOpen, closeCart, removeItem } = useCartStore();
 
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+  // Ao abrir a sacola, confere o preço atual de cada item (promoção que começou ou acabou)
+  useEffect(() => {
+    if (!isOpen) return;
+    const atuais = useCartStore.getState().items;
+    if (atuais.length === 0) return;
+    let cancelado = false;
+    fetch('/api/carrinho', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: atuais.map((i) => i.id) }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelado || !data?.success) return;
+        const precos: Record<string, number> = {};
+        for (const item of atuais) {
+          const info = data.itens?.[String(item.id)];
+          if (info?.disponivel && Math.abs(info.preco - item.price) > 0.009) precos[String(item.id)] = info.preco;
+        }
+        if (Object.keys(precos).length) useCartStore.getState().atualizarPrecos(precos);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

@@ -47,7 +47,7 @@ export const useCartStore = create<CartStore>()(
             return {
               items: state.items.map((item) =>
                 item.id === newItem.id && item.size === newItem.size
-                  ? { ...item, quantity: item.quantity + newItem.quantity }
+                  ? { ...item, quantity: item.quantity + newItem.quantity, price: newItem.price } // preço de agora (promoção)
                   : item
               ),
             };
