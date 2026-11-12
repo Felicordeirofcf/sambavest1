@@ -80,7 +80,39 @@ export type ProdutoBF = OfertaBF & {
 
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-type WcProduto = { id: number; name: string; slug: string; price: string; regular_price: string; images?: { src: string }[] };
+type WcProduto = {
+  id: number;
+  name: string;
+  slug: string;
+  type?: string;
+  price: string;
+  regular_price: string;
+  images?: { src: string }[];
+};
+type WcVariacao = { price: string; regular_price: string; status?: string; stock_status?: string };
+
+/**
+ * Em produto variável o WooCommerce manda o "preço normal" vazio no produto principal:
+ * o preço "de" e o preço atual vêm das variações (tamanhos).
+ */
+async function precosDasVariacoes(id: number): Promise<{ atual?: number; cheio?: number }> {
+  const c = credenciaisWoo();
+  if (!c) return {};
+  try {
+    const res = await fetch(`${c.url}/wp-json/wc/v3/products/${id}/variations?per_page=100`, { headers: c.headers, next: { revalidate: 120 } });
+    if (!res.ok) return {};
+    const lista = ((await res.json()) as WcVariacao[]).filter((v) => (v.status ?? 'publish') === 'publish' && Number(v.price) > 0);
+    const aVenda = lista.filter((v) => v.stock_status !== 'outofstock');
+    const base = aVenda.length ? aVenda : lista;
+    if (!base.length) return {};
+    const atual = Math.min(...base.map((v) => Number(v.price)));
+    // "de" da variação com o menor preço (o mesmo par que o cliente vê)
+    const par = base.find((v) => Number(v.price) === atual)!;
+    return { atual, cheio: Number(par.regular_price) || atual };
+  } catch {
+    return {};
+  }
+}
 
 function credenciaisWoo() {
   const url = process.env.NEXT_PUBLIC_WC_URL || 'https://api.sambavest.com';
@@ -122,13 +154,21 @@ async function produtosWoo(): Promise<WcProduto[]> {
 export async function produtosBF(): Promise<ProdutoBF[]> {
   const [woo, ...porId] = await Promise.all([produtosWoo(), ...OFERTAS.map((o) => (o.produtoId ? produtoWooPorId(o.produtoId) : null))]);
   const usados = new Set<number>(porId.filter(Boolean).map((p) => p!.id));
-  return OFERTAS.map((o, i) => {
+  const escolhidos: (WcProduto | undefined)[] = [];
+  OFERTAS.forEach((o, i) => {
     const fixo = porId[i];
     const p = fixo || (o.produtoId ? undefined : woo.find((w) => !usados.has(w.id) && o.combina(semAcento(w.name))));
+    if (p) usados.add(p.id);
+    escolhidos[i] = p || undefined;
+  });
+  const variacoes = await Promise.all(escolhidos.map((p) => (p && p.type === 'variable' ? precosDasVariacoes(p.id) : null)));
+  return OFERTAS.map((o, i) => {
+    const p = escolhidos[i];
+    const fixo = porId[i];
     if (!p) return { ...o, imagem: o.imagemReserva, encontrado: false };
-    usados.add(p.id);
-    const atual = Number(p.price) || undefined;
-    const cheio = Number(p.regular_price) || atual;
+    const v = variacoes[i];
+    const atual = v?.atual ?? (Number(p.price) || undefined);
+    const cheio = v?.cheio ?? (Number(p.regular_price) || atual);
     return {
       ...o,
       // Produto escolhido pelo ID: o nome que vale é o do WooCommerce

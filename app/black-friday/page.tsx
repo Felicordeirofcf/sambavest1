@@ -48,7 +48,9 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
           className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
         />
         {economia > 0 && (
-          <span className="absolute left-4 top-4 rounded-full bg-[#C9A227] px-3 py-1 text-sm font-black text-black">-{economia}%</span>
+          <span className="absolute left-4 top-4 rotate-[-6deg] rounded-xl bg-[#C9A227] px-3 py-1.5 text-lg font-black leading-none text-black shadow-lg">
+            -{economia}% <span className="text-xs">OFF</span>
+          </span>
         )}
         <span
           className={`absolute right-4 top-4 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white ${azul ? 'bg-sky-600' : 'bg-red-600'}`}
@@ -63,12 +65,21 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
         <p className="text-sm text-white/60">{p.descricao}</p>
 
         <div className="mt-1">
-          {de && <p className="text-sm text-white/50 line-through">de {brl(de)}</p>}
+          {de && (
+            <p className="text-lg font-bold text-white/60">
+              De <span className="line-through decoration-red-500 decoration-2">{brl(de)}</span>
+            </p>
+          )}
           <p className="text-4xl font-black text-white">
             <span className="text-base font-bold text-white/60">por </span>
             {brl(preco)}
           </p>
-          <p className="text-xs text-white/40">+ frete · do P ao EXG</p>
+          {de && (
+            <p className="mt-2 inline-block rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-black text-emerald-300">
+              Economize {brl(de - preco)}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-white/40">+ frete · do P ao EXG</p>
         </div>
 
         {fase === 'durante' && !href ? (
