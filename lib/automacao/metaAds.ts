@@ -16,7 +16,10 @@ async function graph<T>(caminho: string, params: Record<string, string> = {}): P
   const j = (await res.json().catch(() => null)) as { error?: { message?: string; code?: number } } | null;
   if (!res.ok || j?.error) {
     const msg = j?.error?.message || `HTTP ${res.status}`;
-    throw new Error(j?.error?.code === 190 ? `token da Meta inválido ou vencido (${msg})` : `Meta: ${msg}`);
+    const codigo = j?.error?.code;
+    const erro = new Error(codigo === 190 ? `token da Meta inválido ou vencido (${msg})` : `Meta: ${msg}`) as Error & { codigo?: number };
+    erro.codigo = codigo;
+    throw erro;
   }
   return j as T;
 }
@@ -31,6 +34,12 @@ async function comCache<T>(chave: string, fn: () => Promise<T>): Promise<T> {
 }
 
 const conta = () => `act_${config.metaAds.conta}`;
+
+/** Erro de permissão da Meta (#10, #200-#299). */
+const semPermissao = (e: unknown) => {
+  const c = (e as { codigo?: number }).codigo;
+  return c === 10 || (typeof c === 'number' && c >= 200 && c < 300);
+};
 
 // ---------- Tipos ----------
 
@@ -115,7 +124,10 @@ export async function contaAnuncios(): Promise<ContaAnuncios> {
       amount_spent?: string;
       spend_cap?: string;
       funding_source_details?: { display_string?: string };
-    }>(conta(), { fields: 'name,account_status,disable_reason,amount_spent,spend_cap,funding_source_details' });
+    }>(conta(), { fields: 'name,account_status,disable_reason,amount_spent,spend_cap,funding_source_details' }).catch((e) =>
+      // O saldo (funding_source_details) pode exigir mais que "só leitura": tenta sem ele
+      semPermissao(e) ? graph<{ name: string; account_status: number; disable_reason?: number; amount_spent?: string; spend_cap?: string; funding_source_details?: { display_string?: string } }>(conta(), { fields: 'name,account_status,disable_reason,amount_spent,spend_cap' }) : Promise.reject(e)
+    );
     return {
       nome: r.name,
       status: r.account_status,
@@ -158,7 +170,7 @@ export type Anuncio = Numeros & {
 
 export async function anuncios(p: Periodo): Promise<Anuncio[]> {
   return comCache(`ads:${p.desde}:${p.ate}`, async () => {
-    const [lista, ins] = await Promise.all([
+    const pedirLista = (camposAds: string) =>
       graph<{
         data: {
           id: string;
@@ -169,10 +181,15 @@ export async function anuncios(p: Periodo): Promise<Anuncio[]> {
           ad_review_feedback?: { global?: Record<string, string> };
         }[];
       }>(`${conta()}/ads`, {
-        fields: 'name,effective_status,campaign{name},creative{thumbnail_url},ad_review_feedback',
+        fields: camposAds,
         effective_status: JSON.stringify(['ACTIVE', 'PAUSED', 'PENDING_REVIEW', 'DISAPPROVED', 'WITH_ISSUES', 'IN_PROCESS', 'CAMPAIGN_PAUSED', 'ADSET_PAUSED', 'PREAPPROVED']),
         limit: '50',
-      }),
+      });
+    const [lista, ins] = await Promise.all([
+      // Miniatura e motivo de reprovação podem exigir mais que "só leitura": tenta sem eles
+      pedirLista('name,effective_status,campaign{name},creative{thumbnail_url},ad_review_feedback').catch((e) =>
+        semPermissao(e) ? pedirLista('name,effective_status,campaign{name}') : Promise.reject(e)
+      ),
       graph<{ data: LinhaInsight[] }>(`${conta()}/insights`, {
         level: 'ad',
         fields: `ad_id,ad_name,campaign_name,${CAMPOS}`,

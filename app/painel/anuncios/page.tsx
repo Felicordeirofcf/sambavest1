@@ -55,17 +55,23 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
   const funilSite = integracoes.kv() ? await somaFunil(dias, 'meta').catch(() => null) : null;
 
   // ---------- Lado da Meta ----------
-  let erroMeta = '';
+  // Cada parte separada: uma permissão negada não derruba a tela inteira, e o erro diz qual parte falhou
+  const errosMeta: string[] = [];
   let contaInfo: Awaited<ReturnType<typeof contaAnuncios>> | null = null;
   let tot: Awaited<ReturnType<typeof totais>> | null = null;
   let serie: Awaited<ReturnType<typeof porDia>> = [];
   let lista: Awaited<ReturnType<typeof anuncios>> = [];
   if (integracoes.metaAds()) {
-    try {
-      [contaInfo, tot, serie, lista] = await Promise.all([contaAnuncios(), totais(p), porDia(p), anuncios(p)]);
-    } catch (e) {
-      erroMeta = (e as Error).message;
-    }
+    const [rConta, rTot, rSerie, rLista] = await Promise.allSettled([contaAnuncios(), totais(p), porDia(p), anuncios(p)]);
+    const motivo = (r: PromiseRejectedResult) => (r.reason as Error)?.message || String(r.reason);
+    if (rConta.status === 'fulfilled') contaInfo = rConta.value;
+    else errosMeta.push(`dados da conta: ${motivo(rConta)}`);
+    if (rTot.status === 'fulfilled') tot = rTot.value;
+    else errosMeta.push(`números do período: ${motivo(rTot)}`);
+    if (rSerie.status === 'fulfilled') serie = rSerie.value;
+    else errosMeta.push(`números por dia: ${motivo(rSerie)}`);
+    if (rLista.status === 'fulfilled') lista = rLista.value;
+    else errosMeta.push(`lista de anúncios: ${motivo(rLista)}`);
   }
 
   const gasto = tot?.gasto || 0;
@@ -110,7 +116,23 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
           no site com quem veio do anúncio.
         </Aviso>
       )}
-      {erroMeta && <Aviso tipo="erro">Não consegui ler os números da Meta: {erroMeta}</Aviso>}
+      {errosMeta.length > 0 && (
+        <Aviso tipo="erro">
+          <p className="font-semibold">Não consegui ler parte dos números da Meta:</p>
+          <ul className="mt-1 list-disc pl-5">
+            {errosMeta.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+          {errosMeta.some((e) => /\(#10\)|#2\d\d|permiss/i.test(e)) && (
+            <p className="mt-2">
+              &quot;Permission&quot; quer dizer que o token não tem acesso a essa parte. Confira: o app &quot;Samba Vest Site&quot; tem o caso de uso de
+              anúncios (API de Marketing) com <b>ads_read</b>; o token foi gerado com <b>ads_read</b> e <b>read_insights</b>; e o usuário do sistema
+              tem &quot;Ver desempenho&quot; na conta {config.metaAds.conta}.
+            </p>
+          )}
+        </Aviso>
+      )}
       {erroSite && <Aviso tipo="erro">Não consegui ler os pedidos do WooCommerce: {erroSite}</Aviso>}
 
       {/* Conta */}
