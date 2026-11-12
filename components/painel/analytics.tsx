@@ -261,7 +261,8 @@ export function MapaBrasil({ dados }: { dados: Map<string, { qtd: number; valor:
 // ---------- Funil ----------
 
 export function Funil({ etapas }: { etapas: { nome: string; valor: number }[] }) {
-  const topo = Math.max(1, etapas[0]?.valor || 0);
+  // A maior etapa vale 100% (no começo, o site pode registrar mais visitas que os cliques da Meta)
+  const topo = Math.max(1, ...etapas.map((e) => e.valor));
   return (
     <ol className="space-y-2.5">
       {etapas.map((e, i) => {
@@ -280,8 +281,8 @@ export function Funil({ etapas }: { etapas: { nome: string; valor: number }[] })
                 )}
               </span>
             </div>
-            <div className="mt-1 h-3 rounded-full bg-slate-100">
-              <div className="h-3 rounded-full bg-[#10173a]" style={{ width: `${Math.max(e.valor > 0 ? 2 : 0, (e.valor / topo) * 100)}%`, opacity: 1 - i * 0.12 }} />
+            <div className="mt-1 h-3 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-3 rounded-full bg-[#10173a]" style={{ width: `${Math.min(100, Math.max(e.valor > 0 ? 2 : 0, (e.valor / topo) * 100))}%`, opacity: 1 - i * 0.12 }} />
             </div>
           </li>
         );
