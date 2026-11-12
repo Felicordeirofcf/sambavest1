@@ -123,7 +123,7 @@ export default async function BlackFridayPage() {
             <b className="text-white">R$ 99</b>, com +10% de desconto no Pix. Nilópolis ou Niterói: escolha o seu lado.
           </p>
           {fase === 'antes' && <Contagem alvo={BF.inicio.toISOString()} rotulo="A avenida abre em" />}
-          {fase === 'durante' && <Contagem alvo={BF.fim.toISOString()} rotulo="Últimas horas de Black" />}
+          {fase === 'durante' && <Contagem alvo={BF.fim.toISOString()} rotulo="A Black termina em" />}
           {fase === 'depois' && (
             <p className="rounded-xl bg-white/10 px-5 py-3 text-sm">A Black Friday terminou. Obrigado por desfilar com a gente! 🥁</p>
           )}

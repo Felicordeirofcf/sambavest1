@@ -7,7 +7,7 @@ import { kvGet } from './automacao/kv';
 
 export const BF = {
   // Horário de Brasília
-  inicio: new Date('2026-11-27T00:00:00-03:00'),
+  inicio: new Date('2026-11-12T00:00:00-03:00'),
   fim: new Date('2026-11-30T23:59:59-03:00'),
   descontoPix: 0.1,
   whatsapp: '5521996959903',
