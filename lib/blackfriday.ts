@@ -75,6 +75,12 @@ export type ProdutoBF = OfertaBF & {
   precoCheio?: number;
   /** Preço que o WooCommerce cobra agora (com ou sem promoção). */
   precoAtual?: number;
+  /** Modelo da variação em promoção (abre a página do produto já nele). */
+  modelo?: string;
+  /** Todos os modelos no preço da Black (ex.: Masculino e Feminino). */
+  modelos?: string[];
+  /** Tamanhos à venda no preço da Black. */
+  tamanhos?: string[];
   encontrado: boolean;
 };
 
@@ -89,13 +95,25 @@ type WcProduto = {
   regular_price: string;
   images?: { src: string }[];
 };
-type WcVariacao = { price: string; regular_price: string; status?: string; stock_status?: string };
+type WcVariacao = {
+  price: string;
+  regular_price: string;
+  status?: string;
+  stock_status?: string;
+  attributes?: { name?: string; option?: string }[];
+};
+
+const ORDEM_TAMANHOS = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XGG', 'EXG', 'G1', 'G2', 'G3', 'G4'];
+const atributo = (v: WcVariacao, ...nomes: string[]) =>
+  v.attributes?.find((a) => nomes.some((n) => (a.name || '').toLowerCase().includes(n)))?.option || '';
 
 /**
  * Em produto variável o WooCommerce manda o "preço normal" vazio no produto principal:
  * o preço "de" e o preço atual vêm das variações (tamanhos).
  */
-async function precosDasVariacoes(id: number): Promise<{ atual?: number; cheio?: number }> {
+async function precosDasVariacoes(
+  id: number
+): Promise<{ atual?: number; cheio?: number; modelo?: string; modelos?: string[]; tamanhos?: string[] }> {
   const c = credenciaisWoo();
   if (!c) return {};
   try {
@@ -108,7 +126,18 @@ async function precosDasVariacoes(id: number): Promise<{ atual?: number; cheio?:
     const atual = Math.min(...base.map((v) => Number(v.price)));
     // "de" da variação com o menor preço (o mesmo par que o cliente vê)
     const par = base.find((v) => Number(v.price) === atual)!;
-    return { atual, cheio: Number(par.regular_price) || atual };
+    // Modelos em promoção (ex.: só Unissex, ou Masculino e Feminino). Se for um só, o botão
+    // já abre a página do produto nele (evita cair na Regata, que está fora da Black).
+    const naPromo = base.filter((v) => Number(v.price) === atual);
+    const modelos = [...new Set(naPromo.map((v) => atributo(v, 'modelo', 'model', 'style')).filter(Boolean))];
+    const modelo = modelos.length === 1 ? modelos[0] : undefined;
+    const doModelo = naPromo;
+    const tamanhos = [...new Set(doModelo.map((v) => atributo(v, 'tamanho', 'size')).filter(Boolean))].sort((a, b) => {
+      const ia = ORDEM_TAMANHOS.indexOf(a.toUpperCase());
+      const ib = ORDEM_TAMANHOS.indexOf(b.toUpperCase());
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
+    });
+    return { atual, cheio: Number(par.regular_price) || atual, modelo, modelos, tamanhos: tamanhos.length ? tamanhos : undefined };
   } catch {
     return {};
   }
@@ -177,6 +206,9 @@ export async function produtosBF(): Promise<ProdutoBF[]> {
       imagem: p.images?.[0]?.src || o.imagemReserva,
       precoCheio: cheio,
       precoAtual: atual,
+      modelo: v?.modelo,
+      modelos: v?.modelos,
+      tamanhos: v?.tamanhos,
       encontrado: true,
     };
   });
