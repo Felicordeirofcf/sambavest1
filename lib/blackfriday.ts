@@ -3,7 +3,7 @@
 // O preço cobrado SEMPRE vem do WooCommerce (o checkout recalcula no servidor). Esta página só
 // anuncia o preço Black antes da campanha e, durante a campanha, mostra o preço real do WooCommerce.
 // Para valer de verdade, agende o "Preço promocional" de cada produto no WooCommerce (27 a 30/11).
-import { kvGet } from './automacao/kv';
+import { kvGet, kvMGet } from './automacao/kv';
 import { faseBF, PERIODO_BF } from './blackfridayPeriodo';
 
 export { faseBF };
@@ -92,6 +92,8 @@ export type ProdutoBF = OfertaBF & {
   modelos?: string[];
   /** Tamanhos à venda no preço da Black. */
   tamanhos?: string[];
+  /** Todas as fotos do produto no WooCommerce (galeria + fotos das variações). */
+  galeria?: string[];
   encontrado: boolean;
 };
 
@@ -112,6 +114,7 @@ type WcVariacao = {
   status?: string;
   stock_status?: string;
   attributes?: { name?: string; option?: string }[];
+  image?: { src?: string } | null;
 };
 
 const ORDEM_TAMANHOS = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XGG', 'EXG', 'G1', 'G2', 'G3', 'G4'];
@@ -124,16 +127,19 @@ const atributo = (v: WcVariacao, ...nomes: string[]) =>
  */
 async function precosDasVariacoes(
   id: number
-): Promise<{ atual?: number; cheio?: number; modelo?: string; modelos?: string[]; tamanhos?: string[] }> {
+): Promise<{ atual?: number; cheio?: number; modelo?: string; modelos?: string[]; tamanhos?: string[]; fotos?: string[] }> {
   const c = credenciaisWoo();
   if (!c) return {};
   try {
     const res = await fetch(`${c.url}/wp-json/wc/v3/products/${id}/variations?per_page=100`, { headers: c.headers, next: { revalidate: 120 } });
     if (!res.ok) return {};
-    const lista = ((await res.json()) as WcVariacao[]).filter((v) => (v.status ?? 'publish') === 'publish' && Number(v.price) > 0);
+    const todas = (await res.json()) as WcVariacao[];
+    // Fotos de cada modelo/variação (muitas vezes é aí que fica a foto da camisa vestida)
+    const fotos = [...new Set(todas.map((v) => v.image?.src).filter((x): x is string => Boolean(x)))];
+    const lista = todas.filter((v) => (v.status ?? 'publish') === 'publish' && Number(v.price) > 0);
     const aVenda = lista.filter((v) => v.stock_status !== 'outofstock');
     const base = aVenda.length ? aVenda : lista;
-    if (!base.length) return {};
+    if (!base.length) return { fotos };
     const atual = Math.min(...base.map((v) => Number(v.price)));
     // "de" da variação com o menor preço (o mesmo par que o cliente vê)
     const par = base.find((v) => Number(v.price) === atual)!;
@@ -148,7 +154,7 @@ async function precosDasVariacoes(
       const ib = ORDEM_TAMANHOS.indexOf(b.toUpperCase());
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib) || a.localeCompare(b);
     });
-    return { atual, cheio: Number(par.regular_price) || atual, modelo, modelos, tamanhos: tamanhos.length ? tamanhos : undefined };
+    return { atual, cheio: Number(par.regular_price) || atual, modelo, modelos, tamanhos: tamanhos.length ? tamanhos : undefined, fotos };
   } catch {
     return {};
   }
@@ -201,7 +207,10 @@ export async function produtosBF(): Promise<ProdutoBF[]> {
     if (p) usados.add(p.id);
     escolhidos[i] = p || undefined;
   });
-  const variacoes = await Promise.all(escolhidos.map((p) => (p && p.type === 'variable' ? precosDasVariacoes(p.id) : null)));
+  const [variacoes, escolhidas] = await Promise.all([
+    Promise.all(escolhidos.map((p) => (p && p.type === 'variable' ? precosDasVariacoes(p.id) : null))),
+    fotosVestidasEscolhidas(),
+  ]);
   return OFERTAS.map((o, i) => {
     const p = escolhidos[i];
     const fixo = porId[i];
@@ -209,6 +218,10 @@ export async function produtosBF(): Promise<ProdutoBF[]> {
     const v = variacoes[i];
     const atual = v?.atual ?? (Number(p.price) || undefined);
     const cheio = v?.cheio ?? (Number(p.regular_price) || atual);
+    const galeria = [...new Set([...(p.images || []).map((x) => x.src), ...(v?.fotos || [])])].filter(Boolean);
+    // Foto vestida escolhida no painel (só vale se for uma foto deste produto)
+    const escolhida = escolhidas[o.id];
+    const fotoVestida = escolhida && galeria.includes(escolhida) ? escolhida : o.fotoVestida;
     return {
       ...o,
       // Produto escolhido pelo ID: o nome que vale é o do WooCommerce
@@ -221,9 +234,24 @@ export async function produtosBF(): Promise<ProdutoBF[]> {
       modelo: v?.modelo,
       modelos: v?.modelos,
       tamanhos: v?.tamanhos,
+      galeria,
+      fotoVestida,
       encontrado: true,
     };
   });
+}
+
+// ---------- Foto vestida escolhida no painel (Painel → Fotos da Black) ----------
+
+export const chaveFotoVestida = (ofertaId: string) => `bf:foto-vestida:${ofertaId}`;
+
+async function fotosVestidasEscolhidas(): Promise<Record<string, string | undefined>> {
+  try {
+    const valores = await kvMGet<string>(OFERTAS.map((o) => chaveFotoVestida(o.id)));
+    return Object.fromEntries(OFERTAS.map((o, i) => [o.id, valores[i] || undefined]));
+  } catch {
+    return {};
+  }
 }
 
 export const chaveVoto = (e: EscolaDuelo) => `bf2026:voto:${e}`;
