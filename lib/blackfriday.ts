@@ -62,7 +62,7 @@ export const OFERTAS: OfertaBF[] = [
     precoBlack: 99,
     imagemReserva: '/products/viradouro27.webp',
     fotoFrenteLocal: true,
-    combina: (n) => tem(n, 'viradouro') && naoTem(n, 'algod', '2025', '2026', ...outrosModelos),
+    combina: (n) => tem(n, 'viradouro') && naoTem(n, 'algod', '2025', '2026', 'retro', '80 anos', ...outrosModelos),
   },
   {
     id: 'viradouro-algodao',
@@ -269,7 +269,9 @@ export const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency',
  */
 export async function ofertaDoProduto(produto: { id: number; name: string }): Promise<{ oferta: OfertaBF; fotoVestida?: string } | null> {
   const nome = semAcento(produto.name || '');
-  const oferta = OFERTAS.find((o) => (o.produtoId ? o.produtoId === produto.id : o.combina(nome)));
+  const oferta =
+    OFERTAS.find((o) => o.produtoId && o.produtoId === Number(produto.id)) ||
+    OFERTAS.find((o) => !o.produtoId && o.combina(nome));
   if (!oferta) return null;
   const escolhida = await kvGetCacheado<string>(chaveFotoVestida(oferta.id), 120).catch(() => null);
   return { oferta, fotoVestida: escolhida || oferta.fotoVestida };

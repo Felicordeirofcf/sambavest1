@@ -158,8 +158,20 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     return availableModels.find(m => m.toLowerCase() === modeloUrl.toLowerCase()) || null;
   }, [modeloUrl, availableModels]);
 
+  // Na Black, sem modelo na URL, abre no modelo que está em promoção (ex.: Unisex, não a Regata)
+  const modeloEmPromocao = useMemo(() => {
+    if (!black) return null;
+    const v = variantsList.find((x: any) => {
+      const reg = Number(x?.regular_price || 0);
+      const pr = Number(x?.price || 0);
+      return reg > 0 && pr > 0 && pr < reg && extractModelFromVariant(x);
+    });
+    const m = v ? extractModelFromVariant(v) : '';
+    return availableModels.find((a) => a.toLowerCase() === m.toLowerCase()) || null;
+  }, [black, variantsList, availableModels]);
+
   const [selectedModel, setSelectedModel] = useState<string>(
-    matchedUrlModel || (availableModels[0] || '')
+    matchedUrlModel || modeloEmPromocao || (availableModels[0] || '')
   );
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [activeImage, setActiveImage] = useState(0);
@@ -244,12 +256,17 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     }) || null;
   }, [variantsList, selectedModel, selectedSize, availableModels, availableSizes]);
 
-  const baseProductPrice = Number(product?.price || 0);
+  // Antes de escolher o tamanho, mostra o preço do modelo escolhido
+  const varianteDoModelo = useMemo(() => variantsList.find((x: any) =>
+    Number(x?.price) > 0 &&
+    (availableModels.length === 0 || extractModelFromVariant(x).toLowerCase() === selectedModel.toLowerCase())
+  ) || null, [variantsList, availableModels, selectedModel]);
+  const baseProductPrice = Number(varianteDoModelo?.price || product?.price || 0);
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
   const pctPix = descontoPixAtual();
   const precoPix = currentPrice * (1 - pctPix);
   // Preço "de" (riscado): o da variação escolhida; antes da escolha, o do produto
-  const precoCheio = Number(matchedVariant?.regular_price || product?.regular_price || 0);
+  const precoCheio = Number(matchedVariant?.regular_price || varianteDoModelo?.regular_price || product?.regular_price || 0);
 
   const handleAddToCart = () => {
     if (matchedVariant && !(currentPrice > 0)) {
