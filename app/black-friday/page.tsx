@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import Contagem from '../../components/blackfriday/Contagem';
+import BarraCompra from '../../components/blackfriday/BarraCompra';
 import Duelo from '../../components/blackfriday/Duelo';
 import { BF, brl, faseBF, placarDuelo, produtosBF, ProdutoBF } from '../../lib/blackfriday';
 import { FRETE_GRATIS_A_PARTIR_DE } from '../../lib/frete';
@@ -22,6 +23,53 @@ export const metadata: Metadata = {
 
 const DATA = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
 
+/** Link da página da camisa (já no modelo em promoção); null se o produto não foi encontrado. */
+function linkCompra(p: ProdutoBF): string | null {
+  const base = p.slug ? `/produto/${p.slug}` : p.produtoId ? `/produto/${p.produtoId}` : null;
+  return base && p.modelo ? `${base}?modelo=${encodeURIComponent(p.modelo)}` : base;
+}
+
+/** Camisa do topo: foto grande (vestida, se houver) e botão de comprar visível sem rolar. */
+function CamisaTopo({ p, fase }: { p: ProdutoBF; fase: ReturnType<typeof faseBF> }) {
+  const azul = p.escola === 'beija-flor';
+  const href = linkCompra(p);
+  const zap = `https://wa.me/${BF.whatsapp}?text=${encodeURIComponent(`Quero a ${p.titulo} da Black Friday!`)}`;
+  const destino = fase === 'durante' ? href || zap : href || '#duelo';
+  return (
+    <a
+      href={destino}
+      {...(!href && fase === 'durante' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      className={`group flex flex-col overflow-hidden rounded-2xl border bg-black/40 text-left backdrop-blur transition active:scale-[0.98] ${
+        azul ? 'border-sky-400/50' : 'border-red-400/50'
+      }`}
+    >
+      <span className={`relative block aspect-[4/5] sm:aspect-[4/3] ${azul ? 'bg-sky-950/50' : 'bg-red-950/50'}`}>
+        <Image
+          src={p.fotoVestida || p.imagem}
+          alt={`${p.titulo}${p.fotoVestida ? ' vestida' : ''}`}
+          fill
+          priority
+          sizes="(max-width: 640px) 50vw, 360px"
+          className={p.fotoVestida ? 'object-cover' : 'object-contain p-2 transition-transform duration-500 group-hover:scale-105'}
+        />
+        <span className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white ${azul ? 'bg-sky-600' : 'bg-red-600'}`}>
+          {azul ? 'Beija-Flor' : 'Viradouro'}
+        </span>
+      </span>
+      <span className="flex flex-1 flex-col gap-2 p-2.5 sm:p-4">
+        <span className="text-[11px] font-bold uppercase leading-tight tracking-wide text-white/80 sm:text-sm">{p.enredo}</span>
+        <span
+          className={`mt-auto block rounded-xl py-2.5 text-center text-sm font-black uppercase tracking-wider text-white sm:py-3 sm:text-base ${
+            azul ? 'bg-sky-600 group-hover:bg-sky-500' : 'bg-red-600 group-hover:bg-red-500'
+          }`}
+        >
+          {fase === 'durante' ? 'Comprar' : 'Ver camisa'}
+        </span>
+      </span>
+    </a>
+  );
+}
+
 function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof faseBF>; destaque?: boolean }) {
   // Durante a campanha mostramos o preço que o WooCommerce realmente cobra.
   const preco = fase === 'durante' && p.precoAtual ? p.precoAtual : p.precoBlack;
@@ -30,8 +78,7 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
   const azul = p.escola === 'beija-flor';
   // Sem o produto do WooCommerce não há para onde mandar (as categorias redirecionam para cá):
   // o cliente compra pelo WhatsApp.
-  const base = p.slug ? `/produto/${p.slug}` : p.produtoId ? `/produto/${p.produtoId}` : null;
-  const href = base && p.modelo ? `${base}?modelo=${encodeURIComponent(p.modelo)}` : base;
+  const href = linkCompra(p);
   const tamanhos = p.tamanhos?.length ? (p.tamanhos.length === 1 ? `tamanho ${p.tamanhos[0]}` : `tamanhos ${p.tamanhos.join(', ')}`) : 'do P ao EXG';
   const zap = `https://wa.me/${BF.whatsapp}?text=${encodeURIComponent(`Quero a ${p.titulo} da Black Friday!`)}`;
 
@@ -123,48 +170,48 @@ export default async function BlackFridayPage() {
   const algodao = produtos.find((p) => p.id === 'viradouro-algodao')!;
   const precoVisto = (p: ProdutoBF) => (fase === 'durante' && p.precoAtual ? p.precoAtual : p.precoBlack);
   const menorEnredo = Math.min(precoVisto(beija), precoVisto(viradouro));
-  const vip = `https://wa.me/${BF.whatsapp}?text=${encodeURIComponent('Quero entrar na lista VIP da Black Friday Samba Vest!')}`;
+  const deTopo = beija.precoCheio && beija.precoCheio > menorEnredo ? beija.precoCheio : viradouro.precoCheio && viradouro.precoCheio > menorEnredo ? viradouro.precoCheio : undefined;
+  const offTopo = deTopo ? Math.round((1 - menorEnredo / deTopo) * 100) : 0;
 
   return (
-    <main className="bg-black text-white">
-      {/* HERO */}
+    <main className="bg-black pb-20 text-white md:pb-0">
+      {/* TOPO: preço grande + as duas camisas com botão de comprar, tudo visível sem rolar no celular */}
       <section className="relative overflow-hidden">
         <div aria-hidden className="absolute inset-0 grid grid-cols-2">
           <div className="bg-gradient-to-br from-sky-700/50 via-blue-950/40 to-black" />
           <div className="bg-gradient-to-bl from-red-700/50 via-red-950/40 to-black" />
         </div>
         <div aria-hidden className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,#0ea5e9_0_25%,#fff_25%_50%,#dc2626_50%_75%,#C9A227_75%)]" />
-        <div className="relative mx-auto flex max-w-5xl flex-col items-center gap-6 px-4 py-14 text-center sm:py-20">
-          <p className="rounded-full border border-[#C9A227]/50 px-4 py-1 text-[11px] font-bold uppercase tracking-[0.35em] text-[#C9A227]">
-            Black Friday Samba Vest · {DATA.format(BF.inicio)} a {DATA.format(BF.fim)}
+        <div className="relative mx-auto max-w-4xl px-3 pb-6 pt-4 text-center sm:px-4 sm:pb-12 sm:pt-10">
+          <p className="inline-block rounded-full bg-[#C9A227] px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-black sm:text-xs">
+            Black Friday · até {DATA.format(BF.fim)}
           </p>
-          <h1 className="text-5xl font-black uppercase leading-[0.9] sm:text-7xl">
-            Black do <span className="bg-gradient-to-r from-sky-400 via-white to-red-500 bg-clip-text text-transparent">Duelo</span>
+          <h1 className="mt-2 text-[26px] font-black uppercase leading-none sm:text-5xl">
+            Camisas enredo <span className="bg-gradient-to-r from-sky-400 via-white to-red-500 bg-clip-text text-transparent">2027</span>
           </h1>
-          <p className="max-w-xl text-lg text-white/80">
-            <b className="text-sky-300">Beija-Flor</b> × <b className="text-red-400">Viradouro</b>. As camisas enredo 2027 a partir de{' '}
-            <b className="text-white">{Number.isInteger(menorEnredo) ? `R$ ${menorEnredo}` : brl(menorEnredo)}</b>. Nilópolis ou Niterói: escolha o seu lado.
-          </p>
-          {fase === 'antes' && <Contagem alvo={BF.inicio.toISOString()} rotulo="A avenida abre em" />}
-          {fase === 'durante' && <Contagem alvo={BF.fim.toISOString()} rotulo="A Black termina em" />}
-          {fase === 'depois' && (
-            <p className="rounded-xl bg-white/10 px-5 py-3 text-sm">A Black Friday terminou. Obrigado por desfilar com a gente! 🥁</p>
-          )}
-          {fase !== 'depois' && (
-            <a
-              href={vip}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full bg-[#25D366] px-6 py-3 text-sm font-black uppercase tracking-widest text-black transition hover:scale-105"
-            >
-              {fase === 'antes' ? 'Entrar na lista VIP pelo WhatsApp' : 'Dúvidas? Fale no WhatsApp'}
-            </a>
-          )}
+          <div className="mt-1 flex items-center justify-center gap-2 sm:gap-4">
+            {deTopo && <span className="text-base font-bold text-white/60 line-through decoration-red-500 decoration-2 sm:text-2xl">{brl(deTopo)}</span>}
+            <span className="text-[58px] font-black leading-none tracking-tight sm:text-8xl">
+              <span className="align-top text-2xl sm:text-4xl">R$</span>
+              {Number.isInteger(menorEnredo) ? menorEnredo : menorEnredo.toFixed(2).replace('.', ',')}
+            </span>
+            {offTopo > 0 && <span className="rotate-[-6deg] rounded-lg bg-[#C9A227] px-2 py-1 text-lg font-black text-black sm:text-2xl">-{offTopo}%</span>}
+          </div>
+          <div id="topo-camisas" className="mx-auto mt-3 grid max-w-2xl grid-cols-2 gap-2.5 sm:gap-5">
+            <CamisaTopo p={beija} fase={fase} />
+            <CamisaTopo p={viradouro} fase={fase} />
+          </div>
+          <p className="mt-3 text-xs text-white/70 sm:text-sm">🚚 Envio para todo o Brasil · 💳 Pix ou cartão · 📏 P ao EXG</p>
+          <div className="mt-4">
+            {fase === 'antes' && <Contagem alvo={BF.inicio.toISOString()} rotulo="A avenida abre em" />}
+            {fase === 'durante' && <Contagem alvo={BF.fim.toISOString()} rotulo="A Black termina em" />}
+            {fase === 'depois' && <p className="rounded-xl bg-white/10 px-5 py-3 text-sm">A Black Friday terminou. Obrigado por desfilar com a gente! 🥁</p>}
+          </div>
         </div>
       </section>
 
       {/* O DUELO */}
-      <section className="mx-auto max-w-6xl px-4 py-12">
+      <section id="duelo" className="mx-auto max-w-6xl px-4 py-12">
         <div className="mb-8 text-center">
           <h2 className="text-3xl font-black uppercase sm:text-4xl">Qual é a sua escola de samba favorita?</h2>
           <p className="mt-2 text-white/60">Vote no duelo e veja quem está ganhando no placar ao vivo.</p>
@@ -211,6 +258,13 @@ export default async function BlackFridayPage() {
           carrinho. O placar do duelo é só uma brincadeira entre torcidas.
         </p>
       </section>
+      {fase === 'durante' && (
+        <BarraCompra
+          preco={Number.isInteger(menorEnredo) ? `R$ ${menorEnredo}` : brl(menorEnredo)}
+          beija={linkCompra(beija) || '#topo-camisas'}
+          viradouro={linkCompra(viradouro) || '#topo-camisas'}
+        />
+      )}
     </main>
   );
 }
