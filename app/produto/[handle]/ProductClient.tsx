@@ -5,6 +5,7 @@ import { useCartStore } from '../../../store/cartStore';
 import ShippingCalculator from '../../../components/product/ShippingCalculator';
 import { useSearchParams } from 'next/navigation';
 import { rastrear, dadosItens } from '../../../lib/pixel';
+import { descontoPixAtual } from '../../../lib/pix';
 import Image from 'next/image';
 import { podeOtimizar } from '../../../lib/imagem';
 import { WHATSAPP_NUMBER } from '../../../lib/whatsapp';
@@ -187,7 +188,8 @@ export default function ProductClient({ product }: { product: any }) {
 
   const baseProductPrice = Number(product?.price || 0);
   const currentPrice = matchedVariant && Number(matchedVariant.price) > 0 ? Number(matchedVariant.price) : baseProductPrice;
-  const precoPix = currentPrice * 0.90;
+  const pctPix = descontoPixAtual();
+  const precoPix = currentPrice * (1 - pctPix);
   // Preço "de" (riscado): o da variação escolhida; antes da escolha, o do produto
   const precoCheio = Number(matchedVariant?.regular_price || product?.regular_price || 0);
 
@@ -307,12 +309,12 @@ export default function ProductClient({ product }: { product: any }) {
                 )}
               </div>
 
-              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 shadow-2xs">
+              {pctPix > 0 && <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 shadow-2xs">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span className="text-xs font-bold tracking-wide text-emerald-700">
-                  R$ {precoPix.toFixed(2).replace('.', ',')} <span className="font-extrabold text-emerald-800">no Pix</span> <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-1.5 py-0.2 rounded font-black">10% OFF</span>
+                  R$ {precoPix.toFixed(2).replace('.', ',')} <span className="font-extrabold text-emerald-800">no Pix</span> <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-1.5 py-0.2 rounded font-black">{Math.round(pctPix * 100)}% OFF</span>
                 </span>
-              </div>
+              </div>}
 
               <p className="mt-2 text-xs text-gray-500">Camisa oficial/licenciada</p>
             </div>

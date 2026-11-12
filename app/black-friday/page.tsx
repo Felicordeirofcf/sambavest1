@@ -11,7 +11,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: 'Black Friday Samba Vest: o Duelo Beija-Flor × Viradouro 2027',
   description:
-    'Camisas enredo 2027 da Beija-Flor (Zeneida) e da Viradouro (Griô) por R$ 99 na Black Friday Samba Vest. +10% de desconto no Pix. Escolha o seu lado!',
+    'Camisas enredo 2027 da Beija-Flor (Zeneida) e da Viradouro (Griô) por R$ 99 na Black Friday Samba Vest. Escolha o seu lado!',
   alternates: { canonical: '/black-friday' },
   openGraph: {
     title: 'Black do Duelo: Beija-Flor × Viradouro 2027 por R$ 99',
@@ -27,7 +27,6 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
   const preco = fase === 'durante' && p.precoAtual ? p.precoAtual : p.precoBlack;
   const de = p.precoCheio && p.precoCheio > preco ? p.precoCheio : undefined;
   const economia = de ? Math.round((1 - preco / de) * 100) : 0;
-  const pix = preco * (1 - BF.descontoPix);
   const azul = p.escola === 'beija-flor';
   // Sem o produto do WooCommerce não há para onde mandar (as categorias redirecionam para cá):
   // o cliente compra pelo WhatsApp.
@@ -68,9 +67,6 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
           <p className="text-4xl font-black text-white">
             <span className="text-base font-bold text-white/60">por </span>
             {brl(preco)}
-          </p>
-          <p className="mt-1 text-sm font-bold text-emerald-400">
-            {brl(pix)} no Pix <span className="font-normal text-white/50">(10% off)</span>
           </p>
           <p className="text-xs text-white/40">+ frete · do P ao EXG</p>
         </div>
@@ -134,7 +130,7 @@ export default async function BlackFridayPage() {
           </h1>
           <p className="max-w-xl text-lg text-white/80">
             <b className="text-sky-300">Beija-Flor</b> × <b className="text-red-400">Viradouro</b>. As camisas enredo 2027 a partir de{' '}
-            <b className="text-white">{Number.isInteger(menorEnredo) ? `R$ ${menorEnredo}` : brl(menorEnredo)}</b>, com +10% de desconto no Pix. Nilópolis ou Niterói: escolha o seu lado.
+            <b className="text-white">{Number.isInteger(menorEnredo) ? `R$ ${menorEnredo}` : brl(menorEnredo)}</b>. Nilópolis ou Niterói: escolha o seu lado.
           </p>
           {fase === 'antes' && <Contagem alvo={BF.inicio.toISOString()} rotulo="A avenida abre em" />}
           {fase === 'durante' && <Contagem alvo={BF.fim.toISOString()} rotulo="A Black termina em" />}
@@ -186,7 +182,7 @@ export default async function BlackFridayPage() {
       <section className="border-t border-white/10 bg-white/[0.03]">
         <div className="mx-auto grid max-w-6xl gap-6 px-4 py-12 sm:grid-cols-3">
           {[
-            ['💸', '10% a mais no Pix', 'O desconto do Pix vale também nos preços da Black.'],
+            ['💳', 'Pix ou cartão', 'Pague no Pix (aprovação na hora) ou no cartão de crédito. Preço da Black já com desconto.'],
             ['🚚', 'Frete para todo o Brasil', `Calculado no carrinho. Acima de ${brl(FRETE_GRATIS_A_PARTIR_DE)} em camisas, o frete mais barato é grátis.`],
             ['📏', 'Do P ao EXG', 'Confira a tabela de medidas na página de cada camisa antes de escolher.'],
           ].map(([icone, titulo, texto]) => (

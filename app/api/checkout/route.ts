@@ -13,7 +13,7 @@ const METODOS: Record<string, { gateway: string; titulo: string; desconto: numbe
   appmax_pix: {
     gateway: process.env.APPMAX_GATEWAY_PIX?.trim() || 'pagamentos_para_woocommerce_com_appmax_pix',
     titulo: 'Pix -- AppMax',
-    desconto: 0.1,
+    desconto: DESCONTO_PIX_PADRAO, // durante a Black Friday vale descontoPixAtual() = 0
   },
   appmax_credit: {
     gateway: process.env.APPMAX_GATEWAY_CARTAO?.trim() || 'pagamentos_para_woocommerce_com_appmax_credit_card',
@@ -21,6 +21,8 @@ const METODOS: Record<string, { gateway: string; titulo: string; desconto: numbe
     desconto: 0,
   },
 };
+
+import { descontoPixAtual, DESCONTO_PIX_PADRAO } from '../../../lib/pix';
 
 const MAX_ITENS = 20;
 const MAX_QTD_POR_ITEM = 20;
@@ -153,6 +155,8 @@ export async function POST(request: Request) {
     );
 
     let subtotalProdutos = 0;
+    // Pix: 10% fora da Black Friday, 0% durante (o preço já é o da Black)
+    const descontoDoMetodo = metodo.desconto > 0 ? descontoPixAtual() : 0;
     const lineItems = produtos.map((p) => {
       const preco = Number(p.price);
       if (p.status !== 'publish' || !p.purchasable || p.stock_status === 'outofstock' || !(preco > 0)) {
@@ -169,7 +173,7 @@ export async function POST(request: Request) {
       }
       const quantity = quantidades.get(p.id)!;
       const cheio = centavos(preco * quantity);
-      const comDesconto = centavos(cheio * (1 - metodo.desconto));
+      const comDesconto = centavos(cheio * (1 - descontoDoMetodo));
       subtotalProdutos += comDesconto;
       const parentId = Number(p.parent_id || 0);
       return {

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { podeOtimizar } from '../../lib/imagem';
+import { descontoPixAtual } from '../../lib/pix';
 import { useRouter } from 'next/navigation';
 
 export default function ProductCard({ product }: { product: any }) {
@@ -70,7 +71,8 @@ export default function ProductCard({ product }: { product: any }) {
 
   // 💰 Cálculo universal do Desconto Pix (10% OFF)
   const productPrice = Number(product.price || 0);
-  const precoPix = productPrice * 0.90;
+  const pctPix = descontoPixAtual();
+  const precoPix = productPrice * (1 - pctPix);
 
   return (
     <div 
@@ -202,12 +204,14 @@ export default function ProductCard({ product }: { product: any }) {
           </div>
 
           {/* 💚 Pílula Pix Sofisticada */}
+          {pctPix > 0 && (
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span className="text-[11px] font-bold tracking-wide text-emerald-700">
-              R$ {precoPix.toFixed(2).replace('.', ',')} <span className="font-extrabold text-emerald-800">no Pix</span> <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-1.5 py-0.2 rounded font-black">10% OFF</span>
+              R$ {precoPix.toFixed(2).replace('.', ',')} <span className="font-extrabold text-emerald-800">no Pix</span> <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-1.5 py-0.2 rounded font-black">{Math.round(pctPix * 100)}% OFF</span>
             </span>
           </div>
+          )}
         </div>
       </Link>
     </div>

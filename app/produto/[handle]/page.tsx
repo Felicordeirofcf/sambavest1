@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   if (!dados) return { title: 'Produto não encontrado | Samba Vest', robots: { index: false } };
   const { product } = dados;
   const descricao = (semHtml(product.short_description) || semHtml(product.description)).slice(0, 160) ||
-    `${product.name} — camisa de escola de samba da Samba Vest. 10% OFF no Pix.`;
+    `${product.name} — camisa de escola de samba da Samba Vest.`;
   const imagem = product.images?.[0]?.src;
   const url = `${SITE}/produto/${product.slug}`;
   return {
