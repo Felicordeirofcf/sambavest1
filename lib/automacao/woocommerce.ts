@@ -53,13 +53,49 @@ function authHeader(): string {
   return 'Basic ' + Buffer.from(`${config.woo.key}:${config.woo.secret}`).toString('base64');
 }
 
-export async function wc<T>(caminho: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  const res = await fetch(`${config.woo.url}/wp-json/wc/v3${caminho}`, {
-    method: init.method || 'GET',
-    headers: { Authorization: authHeader(), 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-    cache: 'no-store',
-  });
+/** Motivo legível de uma falha de rede ("fetch failed" sozinho não diz nada). */
+export function motivoDeRede(e: unknown): string {
+  const err = e as { name?: string; message?: string; cause?: { code?: string; message?: string } };
+  if (err?.name === 'TimeoutError' || err?.name === 'AbortError') return 'o servidor do WooCommerce demorou demais para responder (mais de 20 s)';
+  const codigo = err?.cause?.code || '';
+  const motivos: Record<string, string> = {
+    ECONNREFUSED: 'o servidor do WooCommerce recusou a conexão',
+    ECONNRESET: 'o servidor do WooCommerce derrubou a conexão',
+    ETIMEDOUT: 'o servidor do WooCommerce não respondeu a tempo',
+    UND_ERR_CONNECT_TIMEOUT: 'o servidor do WooCommerce não respondeu a tempo',
+    UND_ERR_SOCKET: 'a conexão com o WooCommerce caiu no meio',
+    ENOTFOUND: 'o endereço do WooCommerce não foi encontrado (DNS)',
+    EAI_AGAIN: 'falha temporária de DNS ao procurar o WooCommerce',
+    CERT_HAS_EXPIRED: 'o certificado SSL do WooCommerce venceu',
+  };
+  return motivos[codigo] || `${err?.message || 'falha de rede'}${codigo ? ` (${codigo})` : err?.cause?.message ? ` (${err.cause.message})` : ''}`;
+}
+
+async function chamarWoo(caminho: string, init: { method?: string; body?: unknown }): Promise<Response> {
+  const metodo = init.method || 'GET';
+  const tentar = () =>
+    fetch(`${config.woo.url}/wp-json/wc/v3${caminho}`, {
+      method: metodo,
+      headers: { Authorization: authHeader(), 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(20_000),
+    });
+  try {
+    return await tentar();
+  } catch (e) {
+    // Leituras tentam mais uma vez (queda rápida de conexão); gravações não, para não duplicar
+    if (metodo !== 'GET') throw new Error(`WooCommerce em ${caminho}: ${motivoDeRede(e)}`);
+    await new Promise((r) => setTimeout(r, 800));
+    try {
+      return await tentar();
+    } catch (e2) {
+      throw new Error(`WooCommerce em ${caminho}: ${motivoDeRede(e2)}`);
+    }
+  }
+}
+
+async function lerResposta<T>(res: Response, caminho: string): Promise<T> {
   const texto = await res.text();
   let json: unknown = null;
   try {
@@ -72,6 +108,17 @@ export async function wc<T>(caminho: string, init: { method?: string; body?: unk
     throw new Error(`WooCommerce ${res.status} em ${caminho}: ${msg}`);
   }
   return json as T;
+}
+
+export async function wc<T>(caminho: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  return lerResposta<T>(await chamarWoo(caminho, init), caminho);
+}
+
+/** GET de uma lista com o total de páginas (cabeçalho X-WP-TotalPages). */
+export async function wcPagina<T>(caminho: string): Promise<{ itens: T[]; paginas: number }> {
+  const res = await chamarWoo(caminho, {});
+  const paginas = Number(res.headers.get('x-wp-totalpages')) || 1;
+  return { itens: await lerResposta<T[]>(res, caminho), paginas };
 }
 
 export function meta(pedido: WcPedido, chave: string): string | undefined {

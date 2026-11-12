@@ -1,9 +1,16 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { cache, Suspense } from 'react';
-import ProductClient from './ProductClient';
+import { cache } from 'react';
+import ProdutoComModelo from './ProdutoComModelo';
 
-export const revalidate = 60; // 🚀 Cache inteligente de 1 minuto para sincronização ágil
+// Página guardada em cache (ISR): o cliente recebe a página pronta na hora e ela é refeita em
+// segundo plano no máximo a cada 2 min. Preço e estoque são conferidos de novo na sacola e no checkout.
+export const revalidate = 120;
+export const dynamicParams = true;
+/** Sem lista prévia: cada camisa é gerada na primeira visita e depois servida do cache. */
+export async function generateStaticParams() {
+  return [];
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -20,7 +27,7 @@ const buscarProduto = cache(async (handleOrId: string): Promise<any | null> => {
   const consumerSecret = process.env.WC_CONSUMER_SECRET;
   if (!handleOrId || !consumerKey || !consumerSecret) return null;
   const authHeader = 'Basic ' + Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
-  const opcoes = { headers: { Authorization: authHeader }, next: { revalidate: 60 } };
+  const opcoes = { headers: { Authorization: authHeader }, next: { revalidate: 120 } };
 
   let product: any = null;
   if (/^\d+$/.test(handleOrId)) {
@@ -186,9 +193,7 @@ export default async function ProductPage({ params }: { params: Promise<{ handle
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
-      <Suspense>
-        <ProductClient product={productFormatado} />
-      </Suspense>
+      <ProdutoComModelo product={productFormatado} />
     </>
   );
 }

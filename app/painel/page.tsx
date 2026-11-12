@@ -24,8 +24,8 @@ import {
   ultimosDias,
 } from '../../lib/painel/analytics';
 import { exigirLogin } from '../../lib/painel/auth';
-import { estoque as lerEstoque, LinhaEstoque, pedidosRecentes } from '../../lib/painel/dados';
-import { NOME_ETAPA, somaFunil } from '../../lib/painel/funil';
+import { dadosDeReserva, estoque as lerEstoque, LinhaEstoque, pedidosRecentes } from '../../lib/painel/dados';
+import { funilPorDia, NOME_ETAPA, somaFunil } from '../../lib/painel/funil';
 import { diaLocal, pago, pendencias, variacao } from '../../lib/painel/metricas';
 import { atualizarDados } from './actions';
 
@@ -69,6 +69,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
   } catch (e) {
     erro = (e as Error).message;
   }
+  const reserva = dadosDeReserva();
   let estoque: LinhaEstoque[] | null = null;
   try {
     estoque = await lerEstoque();
@@ -80,7 +81,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
   const dias14 = ultimosDias(14, agora);
   const { hoje, ontem } = hojeVsOntem(pedidos, agora);
   const series = seriesDiarias(pedidos, dias14);
-  const funilDias = integracoes.kv() ? await Promise.all(dias14.map((d) => somaFunil([d]))) : null;
+  const funilDias = integracoes.kv() ? await funilPorDia(dias14) : null;
   const visitasHoje = funilDias?.[13].visita || 0;
   const visitasOntem = funilDias?.[12].visita || 0;
   const pagosOntemDia = series[12].vendas;
@@ -199,6 +200,9 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
       </div>
 
       {erro && <Aviso tipo="erro">Não consegui ler os pedidos do WooCommerce: {erro}</Aviso>}
+      {!erro && reserva && (
+        <Aviso>O WooCommerce não respondeu agora. Mostrando os dados de {dataHora(reserva)}; a tela tenta de novo sozinha.</Aviso>
+      )}
 
       {/* Cards de hoje */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
