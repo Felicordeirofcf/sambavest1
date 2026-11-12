@@ -34,7 +34,7 @@ export default async function ContatoCrmPage({
     <div className="space-y-4 max-w-7xl">
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/painel/crm" className="text-sm text-slate-500 underline">← CRM</Link>
-        <h1 className="text-2xl font-semibold">{nomeDoContato(c)}</h1>
+        <h1 className="text-2xl md:text-3xl">{nomeDoContato(c)}</h1>
         <span className="text-sm text-slate-500">+{c.numero}</span>
         <a href={`https://wa.me/${c.numero}`} target="_blank" rel="noreferrer" className="text-sm underline text-emerald-700">
           Abrir no WhatsApp ↗

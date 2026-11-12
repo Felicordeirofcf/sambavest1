@@ -62,7 +62,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
   return (
     <div className="space-y-4 max-w-7xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Produtos e estoque</h1>
+        <h1 className="text-2xl md:text-3xl">Produtos e estoque</h1>
         <SeletorPeriodo atual={dias} base="/painel/produtos" extra={`&filtro=${filtro}`} />
       </div>
       {erro && <Aviso tipo="erro">Não consegui ler os produtos: {erro}</Aviso>}

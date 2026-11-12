@@ -52,7 +52,7 @@ export default async function Pedidos({
 
   return (
     <div className="space-y-4 max-w-7xl">
-      <h1 className="text-2xl font-semibold">Pedidos</h1>
+      <h1 className="text-2xl md:text-3xl">Pedidos</h1>
 
       <form className="flex flex-wrap gap-2 items-center bg-white border border-slate-200 rounded-xl p-3">
         <input name="q" defaultValue={sp.q || ''} placeholder="Nº, nome, e-mail, CPF, telefone ou produto" className="flex-1 min-w-56 border border-slate-300 rounded-lg px-3 py-2 text-sm" />

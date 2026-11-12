@@ -46,7 +46,7 @@ export default async function Pedido({
     <div className="space-y-4 max-w-6xl">
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/painel/pedidos" className="text-sm text-slate-500 underline">← Pedidos</Link>
-        <h1 className="text-2xl font-semibold">Pedido #{p.id}</h1>
+        <h1 className="text-2xl md:text-3xl">Pedido #{p.id}</h1>
         <StatusPedido status={p.status} />
         <span className="text-sm text-slate-500">{dataHora(p.criado)}</span>
         <a href={`https://api.sambavest.com/wp-admin/post.php?post=${p.id}&action=edit`} target="_blank" rel="noreferrer" className="ml-auto text-sm underline text-slate-600">

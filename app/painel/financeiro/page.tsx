@@ -25,7 +25,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
   if (!integracoes.bling()) {
     return (
       <div className="space-y-4 max-w-4xl">
-        <h1 className="text-2xl font-semibold">Financeiro</h1>
+        <h1 className="text-2xl md:text-3xl">Financeiro</h1>
         <Aviso tipo="erro">O Bling não está configurado (BLING_CLIENT_ID / BLING_CLIENT_SECRET).</Aviso>
       </div>
     );
@@ -43,7 +43,7 @@ export default async function FinanceiroPage({ searchParams }: { searchParams: P
     <div className="space-y-6 max-w-7xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Financeiro</h1>
+          <h1 className="text-2xl md:text-3xl">Financeiro</h1>
           <p className="text-sm text-slate-500">
             Contas a receber e a pagar do Bling{f ? ` · atualizado ${dataHora(f.atualizadoEm)}` : ''}
           </p>

@@ -1,0 +1,156 @@
+/* Identidade visual do painel Samba Vest — vale só dentro de .sv (o site da loja não muda). */
+.sv {
+  /* Paleta */
+  --sv-noite: #10173a; /* menu: céu de noite de desfile */
+  --sv-noite-2: #1a2357;
+  --sv-tinta: #0f1530;
+  --sv-palco: #f4f5fb; /* fundo */
+  --sv-ouro: #f5b700; /* destaque principal */
+  --sv-ouro-escuro: #b98600;
+  --sv-rosa: #ff4d8d; /* destaque secundário, com parcimônia */
+
+  /* Neutros com um toque de azul (os slate-* das telas passam a usar estes tons) */
+  --color-slate-50: #f6f7fc;
+  --color-slate-100: #eceef7;
+  --color-slate-200: #e1e4f0;
+  --color-slate-300: #cdd2e4;
+  --color-slate-400: #9aa1bd;
+  --color-slate-500: #69708f;
+  --color-slate-600: #4c5375;
+  --color-slate-700: #353b5c;
+  --color-slate-900: #0f1530;
+  /* Links (sky-*) em azul-escola */
+  --color-sky-50: #eef3ff;
+  --color-sky-200: #c8d7ff;
+  --color-sky-800: #2346c8;
+
+  /* Formas mais macias */
+  --radius-md: 0.6rem;
+  --radius-lg: 0.85rem;
+  --radius-xl: 1.15rem;
+
+  --font-sans: var(--sv-fonte-texto), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+  color: var(--sv-tinta);
+  background: var(--sv-palco);
+}
+
+.sv .sv-display,
+.sv h1 {
+  font-family: var(--sv-fonte-display), var(--font-sans);
+  letter-spacing: -0.02em;
+}
+.sv h1 {
+  font-weight: 700;
+}
+
+/* Faixa das escolas: listras diagonais nas cores das agremiações */
+.sv .sv-faixa {
+  height: 6px;
+  background: repeating-linear-gradient(
+    -55deg,
+    #00a86b 0 14px,
+    #ff4d8d 14px 28px,
+    #2f6bff 28px 42px,
+    #e53935 42px 56px,
+    #f5b700 56px 70px,
+    #ffffff 70px 84px
+  );
+}
+
+/* Cartões */
+.sv .bg-white.border.rounded-xl,
+.sv section.bg-white {
+  box-shadow: 0 1px 2px rgb(16 23 58 / 0.04), 0 6px 20px -12px rgb(16 23 58 / 0.18);
+  border-color: var(--color-slate-200);
+}
+
+/* Botão principal: azul-noite que acende em ouro */
+.sv .bg-\[\#0B1B34\] {
+  background-color: var(--sv-noite);
+  transition: background-color 0.15s, color 0.15s, transform 0.15s;
+}
+.sv button.bg-\[\#0B1B34\]:hover,
+.sv a.bg-\[\#0B1B34\]:hover {
+  background-color: var(--sv-ouro);
+  color: var(--sv-tinta);
+}
+.sv button:active {
+  transform: translateY(1px);
+}
+
+/* Campos */
+.sv input:not([type='checkbox']):not([type='radio']),
+.sv select,
+.sv textarea {
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sv input:not([type='checkbox']):not([type='radio']):focus,
+.sv select:focus,
+.sv textarea:focus {
+  outline: none;
+  border-color: var(--sv-ouro);
+  box-shadow: 0 0 0 3px rgb(245 183 0 / 0.25);
+}
+.sv :focus-visible {
+  outline: 2px solid var(--sv-ouro);
+  outline-offset: 2px;
+}
+
+/* Menu lateral */
+.sv .sv-menu-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.7rem;
+  color: rgb(255 255 255 / 0.72);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  position: relative;
+  transition: background-color 0.15s, color 0.15s;
+}
+.sv .sv-menu-link:hover {
+  background: rgb(255 255 255 / 0.07);
+  color: #fff;
+}
+.sv .sv-menu-link[aria-current='page'] {
+  background: rgb(245 183 0 / 0.14);
+  color: #fff;
+}
+.sv .sv-menu-link[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  left: -0.75rem;
+  top: 0.45rem;
+  bottom: 0.45rem;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--sv-ouro);
+}
+.sv .sv-menu-link svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.sv .sv-menu-link[aria-current='page'] svg {
+  color: var(--sv-ouro);
+  opacity: 1;
+}
+@media (max-width: 767px) {
+  .sv .sv-menu-link[aria-current='page']::before {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sv *,
+  .sv *::before,
+  .sv *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
