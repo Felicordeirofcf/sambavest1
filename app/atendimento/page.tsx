@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { config, integracoes } from '../../lib/automacao/config';
+import { semJanela24h } from '../../lib/automacao/atendimento';
 import { Conversa, janelaAberta, listarConversas, obterConversa } from '../../lib/automacao/conversas';
 import { acessoAtendimento as logado } from '../../lib/painel/auth';
 import { login, logout, resolver, responder } from './actions';
@@ -65,7 +66,7 @@ export default async function AtendimentoPage({ searchParams }: { searchParams: 
 
   const conversas = await listarConversas(80);
   const aberta = n ? await obterConversa(n) : null;
-  const podeResponder = janelaAberta(aberta);
+  const podeResponder = semJanela24h() || janelaAberta(aberta);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">

@@ -57,6 +57,13 @@ export default async function Integracoes() {
       liga: [{ rotulo: 'Respostas automáticas', ligado: config.whatsapp.respostas.ativas }],
     },
     {
+      nome: 'WhatsApp pelo QR Code (Evolution)',
+      ok: integracoes.evolution(),
+      detalhe: integracoes.evolution()
+        ? 'Configurada. Veja a conexão e o QR Code em Integrações → WhatsApp.'
+        : 'Falta EVOLUTION_URL / EVOLUTION_API_KEY / EVOLUTION_WEBHOOK_TOKEN',
+    },
+    {
       nome: 'E-mail (Resend)',
       ok: integracoes.email(),
       detalhe: integracoes.email() ? `Alertas para ${config.email.admin || '— (EMAIL_ADMIN vazio)'}` : 'Falta RESEND_API_KEY / EMAIL_REMETENTE',
@@ -75,7 +82,10 @@ export default async function Integracoes() {
 
   return (
     <div className="space-y-4 max-w-4xl">
-      <h1 className="text-2xl md:text-3xl">Integrações</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl md:text-3xl">Integrações</h1>
+        <a href="/painel/whatsapp" className="text-sm px-3 py-1.5 rounded-lg bg-[#0B1B34] text-white">WhatsApp (QR Code)</a>
+      </div>
       <p className="text-sm text-slate-500">Situação de cada sistema ligado à loja. As chaves ficam na Vercel (Settings → Environment Variables).</p>
       <Cartao>
         <ul className="divide-y divide-slate-100">

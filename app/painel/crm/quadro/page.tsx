@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Quadro, { CartaoQuadro } from '../../../../components/painel/quadro';
 import { Aviso } from '../../../../components/painel/ui';
 import { integracoes } from '../../../../lib/automacao/config';
+import { semJanela24h } from '../../../../lib/automacao/atendimento';
 import { JANELA_MS } from '../../../../lib/automacao/conversas';
 import { exigirLogin } from '../../../../lib/painel/auth';
 import { ETAPAS, nomeDoContato } from '../../../../lib/painel/crm';
@@ -33,7 +34,7 @@ export default async function QuadroCrm({ searchParams }: { searchParams: Promis
       ultimaDe: c.ultimaDe || '',
       ultimaAtividade: c.ultimaAtividade,
       naoLidas: c.naoLidas,
-      janelaAberta: Boolean(c.ultimaDoCliente && agora - c.ultimaDoCliente < JANELA_MS - 60_000),
+      janelaAberta: semJanela24h() || Boolean(c.ultimaDoCliente && agora - c.ultimaDoCliente < JANELA_MS - 60_000),
       pagos: c.pagos,
       gasto: c.gasto,
       pendentes: c.pendentes,
@@ -62,7 +63,11 @@ export default async function QuadroCrm({ searchParams }: { searchParams: Promis
           </Link>
         </div>
       </div>
-      {!integracoes.whatsapp() && <Aviso>O WhatsApp ainda não está conectado. Assim que conectar, as conversas aparecem aqui.</Aviso>}
+      {!integracoes.whatsapp() && !integracoes.evolution() && (
+        <Aviso>
+          O WhatsApp ainda não está conectado. <Link href="/painel/whatsapp" className="underline">Conectar o WhatsApp</Link>
+        </Aviso>
+      )}
       <Quadro colunas={ETAPAS.map((e) => ({ id: e.id, nome: e.nome }))} cartoes={cartoes} agora={agora} />
     </div>
   );

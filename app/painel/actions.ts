@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { responderPeloPainel } from '../../lib/automacao/atendimento';
 import { linkDeAutorizacao } from '../../lib/automacao/bling';
+import { configurarWebhook, criarInstancia, desconectar } from '../../lib/automacao/evolution';
 import { processarPedido } from '../../lib/automacao/pedidos';
 import { adicionarNota, obterPedido, salvarNoPedido, wc } from '../../lib/automacao/woocommerce';
 import { exigirLogin, sairDoPainel, tentarEntrar } from '../../lib/painel/auth';
@@ -209,4 +210,53 @@ export async function moverEtapaCrm(chave: string, etapa: string): Promise<{ ok:
   await salvarContato(c);
   revalidatePath('/painel/crm');
   return { ok: true };
+}
+
+// ---------- WhatsApp pela Evolution (QR Code) ----------
+
+function voltarWhats(msg: string, tipo: 'ok' | 'erro' = 'ok'): never {
+  redirect(`/painel/whatsapp?${tipo}=${encodeURIComponent(msg)}`);
+}
+
+/** Cria a conexão (instância) e já aponta o recebimento de mensagens para o site. */
+export async function criarConexaoWhatsapp() {
+  await exigirLogin();
+  let erro = '';
+  try {
+    await criarInstancia();
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (!/already|já existe|in use|403/i.test(msg)) erro = msg;
+  }
+  if (!erro) {
+    try {
+      await configurarWebhook();
+    } catch (e) {
+      erro = (e as Error).message;
+    }
+  }
+  if (erro) voltarWhats(erro, 'erro');
+  voltarWhats('Conexão criada. Leia o QR Code com o WhatsApp do celular da loja.');
+}
+
+export async function configurarRecebimentoWhatsapp() {
+  await exigirLogin();
+  let url = '';
+  try {
+    url = await configurarWebhook();
+  } catch (e) {
+    voltarWhats((e as Error).message, 'erro');
+  }
+  voltarWhats(`Recebimento configurado: ${url}`);
+}
+
+export async function desconectarWhatsapp(formData: FormData) {
+  await exigirLogin();
+  if (txt(formData, 'confirmar') !== 'sim') voltarWhats('Marque a confirmação para desconectar.', 'erro');
+  try {
+    await desconectar();
+  } catch (e) {
+    voltarWhats((e as Error).message, 'erro');
+  }
+  voltarWhats('WhatsApp desconectado do painel. O celular continua funcionando normalmente.');
 }

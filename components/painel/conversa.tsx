@@ -1,9 +1,10 @@
+import { semJanela24h } from '../../lib/automacao/atendimento';
 import { janelaAberta, type Conversa as TConversa } from '../../lib/automacao/conversas';
 import { responderWhatsapp } from '../../app/painel/actions';
 import { dataHora } from './ui';
 
 export function Conversa({ conversa, voltar, limite = 15 }: { conversa: TConversa; voltar: string; limite?: number }) {
-  const aberta = janelaAberta(conversa);
+  const aberta = semJanela24h() || janelaAberta(conversa);
   const AUTOR: Record<string, string> = { cliente: 'Cliente', robo: 'Robô', loja: 'Loja', aviso: 'Aviso' };
   return (
     <div>
