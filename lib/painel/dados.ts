@@ -1,7 +1,8 @@
 // Dados do painel: pedidos do WooCommerce em formato enxuto, com cache curto no Upstash.
 import { kvDel, kvGet, kvSet } from '../automacao/kv';
+import { mapaLimitado } from '../limite';
 import { M } from '../automacao/pedidos';
-import { documentoCliente, meta, wc, WcPedido } from '../automacao/woocommerce';
+import { documentoCliente, meta, wc, WcPedido, wcPagina } from '../automacao/woocommerce';
 
 export type ItemResumo = { nome: string; sku: string; qtd: number; total: number; produto: number; variacao: number };
 
@@ -96,6 +97,8 @@ const CACHE_S = 120;
 const MAX_PEDIDOS = 3000;
 const chaveCache = (dias: number) => `painel:pedidos:${dias}`;
 
+const chaveReserva = (dias: number) => `painel:pedidos:${dias}:reserva`;
+
 /** Pedidos (todos os status) criados nos últimos `dias` dias, do mais novo para o mais antigo. */
 export async function pedidosRecentes(dias: number): Promise<PedidoResumo[]> {
   const chave = chaveCache(dias);
@@ -105,22 +108,52 @@ export async function pedidosRecentes(dias: number): Promise<PedidoResumo[]> {
   } catch {
     // sem cache
   }
-  const depoisDe = new Date(Date.now() - dias * 86_400_000).toISOString();
-  const lista: PedidoResumo[] = [];
-  for (let pagina = 1; lista.length < MAX_PEDIDOS; pagina++) {
-    const lote = await wc<WcPedido[]>(
-      `/orders?after=${depoisDe}&per_page=100&page=${pagina}&orderby=date&order=desc&status=any`
-    );
-    lista.push(...lote.filter((p) => p.status !== 'checkout-draft').map(resumir));
-    if (lote.length < 100) break;
+  let lista: PedidoResumo[];
+  try {
+    lista = await buscarPedidos(dias);
+  } catch (e) {
+    // WooCommerce fora do ar: usa a última leitura boa (até 24 h), avisando de quando é
+    const reserva = await kvGet<{ em: number; lista: PedidoResumo[] }>(chaveReserva(dias)).catch(() => null);
+    if (reserva) {
+      ultimaReserva = reserva.em;
+      return reserva.lista;
+    }
+    throw e;
   }
+  ultimaReserva = null;
   try {
     // O Upstash aceita até ~1 MB por comando; listas maiores ficam sem cache.
-    if (JSON.stringify(lista).length < 900_000) await kvSet(chave, lista, CACHE_S);
+    if (JSON.stringify(lista).length < 900_000) {
+      await kvSet(chave, lista, CACHE_S);
+      await kvSet(chaveReserva(dias), { em: Date.now(), lista }, 86_400);
+    }
   } catch {
     // ignora
   }
   return lista;
+}
+
+/** Quando o painel está mostrando dados de reserva (WooCommerce sem responder), o horário deles. */
+let ultimaReserva: number | null = null;
+export const dadosDeReserva = () => ultimaReserva;
+
+/** Busca as páginas em paralelo (4 por vez): a 1ª diz quantas páginas existem. */
+async function buscarPedidos(dias: number): Promise<PedidoResumo[]> {
+  const depoisDe = new Date(Date.now() - dias * 86_400_000).toISOString();
+  const caminho = (pagina: number) => `/orders?after=${depoisDe}&per_page=100&page=${pagina}&orderby=date&order=desc&status=any`;
+  const primeira = await wcPagina<WcPedido>(caminho(1));
+  const total = Math.min(primeira.paginas, Math.ceil(MAX_PEDIDOS / 100));
+  const lotes: WcPedido[][] = [primeira.itens];
+  for (let p = 2; p <= total; p += 4) {
+    const grupo = await Promise.all(
+      Array.from({ length: Math.min(4, total - p + 1) }, (_, i) => wc<WcPedido[]>(caminho(p + i)))
+    );
+    lotes.push(...grupo);
+  }
+  return lotes
+    .flat()
+    .filter((p) => p.status !== 'checkout-draft')
+    .map(resumir);
 }
 
 /** Limpa o cache depois de uma ação no painel (mudar status, rastreio...). */
@@ -182,8 +215,8 @@ export async function estoque(): Promise<LinhaEstoque[]> {
     if (lote.length < 100) break;
   }
   const linhas: LinhaEstoque[] = [];
-  await Promise.all(
-    produtos.map(async (p) => {
+  // No máximo 4 produtos ao mesmo tempo
+  await mapaLimitado(produtos, 4, async (p) => {
       const imagem = p.images?.[0]?.src;
       if (p.type !== 'variable') {
         linhas.push({
@@ -215,8 +248,7 @@ export async function estoque(): Promise<LinhaEstoque[]> {
           imagem,
         });
       }
-    })
-  );
+    });
   linhas.sort((a, b) => a.produto.localeCompare(b.produto) || a.variacao.localeCompare(b.variacao));
   try {
     await kvSet(chave, linhas, 600);

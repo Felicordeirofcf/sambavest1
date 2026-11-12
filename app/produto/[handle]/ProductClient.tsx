@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useCartStore } from '../../../store/cartStore';
 import ShippingCalculator from '../../../components/product/ShippingCalculator';
-import { useSearchParams } from 'next/navigation';
 import { rastrear, dadosItens } from '../../../lib/pixel';
 import { descontoPixAtual } from '../../../lib/pix';
 import { marcarEtapa } from '../../../components/analytics/Etapa';
@@ -11,10 +10,11 @@ import Image from 'next/image';
 import { podeOtimizar } from '../../../lib/imagem';
 import { WHATSAPP_NUMBER } from '../../../lib/whatsapp';
 
-export default function ProductClient({ product }: { product: any }) {
+// ViewContent uma vez por produto por carregamento (a página pode remontar ao ler o ?modelo=)
+const jaRastreados = new Set<number>();
+
+export default function ProductClient({ product, modeloUrl = null }: { product: any; modeloUrl?: string | null }) {
   const { addItem, openCart } = useCartStore();
-  const searchParams = useSearchParams();
-  const modeloUrl = searchParams.get('modelo');
 
   // Tipagem explícita para o TypeScript do Vercel
   const fallbackAssets: string[] = [
@@ -23,7 +23,8 @@ export default function ProductClient({ product }: { product: any }) {
 
   // Meta Pixel: visualização do produto (o ID do produto pai casa com item_group_id do catálogo)
   useEffect(() => {
-    if (!product?.id) return;
+    if (!product?.id || jaRastreados.has(product.id)) return;
+    jaRastreados.add(product.id);
     marcarEtapa('produto');
     rastrear('ViewContent', {
       content_type: 'product_group',

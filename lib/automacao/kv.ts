@@ -34,6 +34,16 @@ export async function kvGet<T>(chave: string): Promise<T | null> {
   return JSON.parse(item.valor) as T;
 }
 
+/** Vários GETs numa chamada só (Upstash MGET). */
+export async function kvMGet<T>(chaves: string[]): Promise<(T | null)[]> {
+  if (chaves.length === 0) return [];
+  if (integracoes.kv()) {
+    const r = (await redis(['MGET', ...chaves])) as (string | null)[];
+    return r.map((v) => (typeof v === 'string' ? (JSON.parse(v) as T) : null));
+  }
+  return Promise.all(chaves.map((c) => kvGet<T>(c)));
+}
+
 export async function kvSet(chave: string, valor: unknown, segundos?: number): Promise<void> {
   const texto = JSON.stringify(valor);
   if (integracoes.kv()) {

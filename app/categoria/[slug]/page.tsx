@@ -1,7 +1,13 @@
-export const revalidate = 60; // 🚀 Cache inteligente de 1 minuto: navegação instantânea nas categorias!
+// Página guardada em cache (ISR), refeita em segundo plano no máximo a cada 2 min.
+export const revalidate = 120;
+export const dynamicParams = true;
+export async function generateStaticParams() {
+  return [];
+}
 
 import Link from 'next/link';
 import ProductCard from '../../../components/product/ProductCard';
+import { mapaLimitado } from '../../../lib/limite';
 
 // 🛍️ Função ULTRA-RÁPIDA: Sincroniza e busca produtos e variações em paralelo
 async function getProdutosWooCommercePorCategoria(categorySlug: string) {
@@ -19,7 +25,7 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
 
     const resProducts = await fetch(`${wcUrl}/wp-json/wc/v3/products?status=publish&per_page=50`, {
       headers: { 'Authorization': authHeader },
-      next: { revalidate: 60 }, // 🚀 Resposta ultra rápida controlada por cache
+      next: { revalidate: 120 }, // 🚀 Resposta ultra rápida controlada por cache
     });
 
     if (!resProducts.ok) return [];
@@ -27,8 +33,8 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
     const products = await resProducts.json();
 
     // 🚀 Otimização Crítica: Mapeia e busca as variações de todos os produtos em paralelo
-    const listaExibicao = await Promise.all(
-      products.map(async (prod: any) => {
+    // No máximo 4 consultas de variações ao mesmo tempo (o WooCommerce derruba conexões em rajada)
+    const listaExibicao = await mapaLimitado(products as any[], 4, async (prod: any) => {
         const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
         
         // 1. Extração segura da imagem principal
@@ -48,7 +54,7 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
           try {
             const resVar = await fetch(`${wcUrl}/wp-json/wc/v3/products/${prod.id}/variations?per_page=50`, {
               headers: { 'Authorization': authHeader },
-              next: { revalidate: 60 },
+              next: { revalidate: 120 },
             });
             if (resVar.ok) {
               variationsList = await resVar.json();
@@ -90,8 +96,7 @@ async function getProdutosWooCommercePorCategoria(categorySlug: string) {
             { id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }
           ]
         };
-      })
-    );
+      });
 
     // Se não for 'todos', filtra pelo slug da categoria do WooCommerce
     if (categorySlug && categorySlug !== 'todos') {

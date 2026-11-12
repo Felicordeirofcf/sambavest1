@@ -6,6 +6,7 @@ import ProductCard from '../components/product/ProductCard';
 import HeroCarousel from '../components/home/HeroCarousel';
 import AboutAtelie from '../components/home/AboutAtelie';
 import InstagramReels from '../components/home/InstagramReels'; // 📱 Importação da seção de Reels do Instagram
+import { mapaLimitado } from '../lib/limite';
 
 const featuredCategories = [
   {
@@ -54,8 +55,8 @@ async function getProdutosWooCommerce() {
     const products = await response.json();
 
     // 🚀 Otimização Crítica: Mapeia e busca todas as variações em paralelo para acelerar a abertura da loja
-    const listaExibicao = await Promise.all(
-      products.map(async (prod: any) => {
+    // No máximo 4 consultas de variações ao mesmo tempo (o WooCommerce derruba conexões em rajada)
+    const listaExibicao = await mapaLimitado(products as any[], 4, async (prod: any) => {
         const precoBase = Number(prod.price || prod.regular_price || prod.sale_price || 149.90);
         const imagemPrincipal = prod.images?.[0]?.src || '';
         const productImages = prod.images ? prod.images.map((img: any) => img.src) : [];
@@ -112,8 +113,7 @@ async function getProdutosWooCommerce() {
             { id: prod.id, model: 'Unissex', size: 'Único', stock: 10, price: precoBase, image: imagemPrincipal }
           ]
         };
-      })
-    );
+      });
 
     // 🚀 Filtro flexível para garantir que traga os produtos de "carnaval-2027" ou que tenham "2027" no nome/slug
     const filtrados = listaExibicao.filter((p: any) => {
