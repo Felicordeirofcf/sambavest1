@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { responderPeloPainel } from '../../lib/automacao/atendimento';
 import { alterarConversa, obterConversa } from '../../lib/automacao/conversas';
-import { entrar, logado, sair, senhaConfere } from '../../lib/automacao/painel';
+import { entrar, sair, senhaConfere } from '../../lib/automacao/painel';
+import { acessoAtendimento as logado, sairDoPainel } from '../../lib/painel/auth';
 
 function voltar(numero: string, extra = ''): never {
   redirect(`/atendimento?n=${encodeURIComponent(numero)}${extra}`);
@@ -21,7 +22,8 @@ export async function login(formData: FormData) {
 
 export async function logout() {
   await sair();
-  redirect('/atendimento');
+  await sairDoPainel();
+  redirect('/painel/entrar');
 }
 
 export async function responder(formData: FormData) {

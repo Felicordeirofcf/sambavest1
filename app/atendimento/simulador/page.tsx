@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { classificar, montarResposta } from '../../../lib/automacao/atendimento';
 import { config, integracoes } from '../../../lib/automacao/config';
 import { telefoneWhatsapp } from '../../../lib/automacao/whatsapp';
-import { logado } from '../../../lib/automacao/painel';
+import { acessoAtendimento as logado } from '../../../lib/painel/auth';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Simulador do robô', robots: { index: false, follow: false } };

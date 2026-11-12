@@ -1,9 +1,10 @@
 // Painel simples para ver as conversas recentes do WhatsApp e responder dentro da janela de 24h.
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { config, integracoes } from '../../lib/automacao/config';
 import { Conversa, janelaAberta, listarConversas, obterConversa } from '../../lib/automacao/conversas';
-import { logado } from '../../lib/automacao/painel';
+import { acessoAtendimento as logado } from '../../lib/painel/auth';
 import { login, logout, resolver, responder } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -57,7 +58,10 @@ function Item({ c, ativo }: { c: Conversa; ativo: boolean }) {
 
 export default async function AtendimentoPage({ searchParams }: { searchParams: Promise<{ n?: string; erro?: string }> }) {
   const { n, erro } = await searchParams;
-  if (!(await logado())) return <Login erro={erro} />;
+  if (!(await logado())) {
+    if (erro !== 'senha') redirect('/painel/entrar');
+    return <Login erro={erro} />;
+  }
 
   const conversas = await listarConversas(80);
   const aberta = n ? await obterConversa(n) : null;
