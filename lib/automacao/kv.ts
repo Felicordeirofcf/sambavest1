@@ -4,7 +4,9 @@
 // que só serve para testes (na Vercel cada execução pode ter memória separada).
 import { config, integracoes } from './config';
 
-const memoria = new Map<string, { valor: string; expiraEm: number | null }>();
+// Fica em globalThis para que rotas e páginas (empacotadas separadamente pelo Next) vejam o mesmo dado.
+const g = globalThis as unknown as { __svKvMem?: Map<string, { valor: string; expiraEm: number | null }>; __svKvZ?: Map<string, Map<string, number>> };
+const memoria = (g.__svKvMem ??= new Map());
 
 async function redis(comando: (string | number)[]): Promise<unknown> {
   const res = await fetch(config.kv.url!, {
@@ -68,7 +70,7 @@ export async function liberarTrava(chave: string): Promise<void> {
 
 // ---------- Conjunto ordenado (lista de conversas recentes) ----------
 
-const zsets = new Map<string, Map<string, number>>();
+const zsets = (g.__svKvZ ??= new Map());
 
 export async function kvZAdd(chave: string, pontos: number, membro: string): Promise<void> {
   if (integracoes.kv()) {

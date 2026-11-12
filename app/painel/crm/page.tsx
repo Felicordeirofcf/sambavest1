@@ -90,8 +90,11 @@ export default async function Crm({ searchParams }: { searchParams: Promise<{ f?
         </div>
       </div>
 
-      {!integracoes.whatsapp() && (
-        <Aviso>O WhatsApp ainda não está conectado (WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID). Assim que conectar, as conversas passam a aparecer aqui.</Aviso>
+      {!integracoes.whatsapp() && !integracoes.evolution() && (
+        <Aviso>
+          O WhatsApp ainda não está conectado. <Link href="/painel/whatsapp" className="underline">Conectar o WhatsApp</Link> e as conversas passam a
+          aparecer aqui.
+        </Aviso>
       )}
       {erroPedidos && <Aviso tipo="erro">Não consegui ler os pedidos do WooCommerce: {erroPedidos}</Aviso>}
 

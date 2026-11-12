@@ -7,8 +7,9 @@
 //
 // Os textos das respostas vêm das variáveis WHATSAPP_RESPOSTA_* (aprovadas pelo dono).
 // Resposta sem texto configurado = a dúvida vai para o atendimento humano.
-import { config } from './config';
+import { config, integracoes } from './config';
 import { alterarConversa, Conversa, janelaAberta, obterConversa, registrarSaida } from './conversas';
+import { enviarTextoEvolution } from './evolution';
 import { adquirirTrava, kvGet, kvSet } from './kv';
 import { enviarEmail, escapar } from './notificacoes';
 import { chaveTelefone, enviarTemplate, enviarTexto, telefoneWhatsapp } from './whatsapp';
@@ -345,14 +346,24 @@ export async function registrarEco(m: EcoMeta): Promise<ResultadoMensagem> {
 export async function responderPeloPainel(numero: string, texto: string): Promise<void> {
   const c = await obterConversa(numero);
   if (!c) throw new Error('Conversa não encontrada.');
-  if (!janelaAberta(c)) {
+  // Evolution (QR Code): não tem a janela de 24h da API oficial
+  const pelaEvolution = semJanela24h();
+  if (!pelaEvolution && !janelaAberta(c)) {
     throw new Error('Passaram 24h desde a última mensagem do cliente. Pelo WhatsApp oficial, só é possível mandar um template.');
   }
-  const id = await enviarTexto(c.numero, texto);
+  const id = pelaEvolution ? await enviarTextoEvolution(c.numero, texto) : await enviarTexto(c.numero, texto);
   await alterarConversa(numero, (cv) => {
-    cv.mensagens.push({ id, de: 'loja', texto, em: Date.now() });
+    // A Evolution pode avisar (webhook) do envio antes de chegarmos aqui: não duplica.
+    const eco = id ? cv.mensagens.find((m) => m.id === id) : undefined;
+    if (eco) eco.texto = texto;
+    else cv.mensagens.push({ id, de: 'loja', texto, em: Date.now() });
     cv.naoLidas = 0;
     // Enquanto a pessoa estiver conversando, o robô não interfere.
     cv.humanoAte = Date.now() + config.whatsapp.respostas.silencioHoras * 3_600_000;
   });
+}
+
+/** true quando o WhatsApp do painel é a Evolution (QR Code): pode responder a qualquer momento. */
+export function semJanela24h(): boolean {
+  return integracoes.evolution() && !integracoes.whatsapp();
 }

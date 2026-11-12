@@ -152,6 +152,16 @@ export const config = {
     },
   },
 
+  // Evolution API (WhatsApp pelo QR Code, não oficial). Usada só para receber e responder
+  // conversas no painel — sem robô e sem mensagens automáticas.
+  evolution: {
+    url: (env('EVOLUTION_URL') || '').replace(/\/+$/, '') || undefined,
+    apiKey: env('EVOLUTION_API_KEY'),
+    instancia: env('EVOLUTION_INSTANCIA') || 'sambavest',
+    // Senha que vai na URL do webhook (?token=...), para só a Evolution conseguir entregar mensagens
+    webhookToken: env('EVOLUTION_WEBHOOK_TOKEN'),
+  },
+
   email: {
     resendKey: env('RESEND_API_KEY'),
     remetente: env('EMAIL_REMETENTE'),
@@ -186,6 +196,7 @@ export const integracoes = {
   bling: () => Boolean(config.bling.clientId && config.bling.clientSecret),
   melhorEnvio: () => Boolean(config.melhorEnvio.token),
   whatsapp: () => Boolean(config.whatsapp.token && config.whatsapp.phoneNumberId),
+  evolution: () => Boolean(config.evolution.url && config.evolution.apiKey && config.evolution.webhookToken),
   email: () => Boolean(config.email.resendKey && config.email.remetente),
   meta: () => Boolean(config.meta.pixelId && config.meta.capiToken),
 };

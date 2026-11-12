@@ -36,6 +36,7 @@ const GRUPOS: { titulo: string; itens: { href: string; rotulo: string; icone: st
     titulo: 'Relacionamento',
     itens: [
       { href: '/painel/crm', rotulo: 'CRM WhatsApp', icone: 'crm' },
+      { href: '/painel/whatsapp', rotulo: 'Conexão WhatsApp', icone: 'integracoes' },
       { href: '/painel/clientes', rotulo: 'Clientes', icone: 'clientes' },
       { href: '/atendimento', rotulo: 'Atendimento', icone: 'atendimento' },
     ],

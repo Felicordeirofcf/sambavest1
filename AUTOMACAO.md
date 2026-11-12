@@ -369,6 +369,24 @@ automáticos (templates) e responde as dúvidas simples.
 - Confira, depois de conectar, se o WhatsApp do PC continua conectado. Se cair, conecte de novo pelo QR
   code no PC.
 
+### 5.1 Alternativa: WhatsApp pela Evolution API (QR Code)
+
+Para ver e responder as conversas no painel sem a API oficial da Meta. **Não há robô**: nada é enviado
+sozinho, só o que você escreve no painel.
+
+1. Suba um servidor da [Evolution API](https://doc.evolution-api.com) (v2), por exemplo um template
+   pronto no Railway ou Docker numa VPS (com Postgres e Redis). Defina nele a chave global
+   `AUTHENTICATION_API_KEY`.
+2. Na Vercel cadastre `EVOLUTION_URL`, `EVOLUTION_API_KEY` (a mesma chave global),
+   `EVOLUTION_WEBHOOK_TOKEN` (senha longa qualquer) e, se quiser, `EVOLUTION_INSTANCIA`. Redeploy.
+3. Painel → **Conexão WhatsApp** → "Criar conexão e gerar QR Code". No celular: WhatsApp Business →
+   Dispositivos conectados → Conectar um dispositivo → ler o QR.
+4. As mensagens chegam em `/api/webhooks/evolution?token=...` e aparecem no CRM (inclusive as que você
+   manda pelo celular). Grupos e status ficam de fora. Sem a janela de 24 h da Meta.
+
+**Cuidados:** não é oficial. Atenda 1 a 1 e não use para disparos em massa, o WhatsApp pode bloquear o
+número. Se a API oficial (`WHATSAPP_TOKEN`) também estiver ligada, as respostas saem pela oficial.
+
 ## 6. Meta Ads: rastreamento de compras e catálogo
 
 **Por quê:** o pagamento acontece na página da AppMax, fora do site, então o Pixel do navegador nunca
