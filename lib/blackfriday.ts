@@ -24,6 +24,8 @@ export type OfertaBF = {
   descricao: string;
   precoBlack: number;
   imagemReserva: string;
+  /** Usa sempre a foto local (frente da camisa), e não a 1ª foto do WooCommerce. */
+  fotoFrenteLocal?: boolean;
   /** ID do produto no WooCommerce: quando informado, usa esse produto (nome, foto, preço e link). */
   produtoId?: number;
   /** Escolhe o produto do WooCommerce pelo nome (minúsculo, sem acento). */
@@ -43,6 +45,7 @@ export const OFERTAS: OfertaBF[] = [
     descricao: 'Camisa oficial do enredo, 100% poliéster, leve para a quadra e para a avenida.',
     precoBlack: 99,
     imagemReserva: '/products/beija-flor-2027-zeneida.webp',
+    fotoFrenteLocal: true,
     combina: (n) => tem(n, 'beija', '2027') && naoTem(n, ...outrosModelos),
   },
   {
@@ -53,6 +56,7 @@ export const OFERTAS: OfertaBF[] = [
     descricao: 'Camisa oficial do enredo Griô, estampa completa vermelha e dourada.',
     precoBlack: 99,
     imagemReserva: '/products/viradouro27.webp',
+    fotoFrenteLocal: true,
     combina: (n) => tem(n, 'viradouro') && naoTem(n, 'algod', '2025', '2026', ...outrosModelos),
   },
   {
@@ -206,7 +210,7 @@ export async function produtosBF(): Promise<ProdutoBF[]> {
       titulo: fixo ? p.name : o.titulo,
       wooId: p.id,
       slug: p.slug || String(p.id),
-      imagem: p.images?.[0]?.src || o.imagemReserva,
+      imagem: o.fotoFrenteLocal ? o.imagemReserva : p.images?.[0]?.src || o.imagemReserva,
       precoCheio: cheio,
       precoAtual: atual,
       modelo: v?.modelo,
