@@ -9,6 +9,7 @@ import { marcarEtapa } from '../../../components/analytics/Etapa';
 import Image from 'next/image';
 import { podeOtimizar } from '../../../lib/imagem';
 import { WHATSAPP_NUMBER } from '../../../lib/whatsapp';
+import { FREE_SHIPPING_THRESHOLD } from '../../../lib/shipping';
 
 // ViewContent uma vez por produto por carregamento (a página pode remontar ao ler o ?modelo=)
 const jaRastreados = new Set<number>();
@@ -119,6 +120,30 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
   const sizeGuideIndex = gallery.findIndex((img: string) => 
     img?.toLowerCase().includes('tabela') || img?.toLowerCase().includes('guia') || img?.toLowerCase().includes('medidas')
   );
+
+  // Tabela de medidas: imagem da galeria com "tabela/guia/medidas" no nome, ou imagens da descrição
+  // (marcadas assim, ou as que vêm depois do texto "guia de medidas")
+  const imagensGuia = useMemo(() => {
+    const lista: string[] = [];
+    if (sizeGuideIndex >= 0) lista.push(gallery[sizeGuideIndex]);
+    const html: string = product?.description || '';
+    const chave = /tabela|guia|medida|tamanho|size/i;
+    const marcoTexto = html.search(/guia de medidas|tabela de medidas/i);
+    for (const m of html.matchAll(/<img[^>]*>/gi)) {
+      const tag = m[0];
+      const src = tag.match(/src=["']([^"']+)["']/i)?.[1];
+      if (!src) continue;
+      if (chave.test(tag) || (marcoTexto >= 0 && (m.index ?? 0) > marcoTexto)) lista.push(src);
+    }
+    return Array.from(new Set(lista)).slice(0, 4);
+  }, [sizeGuideIndex, gallery, product?.description]);
+  const [guiaAberto, setGuiaAberto] = useState(false);
+
+  const irParaFrete = () => {
+    const alvo = document.getElementById('calcular-frete');
+    alvo?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => alvo?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true }), 450);
+  };
 
   const extractModelFromVariant = (v: any): string => {
     if (v.model && v.model !== 'Geral') return v.model;
@@ -331,10 +356,50 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
   const displayedImage = gallery[activeImage] || '';
   
   const whatsappMessage = encodeURIComponent(`Olá! Tenho dúvida sobre o produto: ${product?.name} (${selectedModel ? selectedModel : 'Modelo padrão'})`);
+  const whatsappTamanhoUrl = `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(
+    `Olá! Quero a ${product?.name}${selectedModel ? ` (${selectedModel})` : ''}. Qual tamanho você me indica? Minhas medidas: altura __ cm, peso __ kg.`
+  )}&type=phone_number&app_absent=0`;
   const whatsappUrl = `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${whatsappMessage}&type=phone_number&app_absent=0`;
 
   return (
     <div className={`w-full min-h-screen ${T.pagina} ${T.fundo}`}>
+      {guiaAberto && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Tabela de medidas"
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-6"
+          onClick={() => setGuiaAberto(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setGuiaAberto(false)}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-white p-4 text-[#0B1B34] shadow-2xl sm:rounded-3xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-black uppercase tracking-widest">📏 Tabela de medidas</h2>
+              <button type="button" autoFocus onClick={() => setGuiaAberto(false)} className="rounded-full px-3 py-1 text-xl leading-none hover:bg-gray-100" aria-label="Fechar">
+                ×
+              </button>
+            </div>
+            <p className="mb-3 text-xs text-gray-600">Meça uma camisa sua que veste bem, deitada, de axila a axila, e compare com a tabela.</p>
+            <div className="space-y-3">
+              {imagensGuia.map((src) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={src} src={src} alt="Tabela de medidas" className="w-full rounded-xl border border-gray-200" />
+              ))}
+            </div>
+            <a
+              href={whatsappTamanhoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-sm font-black uppercase tracking-wide text-black"
+            >
+              💬 Ainda em dúvida? Pergunte no WhatsApp
+            </a>
+          </div>
+        </div>
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
         <div className="flex flex-col md:flex-row gap-10 md:gap-16">
           
@@ -450,6 +515,23 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
               </div>}
 
               <p className={`mt-2 text-xs ${bk ? 'text-white/50' : 'text-gray-500'}`}>Camisa oficial/licenciada</p>
+
+              {/* Frete visível logo no preço: tira a dúvida "quanto fica pra minha cidade?" */}
+              <button
+                type="button"
+                onClick={irParaFrete}
+                className={`mt-3 flex w-full items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
+                  bk ? 'border-emerald-400/30 bg-emerald-400/10 hover:bg-emerald-400/15' : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100'
+                }`}
+              >
+                <span className="text-xl" aria-hidden>🚚</span>
+                <span className="flex-1 leading-tight">
+                  <span className={`block text-sm font-extrabold ${bk ? 'text-emerald-300' : 'text-emerald-800'}`}>Enviamos para todo o Brasil</span>
+                  <span className={`block text-xs ${bk ? 'text-white/70' : 'text-emerald-900/80'}`}>
+                    <u className="underline-offset-2">Calcule o frete com seu CEP</u> · grátis acima de R$ {FREE_SHIPPING_THRESHOLD}
+                  </span>
+                </span>
+              </button>
             </div>
 
             {product?.short_description && (
@@ -487,9 +569,20 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
 
             {availableSizes.length > 0 && (
               <div className="mb-6" id="escolha-tamanho">
-                <label className={`block text-xs font-bold uppercase tracking-widest mb-2 ${T.rotulo}`}>
-                  Escolha o tamanho
-                </label>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label className={`block text-xs font-bold uppercase tracking-widest ${T.rotulo}`}>
+                    Escolha o tamanho
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => (imagensGuia.length ? setGuiaAberto(true) : window.open(whatsappTamanhoUrl, '_blank', 'noopener'))}
+                    className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold transition-colors ${
+                      bk ? 'border-[#C9A227]/60 text-[#E8C547] hover:bg-[#C9A227]/10' : 'border-[#0B1B34]/30 text-[#0B1B34] hover:bg-[#0B1B34]/5'
+                    }`}
+                  >
+                    <span aria-hidden>📏</span> {imagensGuia.length ? 'Tabela de medidas' : 'Qual meu tamanho?'}
+                  </button>
+                </div>
                 <div className="flex flex-wrap gap-2.5">
                   {availableSizes.map((size: string) => {
                     const isSelected = selectedSize.toLowerCase() === size.toLowerCase();
@@ -521,17 +614,12 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                   </p>
                 )}
 
-                {sizeGuideIndex >= 0 && (
-                  <div className="mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveImage(sizeGuideIndex)}
-                      className={`text-xs font-semibold uppercase tracking-wider underline underline-offset-4 transition-colors cursor-pointer ${T.link}`}
-                    >
-                      Ver guia de medidas
-                    </button>
-                  </div>
-                )}
+                <p className={`mt-2.5 text-xs ${bk ? 'text-white/70' : 'text-gray-600'}`}>
+                  🔄 Não serviu? Fazemos a troca de tamanho.{' '}
+                  <a href={whatsappTamanhoUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2">
+                    Na dúvida, pergunte no WhatsApp
+                  </a>
+                </p>
               </div>
             )}
 
@@ -576,7 +664,8 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
               </div>
             </div>
 
-            <div className={`mt-2 ${T.frete}`}>
+            <div id="calcular-frete" className={`mt-2 scroll-mt-28 ${T.frete}`}>
+              <p className="mb-2 text-sm font-extrabold text-[#0B1B34]">🚚 Quanto fica o frete para você?</p>
               <ShippingCalculator 
                 subtotal={currentPrice} 
                 onQuote={() => {}} 
