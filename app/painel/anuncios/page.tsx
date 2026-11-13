@@ -13,6 +13,7 @@ import { quando, ultimosDias } from '../../../lib/painel/analytics';
 import { exigirLogin } from '../../../lib/painel/auth';
 import { pedidosRecentes } from '../../../lib/painel/dados';
 import { somaFunil } from '../../../lib/painel/funil';
+import { NOME_SINAL, SINAIS_BF, somaSinais } from '../../../lib/painel/comportamentoBF';
 import { diaLocal, pago } from '../../../lib/painel/metricas';
 
 export const dynamic = 'force-dynamic';
@@ -58,6 +59,10 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
   const pagosAnuncio = doAnuncio.filter(pago);
   const faturamentoAnuncio = pagosAnuncio.reduce((s, x) => s + x.total, 0);
   const funilSite = integracoes.kv() ? await somaFunil(dias, 'meta').catch(() => null) : null;
+  // O que fazem na página da Black (todos × vindos do anúncio)
+  const [bfTodos, bfAnuncio] = integracoes.kv()
+    ? await Promise.all([somaSinais(dias).catch(() => null), somaSinais(dias, 'meta').catch(() => null)])
+    : [null, null];
 
   // ---------- Lado da Meta ----------
   // Cada parte separada: uma permissão negada não derruba a tela inteira, e o erro diz qual parte falhou
@@ -174,6 +179,42 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
             <p className="text-sm text-slate-600">Nenhuma melhoria pendente agora. Os anúncios seguem o calendário e os números estão saudáveis.</p>
           )}
           <p className="mt-3 text-xs text-slate-500">✕ corrigir já · ▲ vale ajustar · ● oportunidade. As novas vão para o seu celular (Painel → Alertas).</p>
+        </Cartao>
+      )}
+
+      {bfTodos && bfAnuncio && (
+        <Cartao
+          titulo="Página da Black: o que as pessoas fazem"
+          acao={<span className="text-xs text-slate-500">{PERIODOS[chave].toLowerCase()} · 1 vez por pessoa por dia</span>}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+                  <th className="py-2 pr-3 font-semibold">O que fizeram</th>
+                  <th className="py-2 pr-3 text-right font-semibold">Todos</th>
+                  <th className="py-2 text-right font-semibold">Vindos do anúncio</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {SINAIS_BF.filter((s) => s === 'abriu' || bfTodos[s] > 0 || bfAnuncio[s] > 0).map((s) => {
+                  const cel = (v: Record<string, number>) =>
+                    s === 'abriu' ? String(v[s]) : `${v[s]}${v.abriu ? ` · ${pct(v[s] / v.abriu)}` : ''}`;
+                  return (
+                    <tr key={s} className={s === 'saiu5s' ? 'text-red-700' : ''}>
+                      <td className="py-2 pr-3">{NOME_SINAL[s]}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{cel(bfTodos)}</td>
+                      <td className="py-2 text-right tabular-nums">{cel(bfAnuncio)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-slate-500">
+            Muita gente saindo em até 5 s = toque sem querer no anúncio (comum no Story). Ficam, rolam e não tocam em nenhuma camisa = a página não está
+            convencendo.
+          </p>
         </Cartao>
       )}
 

@@ -15,6 +15,8 @@ export type EntradaMelhorias = {
   /** Funil do site só de quem veio do anúncio, últimos 3 dias. */
   siteAnuncio: { visita: number; produto: number; sacola: number; checkout: number };
   capiLigado: boolean;
+  /** O que quem veio do anúncio fez na página da Black (3 dias). */
+  paginaBlack?: { abriu: number; saiu5s: number; ficou15s: number; toques: number };
   /** Datas do calendário da campanha (ms). */
   calendario: { ultimosDias: number; ultimoDia: number; fim: number; inicio: number };
 };
@@ -203,6 +205,28 @@ export function gerarMelhorias(e: EntradaMelhorias): Melhoria[] {
       detalhe: `${s.visita} visitas do anúncio e ${s.produto} abriram uma camisa.`,
       acao: 'Mande o link do anúncio direto para a camisa da arte (ex.: /produto/viradouro-2027) em vez da página geral.',
     });
+  }
+
+  // 7b) Página da Black: toque sem querer × página que não convence
+  const pb = e.paginaBlack;
+  if (pb && pb.abriu >= 30) {
+    if (pb.saiu5s / pb.abriu >= 0.4) {
+      r.push({
+        id: 'bf-saida-rapida',
+        nivel: 'atencao',
+        titulo: `${pct(pb.saiu5s / pb.abriu)} de quem vem do anúncio sai da página da Black em até 5 s`,
+        detalhe: 'Sem rolar nem tocar: é toque sem querer (comum no Story) ou o topo não mostra logo o que o anúncio prometeu.',
+        acao: 'Compare com o Carrossel; se só o Story tiver isso, é toque sem querer e o custo real por visita é maior. Se for geral, deixe a camisa e o preço do anúncio no topo.',
+      });
+    } else if (pb.ficou15s / pb.abriu >= 0.4 && pb.toques / pb.abriu < 0.15) {
+      r.push({
+        id: 'bf-olha-nao-toca',
+        nivel: 'atencao',
+        titulo: 'Ficam na página da Black, mas quase ninguém toca numa camisa',
+        detalhe: `${pb.ficou15s} ficaram 15 s ou mais e só ${pb.toques} tocaram em alguma camisa.`,
+        acao: 'A página não está convencendo: teste foto de gente vestindo no topo, um selo de "últimas unidades" ou frete grátis acima de um valor menor.',
+      });
+    }
   }
 
   // 8) Sinal de conversão e alcance

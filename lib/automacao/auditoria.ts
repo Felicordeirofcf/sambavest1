@@ -48,6 +48,10 @@ export async function auditoria(): Promise<Record<string, unknown>> {
     (async () => {
       const [h, o, hm, om] = await Promise.all([somaFunil([hoje]), somaFunil([ontem]), somaFunil([hoje], 'meta'), somaFunil([ontem], 'meta')]);
       r.funil = { hoje: h, ontem: o, vindoDoAnuncioHoje: hm, vindoDoAnuncioOntem: om };
+      const { somaSinais } = await import('../painel/comportamentoBF');
+      const soNaoZero = (x: Record<string, number>) => Object.fromEntries(Object.entries(x).filter(([, v]) => v > 0));
+      const [bh, bm] = await Promise.all([somaSinais([hoje]), somaSinais([hoje], 'meta')]);
+      r.paginaBlackHoje = { todos: soNaoZero(bh), vindoDoAnuncio: soNaoZero(bm) };
     })(),
 
     // 4) Rotinas e falhas

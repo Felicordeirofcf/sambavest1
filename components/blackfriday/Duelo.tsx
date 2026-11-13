@@ -55,6 +55,7 @@ export default function Duelo({ inicial }: { inicial: Placar }) {
           <button
             key={l.id}
             type="button"
+            data-bf="voto"
             onClick={() => votar(l.id)}
             disabled={Boolean(voto) || enviando}
             className={`rounded-2xl bg-gradient-to-br ${l.cor} p-4 sm:p-5 text-left text-white shadow-lg transition-transform enabled:hover:scale-[1.02] enabled:active:scale-95 disabled:cursor-default ${
