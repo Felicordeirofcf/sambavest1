@@ -336,3 +336,15 @@ export async function escolherFotoVestida(formData: FormData) {
   revalidatePath('/black-friday');
   redirect('/painel/fotos-black?ok=' + encodeURIComponent(url ? 'Foto escolhida! Os cards da Black já mostram essa foto.' : 'Voltou para a foto da camisa.'));
 }
+
+/** Marca um carrinho abandonado ou pedido não pago como "já chamei no WhatsApp". */
+export async function marcarChamadoRecuperar(formData: FormData) {
+  await exigirLogin();
+  const k = txt(formData, 'k');
+  if (/^(a|p):[\w-]{1,64}$/.test(k)) {
+    const { marcarChamado } = await import('../../lib/painel/recuperar');
+    await marcarChamado(k);
+  }
+  revalidatePath('/painel');
+  redirect('/painel#recuperar');
+}

@@ -31,7 +31,8 @@ import { exigirLogin } from '../../lib/painel/auth';
 import { dadosDeReserva, estoque as lerEstoque, LinhaEstoque, pedidosRecentes } from '../../lib/painel/dados';
 import { funilPorDia, NOME_ETAPA, somaFunil } from '../../lib/painel/funil';
 import { diaLocal, pago, pendencias, variacao } from '../../lib/painel/metricas';
-import { atualizarDados } from './actions';
+import { atualizarDados, marcarChamadoRecuperar } from './actions';
+import { quandoChamados } from '../../lib/painel/recuperar';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -163,6 +164,46 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     falhasNosDias([diaLocal(agora), diaLocal(agora - DIA)]),
     integracoes.kv() ? listarAbandonos(72).catch(() => []) : Promise.resolve([]),
   ]);
+
+  // ---- Recuperar vendas: carrinhos abandonados + pedidos não pagos (72 h) ----
+  type Recuperar = {
+    k: string; tipo: 'sacola' | 'pedido'; pedidoId?: number; rotuloPedido?: string; nome: string; total: number;
+    itens: string; quando: number; origem?: string; extra?: string; whatsapp?: string; semTelefone?: string; chamadoEm?: number | null;
+  };
+  const listaRecuperar: Recuperar[] = [
+    ...abandonos
+      .filter((a) => !a.convertido && !a.sair)
+      .map((a): Recuperar => {
+        const wa = a.telefone ? telefoneWhatsapp(a.telefone) : null;
+        const primeiro = (a.nome || '').split(' ')[0];
+        const msg = `Oi${primeiro ? ` ${primeiro}` : ''}! Aqui é da Samba Vest. Vi que você deixou ${a.itens[0]?.nome || 'uma camisa'} na sacola. Posso te ajudar a finalizar? Qualquer dúvida de tamanho ou frete, é só me falar.`;
+        return {
+          k: `a:${a.id}`, tipo: 'sacola', nome: a.nome || a.email, total: a.total,
+          itens: a.itens.map((i) => `${i.qtd}x ${i.nome}`).join(', '), quando: a.atualizadoEm, origem: a.origem,
+          extra: a.emails ? `${a.emails} e-mail(s) enviado(s)` : 'e-mail em breve',
+          whatsapp: wa ? linkWhats(wa, msg) : undefined, semTelefone: 'sem telefone (só e-mail)',
+        };
+      }),
+    ...pedidos
+      .filter((p) => ['pending', 'on-hold', 'failed'].includes(p.status) && agora - p.criado < 72 * 3_600_000)
+      .map((p): Recuperar => {
+        const wa = telefoneWhatsapp(p.cliente.telefone);
+        const msg = mensagensDoPedido(p).find((m) => m.destaque);
+        const pix = p.metodo.includes('pix');
+        return {
+          k: `p:${p.id}`, tipo: 'pedido', pedidoId: p.id,
+          rotuloPedido: p.status === 'failed' ? 'cartão recusado' : pix ? 'Pix não pago' : 'cartão não pago',
+          nome: p.cliente.nome, total: p.total, itens: p.itens.map((i) => `${i.qtd}x ${i.nome}`).join(', '), quando: p.criado,
+          origem: p.origem?.source, whatsapp: wa && msg ? linkWhats(wa, msg.texto) : undefined, semTelefone: 'sem telefone',
+        };
+      }),
+  ].sort((a, b) => b.quando - a.quando);
+  const chamados = integracoes.kv() ? await quandoChamados(listaRecuperar.map((r) => r.k)) : {};
+  // Os ainda não chamados primeiro
+  const recuperar = listaRecuperar
+    .map((r) => ({ ...r, chamadoEm: chamados[r.k] ?? null }))
+    .sort((a, b) => Number(Boolean(a.chamadoEm)) - Number(Boolean(b.chamadoEm)) || b.quando - a.quando);
+
   const ultimoPago = pedidos.filter(pago).sort((a, b) => quando(b) - quando(a))[0];
   const recusados24h = pedidos.filter((p) => p.status === 'failed' && agora - p.criado < DIA).length;
   const qtdPend = (tipo: string) => pend.find((p) => p.tipo === tipo)?.pedidos.length || 0;
@@ -406,47 +447,54 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
         </Cartao>
       </div>
 
-      <Cartao
-        titulo={`Carrinhos abandonados (72 h): ${abandonos.filter((a) => !a.convertido).length}`}
-        acao={<span className="text-xs text-slate-500">{abandonos.filter((a) => a.convertido).length} recuperado(s) · e-mail automático em 1 h e 24 h</span>}
-      >
-        {abandonos.length === 0 ? (
-          <p className="text-sm text-slate-400">Nenhum carrinho abandonado com e-mail nas últimas 72 h.</p>
-        ) : (
-          <ul className="divide-y divide-slate-100 text-sm">
-            {abandonos.slice(0, 10).map((a) => {
-              const wa = a.telefone ? telefoneWhatsapp(a.telefone) : null;
-              const primeiro = (a.nome || '').split(' ')[0];
-              const msg = `Oi${primeiro ? ` ${primeiro}` : ''}! Aqui é da Samba Vest. Vi que você deixou ${a.itens[0]?.nome || 'uma camisa'} na sacola. Posso te ajudar a finalizar?`;
-              return (
-                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+      <div id="recuperar">
+        <Cartao
+          titulo={`Recuperar vendas (72 h): ${recuperar.filter((r) => !r.chamadoEm).length} para chamar`}
+          acao={<span className="text-xs text-slate-500">{abandonos.filter((a) => a.convertido).length} carrinho(s) recuperado(s) · e-mail automático em 1 h e 24 h</span>}
+        >
+          {recuperar.length === 0 ? (
+            <p className="text-sm text-slate-400">Ninguém para recuperar nas últimas 72 h. 🎉</p>
+          ) : (
+            <ul className="divide-y divide-slate-100 text-sm">
+              {recuperar.slice(0, 20).map((r) => (
+                <li key={r.k} className={`flex flex-wrap items-center justify-between gap-2 py-2.5 ${r.chamadoEm ? 'opacity-60' : ''}`}>
                   <span className="min-w-0">
-                    <b>{a.nome || a.email}</b> · {brl(a.total)}
+                    <span className={`mr-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${r.tipo === 'sacola' ? 'bg-sky-100 text-sky-900' : 'bg-amber-100 text-amber-900'}`}>
+                      {r.tipo === 'sacola' ? 'deixou na sacola' : r.rotuloPedido}
+                    </span>
+                    {r.pedidoId ? (
+                      <Link href={`/painel/pedidos/${r.pedidoId}`} className="font-semibold text-sky-800 underline">#{r.pedidoId}</Link>
+                    ) : null}{' '}
+                    <b>{r.nome}</b> · {brl(r.total)}
                     <span className="block truncate text-xs text-slate-500">
-                      {a.itens.map((i) => `${i.qtd}x ${i.nome}`).join(', ')} · {haQuanto(a.atualizadoEm, agora)}
-                      {a.origem ? ` · veio de: ${a.origem}` : ''}
+                      {r.itens} · {haQuanto(r.quando, agora)}
+                      {r.origem ? ` · veio de: ${r.origem}` : ''}
+                      {r.extra ? ` · ${r.extra}` : ''}
                     </span>
                   </span>
                   <span className="flex items-center gap-2 text-xs">
-                    {a.convertido ? (
-                      <Link href={`/painel/pedidos/${a.convertido}`} className="rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-800">
-                        ● comprou (#{a.convertido})
-                      </Link>
+                    {r.chamadoEm ? (
+                      <span className="rounded-full bg-emerald-50 px-2 py-1 font-semibold text-emerald-800">✓ chamado {haQuanto(r.chamadoEm, agora)}</span>
                     ) : (
-                      <span className="text-slate-500">{a.sair ? 'pediu para não receber' : a.emails ? `${a.emails} e-mail(s) enviado(s)` : 'e-mail em breve'}</span>
+                      <form action={marcarChamadoRecuperar}>
+                        <input type="hidden" name="k" value={r.k} />
+                        <button className="rounded-lg border border-slate-300 px-2.5 py-1.5 font-semibold text-slate-700 hover:bg-slate-50">✓ já chamei</button>
+                      </form>
                     )}
-                    {wa && !a.convertido && (
-                      <a href={`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-[#25D366] px-3 py-1.5 font-bold text-black">
+                    {r.whatsapp ? (
+                      <a href={r.whatsapp} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-[#25D366] px-3 py-1.5 font-bold text-black">
                         WhatsApp
                       </a>
+                    ) : (
+                      <span className="text-slate-400">{r.semTelefone}</span>
                     )}
                   </span>
                 </li>
-              );
-            })}
-          </ul>
-        )}
-      </Cartao>
+              ))}
+            </ul>
+          )}
+        </Cartao>
+      </div>
 
       {pend.length > 0 && (
         <Cartao titulo="Precisa de atenção">
