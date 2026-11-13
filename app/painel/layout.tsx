@@ -23,24 +23,19 @@ export default async function PainelLayout({ children }: { children: ReactNode }
       <style>{'body{overflow:hidden} a[aria-label="Falar no WhatsApp"]{display:none!important}'}</style>
       {entrou ? (
         <div className="min-h-full md:flex">
-          <aside className="md:w-60 md:h-screen bg-[var(--sv-noite)] text-white md:sticky md:top-0 shrink-0 flex flex-col">
-            <div className="sv-faixa" aria-hidden />
-            <div className="px-5 pt-5 pb-4 md:pb-7 flex items-center justify-between">
-              <Link href="/painel" className="sv-display text-xl font-extrabold tracking-tight leading-none">
-                Samba Vest
-                <span className="block mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--sv-ouro)]">painel da loja</span>
-              </Link>
-              <form action={sair} className="md:hidden">
-                <button className="text-sm text-white/70 px-3 py-1.5 rounded-lg border border-white/15">Sair</button>
-              </form>
+          <aside className="sticky top-0 z-20 flex shrink-0 items-center border-b border-slate-200 bg-white md:h-screen md:w-[84px] md:flex-col md:border-b-0 md:border-r">
+            <Link href="/painel" className="sv-display hidden md:grid h-16 w-full place-items-center border-b border-slate-100 text-[11px] font-extrabold uppercase tracking-[0.25em] text-slate-500" title="Samba Vest">
+              SVEST
+            </Link>
+            <div className="flex flex-1 md:w-full md:flex-col md:pt-4 min-w-0">
+              <Menu />
             </div>
-            <Menu />
-            <form action={sair} className="hidden md:block mt-auto px-3 pb-5">
-              <button className="sv-menu-link w-full">
+            <form action={sair} className="shrink-0 px-2 md:w-full md:px-0 md:pb-4">
+              <button className="sv-trilho-link w-full" title="Sair">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4" />
                 </svg>
-                Sair
+                <span>Sair</span>
               </button>
             </form>
           </aside>

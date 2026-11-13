@@ -26,61 +26,43 @@ const ICONES: Record<string, ReactNode> = {
   woo: ic(<><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></>),
 };
 
-const GRUPOS: { titulo: string; itens: { href: string; rotulo: string; icone: string; externo?: boolean }[] }[] = [
-  {
-    titulo: 'Vendas',
-    itens: [
-      { href: '/painel', rotulo: 'Visão geral', icone: 'geral' },
-      { href: '/painel/pedidos', rotulo: 'Pedidos', icone: 'pedidos' },
-      { href: '/painel/financeiro', rotulo: 'Financeiro', icone: 'financeiro' },
-      { href: '/painel/anuncios', rotulo: 'Anúncios', icone: 'anuncios' },
-      { href: '/painel/alertas', rotulo: 'Alertas no celular', icone: 'alertas' },
-    ],
-  },
-  {
-    titulo: 'Relacionamento',
-    itens: [
-      { href: '/painel/crm', rotulo: 'CRM WhatsApp', icone: 'crm' },
-      { href: '/painel/whatsapp', rotulo: 'Conexão WhatsApp', icone: 'integracoes' },
-      { href: '/painel/clientes', rotulo: 'Clientes', icone: 'clientes' },
-      { href: '/atendimento', rotulo: 'Atendimento', icone: 'atendimento' },
-    ],
-  },
-  {
-    titulo: 'Loja',
-    itens: [
-      { href: '/painel/produtos', rotulo: 'Produtos e estoque', icone: 'produtos' },
-      { href: '/painel/fotos-black', rotulo: 'Fotos da Black', icone: 'fotos' },
-      { href: '/painel/integracoes', rotulo: 'Integrações', icone: 'integracoes' },
-      { href: 'https://api.sambavest.com/wp-admin/', rotulo: 'WooCommerce', icone: 'woo', externo: true },
-    ],
-  },
+// Menu enxuto (uso diário). O que é técnico ou raro fica em Configurações.
+const ITENS: { href: string; rotulo: string; icone: string }[] = [
+  { href: '/painel', rotulo: 'Início', icone: 'geral' },
+  { href: '/painel/pedidos', rotulo: 'Pedidos', icone: 'pedidos' },
+  { href: '/painel/clientes', rotulo: 'Clientes', icone: 'clientes' },
+  { href: '/painel/crm', rotulo: 'WhatsApp', icone: 'crm' },
+  { href: '/painel/anuncios', rotulo: 'Anúncios', icone: 'anuncios' },
+  { href: '/painel/produtos', rotulo: 'Estoque', icone: 'produtos' },
+  { href: '/painel/financeiro', rotulo: 'Financeiro', icone: 'financeiro' },
 ];
+
+/** Telas que ficam dentro de Configurações (o ícone de engrenagem acende nelas). */
+export const TELAS_CONFIG = ['/painel/configuracoes', '/painel/alertas', '/painel/whatsapp', '/painel/integracoes', '/painel/fotos-black'];
+
+const ENGRENAGEM = ic(
+  <>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+  </>
+);
 
 export default function Menu() {
   const caminho = usePathname() || '';
   const ativo = (href: string) => (href === '/painel' ? caminho === '/painel' : caminho === href || caminho.startsWith(`${href}/`));
+  const naConfig = TELAS_CONFIG.some((t) => caminho === t || caminho.startsWith(`${t}/`));
   return (
-    <nav aria-label="Menu do painel" className="flex md:flex-col gap-1 md:gap-5 px-3 pb-3 md:pb-6 overflow-x-auto">
-      {GRUPOS.map((g) => (
-        <div key={g.titulo} className="flex md:flex-col gap-1 md:gap-0.5 shrink-0">
-          <p className="hidden md:block px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">{g.titulo}</p>
-          {g.itens.map((i) =>
-            i.externo ? (
-              <a key={i.href} href={i.href} target="_blank" rel="noreferrer" className="sv-menu-link">
-                {ICONES[i.icone]}
-                {i.rotulo}
-                <span aria-hidden className="ml-auto text-white/40 text-xs">↗</span>
-              </a>
-            ) : (
-              <Link key={i.href} href={i.href} className="sv-menu-link" aria-current={ativo(i.href) ? 'page' : undefined}>
-                {ICONES[i.icone]}
-                {i.rotulo}
-              </Link>
-            )
-          )}
-        </div>
+    <nav aria-label="Menu do painel" className="flex flex-1 md:flex-col items-center gap-1 overflow-x-auto px-2 md:px-0 md:pb-4">
+      {ITENS.map((i) => (
+        <Link key={i.href} href={i.href} className="sv-trilho-link" aria-current={ativo(i.href) ? 'page' : undefined} title={i.rotulo}>
+          {ICONES[i.icone]}
+          <span>{i.rotulo}</span>
+        </Link>
       ))}
+      <Link href="/painel/configuracoes" className="sv-trilho-link md:mt-auto" aria-current={naConfig ? 'page' : undefined} title="Configurações">
+        {ENGRENAGEM}
+        <span>Config.</span>
+      </Link>
     </nav>
   );
 }
