@@ -101,6 +101,7 @@ export default function CheckoutPage() {
     numeroDocumento: '',
     endereco: '',
     numero: '',
+    complemento: '',
     bairro: '',
     cidade: '',
     cep: '',
@@ -306,6 +307,7 @@ export default function CheckoutPage() {
           numeroDocumento: formData.numeroDocumento,
           endereco: formData.endereco,
           numero: formData.numero,
+          complemento: formData.complemento,
           bairro: formData.bairro,
           cidade: formData.cidade,
           cep: formData.cep,
@@ -429,7 +431,12 @@ export default function CheckoutPage() {
 
                 <div>
                   <label htmlFor="checkout-numero" className="block text-xs font-bold uppercase text-gray-600 mb-1">Número *</label>
-                  <input id="checkout-numero" type="text" name="numero" inputMode="text" autoComplete="off" value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <input id="checkout-numero" type="text" name="numero" inputMode="text" autoComplete="off" placeholder="Ex.: 108 ou S/N" maxLength={10} value={formData.numero} onChange={handleInputChange} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                </div>
+
+                <div>
+                  <label htmlFor="checkout-complemento" className="block text-xs font-bold uppercase text-gray-600 mb-1">Complemento</label>
+                  <input id="checkout-complemento" type="text" name="complemento" autoComplete="address-line2" placeholder="Apto, bloco, casa (opcional)" value={formData.complemento} onChange={handleInputChange} className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
                 </div>
 
                 <div>
