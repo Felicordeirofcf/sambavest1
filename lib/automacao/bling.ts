@@ -527,3 +527,36 @@ export async function saldosPorCodigo(): Promise<Map<string, number>> {
   }
   return saldos;
 }
+
+// ---------------- Rastreio (etiqueta gerada pelo Bling) ----------------
+
+/** Procura, em qualquer nível do objeto, um campo de rastreio preenchido (ex.: transporte.volumes[].codigoRastreamento). */
+export function acharCodigoRastreio(obj: unknown, profundidade = 0): string | null {
+  if (!obj || typeof obj !== 'object' || profundidade > 6) return null;
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (typeof v === 'string' && /rastre/i.test(k)) {
+      const codigo = v.trim().toUpperCase();
+      if (/^[A-Z0-9]{8,30}$/.test(codigo)) return codigo;
+    } else if (v && typeof v === 'object') {
+      const achado = acharCodigoRastreio(v, profundidade + 1);
+      if (achado) return achado;
+    }
+  }
+  return null;
+}
+
+/**
+ * Código de rastreio do pedido de venda no Bling (etiqueta gerada pela logística do Bling).
+ * Olha o pedido e, se não tiver, a NF-e ligada a ele.
+ */
+export async function rastreioDoPedidoVenda(idPedidoVenda: number): Promise<string | null> {
+  const r = await bling<{ data: { transporte?: unknown; notaFiscal?: { id?: number } } }>(`/pedidos/vendas/${idPedidoVenda}`);
+  const doPedido = acharCodigoRastreio(r.data?.transporte);
+  if (doPedido) return doPedido;
+  const idNota = r.data?.notaFiscal?.id;
+  if (idNota) {
+    const nota = await bling<{ data: { transporte?: unknown } }>(`/nfe/${idNota}`).catch(() => null);
+    return acharCodigoRastreio(nota?.data?.transporte);
+  }
+  return null;
+}

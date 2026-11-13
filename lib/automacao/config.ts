@@ -66,7 +66,8 @@ export const config = {
     token: env('MELHOR_ENVIO_TOKEN'),
     sandbox: flag('MELHOR_ENVIO_SANDBOX', false),
     userAgent: env('MELHOR_ENVIO_USER_AGENT') || 'Samba Vest',
-    criarEnvios: flag('MELHOR_ENVIO_CRIAR_ENVIOS', true),
+    // Nota e etiqueta são feitas pelo Bling: o site não cria envios no Melhor Envio (ligue com true para voltar)
+    criarEnvios: flag('MELHOR_ENVIO_CRIAR_ENVIOS', false),
     // Compra a etiqueta com o saldo da carteira do Melhor Envio. Desligado por padrão.
     comprarEtiqueta: flag('MELHOR_ENVIO_COMPRAR_ETIQUETA', false),
     // Client secret do aplicativo do Melhor Envio (Área Dev). Valida a assinatura dos webhooks.
