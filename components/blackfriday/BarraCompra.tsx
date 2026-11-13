@@ -28,10 +28,10 @@ export default function BarraCompra({ preco, beija, viradouro }: { preco: string
           <span className="block text-[9px] font-bold uppercase tracking-wider text-[#C9A227]">Black</span>
           <span className="text-lg font-black text-white">{preco}</span>
         </span>
-        <Link href={beija} tabIndex={visivel ? 0 : -1} className="flex-1 rounded-xl bg-sky-600 py-2.5 text-center text-xs font-black uppercase tracking-wide text-white">
+        <Link href={beija} data-bf="barra-beija" tabIndex={visivel ? 0 : -1} className="flex-1 rounded-xl bg-sky-600 py-2.5 text-center text-xs font-black uppercase tracking-wide text-white">
           Beija-Flor
         </Link>
-        <Link href={viradouro} tabIndex={visivel ? 0 : -1} className="flex-1 rounded-xl bg-red-600 py-2.5 text-center text-xs font-black uppercase tracking-wide text-white">
+        <Link href={viradouro} data-bf="barra-grio" tabIndex={visivel ? 0 : -1} className="flex-1 rounded-xl bg-red-600 py-2.5 text-center text-xs font-black uppercase tracking-wide text-white">
           Viradouro
         </Link>
       </div>

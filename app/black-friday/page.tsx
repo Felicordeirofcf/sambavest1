@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Contagem from '../../components/blackfriday/Contagem';
 import BarraCompra from '../../components/blackfriday/BarraCompra';
 import Duelo from '../../components/blackfriday/Duelo';
+import MedirBF from '../../components/blackfriday/MedirBF';
 import { BF, brl, faseBF, placarDuelo, produtosBF, ProdutoBF } from '../../lib/blackfriday';
 import { FRETE_GRATIS_A_PARTIR_DE } from '../../lib/frete';
 
@@ -24,6 +25,9 @@ export const metadata: Metadata = {
 const DATA = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
 
 /** Link da página da camisa (já no modelo em promoção); null se o produto não foi encontrado. */
+/** Apelido curto da camisa para a medição da página (beija / grio / retro). */
+const apelido = (p: ProdutoBF) => (p.produtoId ? 'retro' : p.escola === 'beija-flor' ? 'beija' : 'grio');
+
 function linkCompra(p: ProdutoBF): string | null {
   const base = p.slug ? `/produto/${p.slug}` : p.produtoId ? `/produto/${p.produtoId}` : null;
   return base && p.modelo ? `${base}?modelo=${encodeURIComponent(p.modelo)}` : base;
@@ -38,6 +42,7 @@ function CamisaTopo({ p, fase }: { p: ProdutoBF; fase: ReturnType<typeof faseBF>
   return (
     <a
       href={destino}
+      data-bf={`topo-${apelido(p)}`}
       {...(!href && fase === 'durante' ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       className={`group flex flex-col overflow-hidden rounded-2xl border bg-black/40 text-left backdrop-blur transition active:scale-[0.98] ${
         azul ? 'border-sky-400/50' : 'border-red-400/50'
@@ -84,6 +89,7 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
 
   return (
     <article
+      data-bf={`card-${apelido(p)}`}
       className={`group relative flex flex-col overflow-hidden rounded-3xl border bg-[#0d0d12] ${
         azul ? 'border-sky-500/40 shadow-[0_0_40px_-10px_rgba(14,165,233,0.5)]' : 'border-red-500/40 shadow-[0_0_40px_-10px_rgba(239,68,68,0.5)]'
       } ${destaque ? '' : 'md:flex-row'}`}
@@ -175,6 +181,7 @@ export default async function BlackFridayPage() {
 
   return (
     <main className="bg-black pb-20 text-white md:pb-0">
+      <MedirBF />
       {/* TOPO: preço grande + as duas camisas com botão de comprar, tudo visível sem rolar no celular */}
       <section className="relative overflow-hidden">
         <div aria-hidden className="absolute inset-0 grid grid-cols-2">

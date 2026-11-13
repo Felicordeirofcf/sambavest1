@@ -417,17 +417,23 @@ export async function rotinaMelhorias(enviar: boolean, forcar = false): Promise<
   const { somaFunil } = await import('../painel/funil');
   const { PERIODO_BF } = await import('../blackfridayPeriodo');
   const dias = [2, 1, 0].map((d) => diaLocal(Date.now() - d * 86_400_000));
-  const [conta, ads, site] = await Promise.all([
+  const { somaSinais } = await import('../painel/comportamentoBF');
+  const [conta, ads, site, bf] = await Promise.all([
     contaAnuncios().catch(() => null),
     anuncios({ desde: dias[0], ate: dias[2] }),
     somaFunil(dias, 'meta'),
+    somaSinais(dias, 'meta').catch(() => null),
   ]);
+  const toques = bf
+    ? Object.entries(bf).filter(([k]) => /^toque-(topo|card|barra)/.test(k)).reduce((s, [, v]) => s + v, 0)
+    : 0;
   const lista = gerarMelhorias({
     agora: Date.now(),
     conta,
     anuncios: ads,
     siteAnuncio: site,
     capiLigado: integracoes.meta(),
+    paginaBlack: bf ? { abriu: bf.abriu, saiu5s: bf.saiu5s, ficou15s: bf.ficou15s, toques } : undefined,
     calendario: {
       inicio: PERIODO_BF.inicio.getTime(),
       fim: PERIODO_BF.fim.getTime(),
