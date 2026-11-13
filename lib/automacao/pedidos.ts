@@ -249,6 +249,11 @@ async function verificarRastreio(pedido: WcPedido, codigoInformado?: string): Pr
     }
     if (r.codigo) codigo = r.codigo;
   }
+  // Etiqueta gerada pela logística do Bling: o código fica no pedido de venda (ou na NF-e) de lá
+  const idBling = Number(meta(pedido, M.blingPedido));
+  if (!codigo && idBling && integracoes.bling()) {
+    codigo = (await bling.rastreioDoPedidoVenda(idBling)) || undefined;
+  }
   if (!codigo) return;
   const link = melhorEnvio.linkRastreio(codigo);
 
@@ -302,7 +307,7 @@ export async function rotinaPedidos(prazo: number): Promise<Relatorio[]> {
       (integracoes.melhorEnvio() && config.melhorEnvio.criarEnvios && !meta(p, M.meEnvio) && melhorEnvio.servicoDoPedido(p)) ||
       (config.melhorEnvio.comprarEtiqueta && meta(p, M.meEnvio) && !meta(p, M.meEtiqueta));
     if (faltaEtapa) urgentes.push(p);
-    else if (!meta(p, M.avisoEnviado) && (meta(p, M.meEnvio) || codigoRastreioManual(p))) soRastreio.push(p);
+    else if (!meta(p, M.avisoEnviado) && (meta(p, M.meEnvio) || meta(p, M.blingPedido) || codigoRastreioManual(p))) soRastreio.push(p);
   }
   soRastreio.sort(() => Math.random() - 0.5);
   // Mais novos primeiro: num pico de vendas, pedidos travados antigos não podem tomar o lugar dos novos.
