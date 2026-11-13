@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 
   const params = new URL(request.url).searchParams;
   const tarefa = params.get('tarefa') || 'todas';
-  const emFundo = params.get('modo') === 'fundo' && tarefa !== 'diagnostico' && tarefa !== 'auditoria';
+  const emFundo = params.get('modo') === 'fundo' && tarefa !== 'diagnostico' && tarefa !== 'auditoria' && tarefa !== 'diagnostico-me';
   // Em segundo plano o relógio começa na resposta; o limite da função continua sendo 60 s.
   const prazo = Date.now() + (emFundo ? 40_000 : 45_000);
   const resultado: Record<string, unknown> = {};
@@ -65,6 +65,7 @@ export async function GET(request: Request) {
     if (tarefa === 'todas' || tarefa === 'alertas') await rodar('alertas', () => rotinaAlertas(prazo));
     // Só roda quando pedido explicitamente (não entra em "todas").
     if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());
+    if (tarefa === 'diagnostico-me') await rodar('diagnosticoME', async () => (await import('../../../../lib/automacao/diagnosticoME')).diagnosticoMelhorEnvio());
     if (tarefa === 'auditoria') await rodar('auditoria', async () => (await import('../../../../lib/automacao/auditoria')).auditoria());
     const falhas = Object.entries(resultado).filter(([, v]) => v && typeof v === 'object' && 'erro' in (v as object));
     await registrarExecucao('cron', falhas.length === 0, falhas.map(([k, v]) => `${k}: ${(v as { erro: string }).erro}`).join(' | ') || tarefa);

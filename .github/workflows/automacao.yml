@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       tarefa:
-        description: 'todas | pedidos | pix | estoque | saude | alertas | abandono | diagnostico | auditoria'
+        description: 'todas | pedidos | pix | estoque | saude | alertas | abandono | diagnostico | auditoria | diagnostico-me'
         default: 'todas'
 
 jobs:
