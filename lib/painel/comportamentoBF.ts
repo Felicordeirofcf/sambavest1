@@ -18,6 +18,11 @@ export const SINAIS_BF = [
   'toque-barra-grio',
   'toque-voto',
   'toque-zap',
+  'toque-menu',
+  'toque-logo',
+  'toque-sacola',
+  'toque-camisa-link',
+  'toque-rodape',
   'toque-outro',
 ] as const;
 export type SinalBF = (typeof SINAIS_BF)[number];
@@ -38,7 +43,12 @@ export const NOME_SINAL: Record<SinalBF, string> = {
   'toque-barra-grio': 'Tocaram na barra fixa: Viradouro',
   'toque-voto': 'Votaram no duelo',
   'toque-zap': 'Tocaram no WhatsApp',
-  'toque-outro': 'Tocaram em outro link',
+  'toque-menu': 'Tocaram no menu do topo (Início, Nossa Loja…)',
+  'toque-logo': 'Tocaram na logo',
+  'toque-sacola': 'Tocaram na sacola',
+  'toque-camisa-link': 'Tocaram em outro link de camisa',
+  'toque-rodape': 'Tocaram no rodapé',
+  'toque-outro': 'Tocaram em outro ponto',
 };
 
 export const sinalValido = (s: unknown): SinalBF | undefined => SINAIS_BF.find((x) => x === s);

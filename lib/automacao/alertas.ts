@@ -425,7 +425,7 @@ export async function rotinaMelhorias(enviar: boolean, forcar = false): Promise<
     somaSinais(dias, 'meta').catch(() => null),
   ]);
   const toques = bf
-    ? Object.entries(bf).filter(([k]) => /^toque-(topo|card|barra)/.test(k)).reduce((s, [, v]) => s + v, 0)
+    ? Object.entries(bf).filter(([k]) => /^toque-(topo|card|barra|camisa-link)/.test(k)).reduce((s, [, v]) => s + v, 0)
     : 0;
   const lista = gerarMelhorias({
     agora: Date.now(),

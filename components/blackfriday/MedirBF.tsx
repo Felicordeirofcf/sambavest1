@@ -46,7 +46,16 @@ export default function MedirBF() {
       interagiu = true;
       const marcado = alvo.closest<HTMLElement>('[data-bf]')?.dataset.bf;
       const href = alvo.getAttribute('href') || '';
-      enviar(marcado ? `toque-${marcado}` : /wa\.me|whatsapp/.test(href) ? 'toque-zap' : 'toque-outro');
+      const rotulo = `${alvo.getAttribute('aria-label') || ''} ${alvo.textContent || ''}`.toLowerCase();
+      let sinal: string;
+      if (marcado) sinal = `toque-${marcado}`;
+      else if (/wa\.me|whatsapp/.test(href)) sinal = 'toque-zap';
+      else if (/sacola|carrinho|cart/.test(rotulo) || /carrinho|sacola/.test(href)) sinal = 'toque-sacola';
+      else if (href.includes('/produto/')) sinal = 'toque-camisa-link';
+      else if (alvo.closest('footer')) sinal = 'toque-rodape';
+      else if (alvo.closest('header')) sinal = alvo.querySelector('img, svg') || /p[aá]gina inicial/.test(rotulo) ? 'toque-logo' : 'toque-menu';
+      else sinal = 'toque-outro';
+      enviar(sinal);
     };
 
     // Saiu cedo: a página ficou escondida em até 5 s sem rolar nem tocar
