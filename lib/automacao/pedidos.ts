@@ -231,7 +231,22 @@ async function verificarRastreio(pedido: WcPedido, codigoInformado?: string): Pr
 
   const idEnvio = meta(pedido, M.meEnvio);
   if (!codigo && idEnvio && integracoes.melhorEnvio()) {
-    const r = await melhorEnvio.rastreio(idEnvio);
+    let r: Awaited<ReturnType<typeof melhorEnvio.rastreio>>;
+    try {
+      r = await melhorEnvio.rastreio(idEnvio);
+    } catch (e) {
+      // Envio que não existe na conta do token atual (ex.: token trocado para outra conta do
+      // Melhor Envio): esquece o ID para a próxima rodada criar o envio de novo, na conta certa.
+      if (/Melhor Envio (403|404) /.test((e as Error).message)) {
+        await esquecerEnvio(pedido, idEnvio, 'não existe na conta atual do Melhor Envio');
+        return 'envio antigo não encontrado: será criado de novo';
+      }
+      throw e;
+    }
+    if (r.status === 'canceled' || r.status === 'expired') {
+      await esquecerEnvio(pedido, idEnvio, r.status === 'canceled' ? 'foi cancelado' : 'expirou');
+      return `envio ${r.status}: será criado de novo`;
+    }
     if (r.codigo) codigo = r.codigo;
   }
   if (!codigo) return;
@@ -244,6 +259,11 @@ async function verificarRastreio(pedido: WcPedido, codigoInformado?: string): Pr
   // manda por e-mail. Assim o cliente nunca fica sem o código de rastreio.
   await adicionarNota(pedido, `Seu pedido foi enviado! Código de rastreio: ${codigo} — acompanhe em ${link}`, canais.length === 0);
   return codigo;
+}
+
+async function esquecerEnvio(pedido: WcPedido, idEnvio: string, motivo: string): Promise<void> {
+  await salvarNoPedido(pedido, { [M.meEnvio]: '', [M.meEtiqueta]: '' });
+  await adicionarNota(pedido, `Envio ${idEnvio} ${motivo}. A automação vai criar um envio novo no carrinho do Melhor Envio.`);
 }
 
 /** Lembrete para Pix gerado e não pago. */
