@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import AutoAtualizar from '../../components/painel/AutoAtualizar';
+import PagamentosAbas, { type LinhaPagamento } from '../../components/painel/PagamentosAbas';
+import { linkWhats, mensagensDoPedido } from '../../lib/painel/mensagensWhats';
 import { CardAoVivo, Colunas, EstadoServico, Funil, LinhaServico, MapaBrasil, Medidor, PlacarDuelo } from '../../components/painel/analytics';
 import { Aviso, Barras, Cartao, brl, dataHora } from '../../components/painel/ui';
 import { listarAbandonos } from '../../lib/automacao/abandono';
@@ -18,7 +20,6 @@ import {
   colunasPorHora,
   dueloVendas,
   hojeVsOntem,
-  pixPendentes,
   porEstado,
   quando,
   rankingCamisas,
@@ -118,8 +119,32 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
   const funil = integracoes.kv() ? await somaFunil(diasFunil) : null;
   const pagosFunil = pedidos.filter((p) => pago(p) && diasFunil.includes(diaLocal(quando(p)))).length;
 
-  // ---- Pix pendentes e pendências ----
-  const pix = pixPendentes(pedidos, agora);
+  // ---- Pagamentos (abas: Pix/cartão pago e não pago, cancelados) e pendências ----
+  const linhasPagamento: LinhaPagamento[] = pedidos
+    .filter((p) => agora - p.criado < 7 * 86_400_000 && p.status !== 'checkout-draft')
+    .sort((a, b) => b.criado - a.criado)
+    .flatMap((p): LinhaPagamento[] => {
+      const ehPixP = p.metodo.includes('pix');
+      const grupo: LinhaPagamento['grupo'] | null = ['cancelled', 'refunded'].includes(p.status)
+        ? 'cancelado'
+        : pago(p)
+          ? ehPixP ? 'pix-pago' : 'cartao-pago'
+          : ['pending', 'on-hold', 'failed'].includes(p.status)
+            ? ehPixP ? 'pix-aberto' : 'cartao-aberto'
+            : null;
+      if (!grupo) return [];
+      const wa = telefoneWhatsapp(p.cliente.telefone);
+      const msg = grupo === 'cancelado' ? null : mensagensDoPedido(p).find((m) => m.destaque) || null;
+      return [{
+        id: p.id,
+        grupo,
+        cliente: p.cliente.nome,
+        total: brl(p.total),
+        quando: pago(p) && p.pago ? `pago ${haQuanto(p.pago, agora)}` : `feito ${haQuanto(p.criado, agora)}`,
+        detalhe: p.status === 'failed' ? 'pagamento recusado' : p.status === 'refunded' ? 'reembolsado' : undefined,
+        whatsapp: wa && msg ? linkWhats(wa, msg.texto) : undefined,
+      }];
+    });
   const pend = pendencias(pedidos, {
     bling: integracoes.bling() && config.bling.enviarPedidos,
     envios: integracoes.melhorEnvio() && config.melhorEnvio.criarEnvios,
@@ -369,41 +394,8 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
 
       {/* Pix + monitoramento */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Cartao titulo={`Pix pendentes (48 h): ${pix.length}`}>
-          {pix.length === 0 ? (
-            <p className="text-sm text-slate-400">Nenhum Pix em aberto. 🎉</p>
-          ) : (
-            <ul className="divide-y divide-slate-100 text-sm">
-              {pix.slice(0, 10).map((p) => {
-                const wa = telefoneWhatsapp(p.cliente.telefone);
-                const primeiro = p.cliente.nome.split(' ')[0];
-                const msg = `Oi ${primeiro}! Aqui é da Samba Vest. Vi que o Pix do seu pedido #${p.id} ainda está em aberto. Posso te ajudar a finalizar?`;
-                return (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                    <span>
-                      <Link href={`/painel/pedidos/${p.id}`} className="font-semibold underline text-sky-800">
-                        #{p.id}
-                      </Link>{' '}
-                      {p.cliente.nome} · <b>{brl(p.total)}</b>
-                      <span className="block text-xs text-slate-500">gerado {haQuanto(p.criado, agora)}</span>
-                    </span>
-                    {wa ? (
-                      <a
-                        href={`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-bold text-black"
-                      >
-                        Chamar no WhatsApp
-                      </a>
-                    ) : (
-                      <span className="text-xs text-slate-400">sem telefone</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+        <Cartao titulo="Pagamentos (últimos 7 dias)">
+          <PagamentosAbas linhas={linhasPagamento} />
         </Cartao>
         <Cartao titulo="Monitoramento" acao={<Link href="/painel/alertas" className="text-xs underline text-sky-800">alertas no celular</Link>}>
           <ul className="divide-y divide-slate-100">
