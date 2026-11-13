@@ -1,15 +1,14 @@
 import Link from 'next/link';
 import AutoAtualizar from '../../components/painel/AutoAtualizar';
+import { Kpi } from '../../components/painel/Kpi';
+import { diasDoIntervalo, intervaloDoPeriodo, kpisDoIntervalo, pagosNoIntervalo, PERIODOS_PAINEL, type ChavePeriodoPainel } from '../../lib/painel/periodo';
 import PagamentosAbas, { type LinhaPagamento } from '../../components/painel/PagamentosAbas';
 import { linkWhats, mensagensDoPedido } from '../../lib/painel/mensagensWhats';
-import { CardAoVivo, Colunas, EstadoServico, Funil, LinhaServico, MapaBrasil, Medidor, PlacarDuelo } from '../../components/painel/analytics';
+import { Colunas, Funil, MapaBrasil, Medidor, PlacarDuelo } from '../../components/painel/analytics';
 import { Aviso, Barras, Cartao, brl, dataHora } from '../../components/painel/ui';
 import { listarAbandonos } from '../../lib/automacao/abandono';
-import { alertasLigados, chatTelegram } from '../../lib/automacao/alertas';
-import { falhasNosDias, TIPOS_FALHA, type TipoFalha } from '../../lib/automacao/monitor';
-import { ultimaSaude } from '../../lib/automacao/saude';
+import { montarMonitoramento } from '../../lib/painel/monitoramento';
 import { config, integracoes } from '../../lib/automacao/config';
-import { ultimaExecucao } from '../../lib/automacao/monitor';
 import { telefoneWhatsapp } from '../../lib/automacao/whatsapp';
 import { placarDuelo } from '../../lib/blackfriday';
 import { faseBF, PERIODO_BF } from '../../lib/blackfridayPeriodo';
@@ -19,17 +18,15 @@ import {
   colunasPorDia,
   colunasPorHora,
   dueloVendas,
-  hojeVsOntem,
   porEstado,
   quando,
   rankingCamisas,
   rankingTamanhos,
-  seriesDiarias,
   ultimosDias,
 } from '../../lib/painel/analytics';
 import { exigirLogin } from '../../lib/painel/auth';
 import { dadosDeReserva, estoque as lerEstoque, LinhaEstoque, pedidosRecentes } from '../../lib/painel/dados';
-import { funilPorDia, NOME_ETAPA, somaFunil } from '../../lib/painel/funil';
+import { NOME_ETAPA, somaFunil } from '../../lib/painel/funil';
 import { diaLocal, pago, pendencias, variacao } from '../../lib/painel/metricas';
 import { atualizarDados, marcarChamadoRecuperar } from './actions';
 import { quandoChamados } from '../../lib/painel/recuperar';
@@ -56,11 +53,14 @@ const haQuanto = (ms: number, agora: number) => {
   return h < 48 ? `há ${h} h` : `há ${Math.round(h / 24)} dias`;
 };
 
-export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ grafico?: string }> }) {
+export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ grafico?: string; p?: string }> }) {
   await exigirLogin();
   const agora = agoraMs();
   const naBlack = faseBF(agora) === 'durante';
-  const pedido = (await searchParams).grafico as Grafico | undefined;
+  const sp = await searchParams;
+  const pedido = sp.grafico as Grafico | undefined;
+  const chavePeriodo: ChavePeriodoPainel = sp.p && sp.p in PERIODOS_PAINEL ? (sp.p as ChavePeriodoPainel) : 'hoje';
+  const intervalo = intervaloDoPeriodo(chavePeriodo, agora);
   const grafico: Grafico = pedido && pedido in GRAFICOS ? pedido : naBlack ? 'bf' : '30';
 
   if (!integracoes.woo()) {
@@ -82,18 +82,6 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     // segue sem estoque
   }
 
-  // ---- Cards de hoje ----
-  const dias14 = ultimosDias(14, agora);
-  const { hoje, ontem } = hojeVsOntem(pedidos, agora);
-  const series = seriesDiarias(pedidos, dias14);
-  const funilDias = integracoes.kv() ? await funilPorDia(dias14) : null;
-  const visitasHoje = funilDias?.[13].visita || 0;
-  const visitasOntem = funilDias?.[12].visita || 0;
-  const pagosOntemDia = series[12].vendas;
-  const convHoje = visitasHoje ? hoje.vendas / visitasHoje : null;
-  const convOntem = visitasOntem ? pagosOntemDia / visitasOntem : null;
-  const serieConv = funilDias ? funilDias.map((f, i) => (f.visita ? series[i].vendas / f.visita : 0)) : series.map(() => 0);
-
   // ---- Black Friday ----
   const bf = blackFriday(pedidos, estoque, agora);
   const votos = await placarDuelo().catch(() => ({ 'beija-flor': 0, viradouro: 0 }));
@@ -109,14 +97,27 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
       : colunasPorDia(pedidos, grafico === 'bf' ? diasBF : ultimosDias(Number(grafico), agora));
 
   // ---- Rankings, mapa e funil: período da Black (ou 30 dias fora dela) ----
-  const inicioPeriodo = naBlack ? PERIODO_BF.inicio.getTime() : agora - 30 * DIA;
-  const nomePeriodo = naBlack ? 'desde o início da Black' : 'últimos 30 dias';
-  const pagosPeriodo = pedidos.filter((p) => pago(p) && quando(p) >= inicioPeriodo);
+  const nomePeriodo = PERIODOS_PAINEL[chavePeriodo].toLowerCase();
+  const pagosPeriodo = pagosNoIntervalo(pedidos, intervalo.inicio, intervalo.fim);
+  // ---- Cards do período escolhido × período anterior ----
+  const kAtual = kpisDoIntervalo(pedidos, intervalo.inicio, intervalo.fim);
+  const kAnt = kpisDoIntervalo(pedidos, intervalo.antInicio, intervalo.antFim);
+  const [visAtual, visAnt] = integracoes.kv()
+    ? await Promise.all([
+        somaFunil(diasDoIntervalo(intervalo.inicio, intervalo.fim)).then((f) => f.visita).catch(() => 0),
+        somaFunil(diasDoIntervalo(intervalo.antInicio, intervalo.antFim)).then((f) => f.visita).catch(() => 0),
+      ])
+    : [0, 0];
+  const convAtual = visAtual ? kAtual.pedidos / visAtual : null;
+  const convAnt = visAnt ? kAnt.pedidos / visAnt : null;
+  const pct1 = (v: number) => `${(v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
+  const dec = (v: number) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtData = (ms: number) => new Date(ms).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const camisas = rankingCamisas(pagosPeriodo);
   const tamanhos = rankingTamanhos(pagosPeriodo, estoque);
   const acabando = estoque ? acabandoPrimeiro(pedidos, estoque, agora) : [];
   const estados = porEstado(pagosPeriodo);
-  const diasFunil = naBlack ? diasBF : ultimosDias(7, agora);
+  const diasFunil = diasDoIntervalo(intervalo.inicio, intervalo.fim);
   const funil = integracoes.kv() ? await somaFunil(diasFunil) : null;
   const pagosFunil = pedidos.filter((p) => pago(p) && diasFunil.includes(diaLocal(quando(p)))).length;
 
@@ -151,19 +152,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     envios: integracoes.melhorEnvio() && config.melhorEnvio.criarEnvios,
   });
 
-  // ---- Monitoramento ----
-  const [cron, webhook, alerta, chat] = await Promise.all([
-    ultimaExecucao('cron'),
-    ultimaExecucao('webhook-woo'),
-    ultimaExecucao('alerta'),
-    chatTelegram().catch(() => undefined),
-  ]);
-  const contaAds = integracoes.metaAds() ? await (await import('../../lib/automacao/metaAds')).contaAnuncios().catch(() => null) : null;
-  const [saude, falhas24h, abandonos] = await Promise.all([
-    ultimaSaude(),
-    falhasNosDias([diaLocal(agora), diaLocal(agora - DIA)]),
-    integracoes.kv() ? listarAbandonos(72).catch(() => []) : Promise.resolve([]),
-  ]);
+  const abandonos = integracoes.kv() ? await listarAbandonos(72).catch(() => []) : [];
 
   // ---- Recuperar vendas: carrinhos abandonados + pedidos não pagos (72 h) ----
   type Recuperar = {
@@ -204,101 +193,49 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     .map((r) => ({ ...r, chamadoEm: chamados[r.k] ?? null }))
     .sort((a, b) => Number(Boolean(a.chamadoEm)) - Number(Boolean(b.chamadoEm)) || b.quando - a.quando);
 
-  const ultimoPago = pedidos.filter(pago).sort((a, b) => quando(b) - quando(a))[0];
-  const recusados24h = pedidos.filter((p) => p.status === 'failed' && agora - p.criado < DIA).length;
-  const qtdPend = (tipo: string) => pend.find((p) => p.tipo === tipo)?.pedidos.length || 0;
-  const totalFalhas = (Object.keys(falhas24h) as TipoFalha[]).reduce((s, k) => s + falhas24h[k], 0);
-  const servicosSaude: { nome: string; estado: EstadoServico; detalhe: string }[] = (saude?.checks || [])
-    .filter((c) => c.nome !== 'WooCommerce' && c.nome !== 'Banco rápido (Upstash)')
-    .map((c) => ({
-      nome: c.nome,
-      estado: /não configurado/.test(c.detalhe) ? 'off' : c.ok ? 'ok' : 'erro',
-      detalhe: `${c.ok ? `${c.detalhe} em ${(c.ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} s` : c.detalhe} · teste ${haQuanto(saude!.em, agora)}`,
-    }));
-  const servicos: { nome: string; estado: EstadoServico; detalhe: string }[] = [
-    ...servicosSaude,
-    {
-      nome: 'Checkout e frete (até 48 h)',
-      estado: falhas24h['frete-erro'] || falhas24h['checkout-erro'] ? 'erro' : totalFalhas ? 'atencao' : 'ok',
-      detalhe: totalFalhas
-        ? (Object.keys(falhas24h) as TipoFalha[])
-            .filter((k) => falhas24h[k])
-            .map((k) => `${TIPOS_FALHA[k]}: ${falhas24h[k]}`)
-            .join(' · ')
-        : 'nenhuma falha de frete ou checkout registrada',
-    },
-    {
-      nome: 'WooCommerce (loja)',
-      estado: erro ? 'erro' : 'ok',
-      detalhe: erro ? `não respondeu: ${erro}` : `${pedidos.length} pedidos dos últimos 60 dias lidos agora`,
-    },
-    {
-      nome: 'Pagamentos (AppMax)',
-      estado: !ultimoPago || agora - quando(ultimoPago) > 2 * DIA || recusados24h >= 3 ? 'atencao' : 'ok',
-      detalhe: `${ultimoPago ? `último pagamento aprovado ${haQuanto(quando(ultimoPago), agora)}` : 'nenhum pagamento aprovado em 60 dias'}${recusados24h ? ` · ${recusados24h} recusado(s) nas últimas 24 h` : ''}`,
-    },
-    {
-      nome: 'Rotina automática (cron)',
-      estado: !cron ? 'atencao' : !cron.ok ? 'erro' : agora - cron.em < 40 * 60_000 ? 'ok' : agora - cron.em < 3 * 3_600_000 ? 'atencao' : 'erro',
-      detalhe: cron ? `última execução ${haQuanto(cron.em, agora)}${cron.ok ? '' : ` · ${cron.detalhe}`}` : 'ainda sem registro (passa a contar depois desta atualização)',
-    },
-    {
-      nome: 'Webhook de pedidos',
-      estado: webhook ? 'ok' : 'atencao',
-      detalhe: webhook ? `último aviso do WooCommerce ${haQuanto(webhook.em, agora)} (${webhook.detalhe})` : 'ainda sem registro (aparece no próximo pedido)',
-    },
-    {
-      nome: 'Bling',
-      estado: !integracoes.bling() ? 'off' : qtdPend('bling') ? 'atencao' : 'ok',
-      detalhe: !integracoes.bling() ? 'não configurado' : qtdPend('bling') ? `${qtdPend('bling')} pedido(s) pago(s) ainda sem pedido no Bling` : 'pedidos pagos chegando no Bling',
-    },
-    {
-      nome: 'Melhor Envio',
-      estado: !integracoes.melhorEnvio() ? 'off' : qtdPend('me') ? 'atencao' : 'ok',
-      detalhe: !integracoes.melhorEnvio() ? 'não configurado' : qtdPend('me') ? `${qtdPend('me')} pedido(s) sem envio criado` : 'envios em dia',
-    },
-    {
-      nome: 'Alertas no celular',
-      estado: !alertasLigados() ? 'off' : alerta && !alerta.ok ? 'erro' : integracoes.telegram() && !chat ? 'atencao' : 'ok',
-      detalhe: !alertasLigados()
-        ? 'conecte o Telegram em Alertas no celular'
-        : alerta
-          ? `último alerta ${haQuanto(alerta.em, agora)}${alerta.ok ? '' : ` · falhou: ${alerta.detalhe}`}`
-          : integracoes.telegram() && !chat
-            ? 'robô criado, falta conectar o seu Telegram'
-            : 'pronto, nenhum alerta enviado ainda',
-    },
-    {
-      nome: 'Anúncios (Meta)',
-      estado: !integracoes.metaAds() ? 'off' : contaAds === null ? 'atencao' : contaAds.status === 1 ? 'ok' : 'erro',
-      detalhe: !integracoes.metaAds()
-        ? 'cadastre o META_ADS_TOKEN para ver gasto e cliques'
-        : contaAds === null
-          ? 'não consegui ler a conta de anúncios agora'
-          : `${contaAds.status === 1 ? 'conta ativa' : 'conta parada'}${contaAds.saldo ? ` · ${contaAds.saldo}` : ''}`,
-    },
-    {
-      nome: 'Banco rápido (Upstash)',
-      estado: integracoes.kv() ? 'ok' : 'erro',
-      detalhe: integracoes.kv() ? 'guardando conversas, CRM, funil e travas' : 'não configurado: funil, CRM e travas não funcionam',
-    },
-  ];
+  const servicos = await montarMonitoramento({ pedidos, erro, pend, agora });
+  const servicosComProblema = servicos.filter((x) => x.estado === 'erro' || x.estado === 'atencao');
 
-  const pctDelta = (a: number, b: number) => variacao(a, b);
 
   return (
     <div className="max-w-7xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-[var(--sv-ouro-escuro)]">{saudacao(agora)}</p>
-          <h1 className="text-3xl md:text-4xl">Como a loja está indo</h1>
-          <p className="mt-1 text-sm text-slate-500">Atualizado {dataHora(agora)}</p>
+          <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 text-emerald-600" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+              <rect x="3" y="5" width="18" height="16" rx="2" />
+              <path d="M3 10h18M8 3v4M16 3v4" />
+            </svg>
+            {fmtData(intervalo.inicio)} até {fmtData(intervalo.fim)}
+          </span>
+          <h1 className="mt-3 text-3xl md:text-4xl">Performance de vendas</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {saudacao(agora)} Pedidos pagos do WooCommerce · atualizado {dataHora(agora)}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <AutoAtualizar segundos={60} />
-          <form action={atualizarDados}>
-            <button className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">Atualizar agora</button>
-          </form>
+        <div className="flex flex-col items-end gap-2">
+          <nav aria-label="Período" className="flex flex-wrap justify-end gap-1.5">
+            {(Object.keys(PERIODOS_PAINEL) as ChavePeriodoPainel[])
+              .filter((k) => k !== 'black' || naBlack)
+              .map((k) => (
+                <Link
+                  key={k}
+                  href={`/painel?p=${k}`}
+                  aria-current={k === chavePeriodo ? 'page' : undefined}
+                  className={`rounded-xl border px-3 py-1.5 text-sm font-semibold transition ${
+                    k === chavePeriodo ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {PERIODOS_PAINEL[k]}
+                </Link>
+              ))}
+          </nav>
+          <div className="flex items-center gap-2">
+            <AutoAtualizar segundos={60} />
+            <form action={atualizarDados}>
+              <button className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs hover:bg-slate-50">Atualizar agora</button>
+            </form>
+          </div>
         </div>
       </div>
 
@@ -307,20 +244,32 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
         <Aviso>O WooCommerce não respondeu agora. Mostrando os dados de {dataHora(reserva)}; a tela tenta de novo sozinha.</Aviso>
       )}
 
-      {/* Cards de hoje */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <CardAoVivo rotulo="Vendas hoje" valor={String(hoje.vendas)} delta={pctDelta(hoje.vendas, ontem.vendas)} serie={series.map((s) => s.vendas)} href="/painel/pedidos" />
-        <CardAoVivo rotulo="Faturamento hoje" valor={brl(hoje.faturamento)} delta={pctDelta(hoje.faturamento, ontem.faturamento)} serie={series.map((s) => s.faturamento)} href="/painel?grafico=hoje#grafico" />
-        <CardAoVivo rotulo="Ticket médio hoje" valor={brl(hoje.ticket)} delta={pctDelta(hoje.ticket, ontem.ticket)} serie={series.map((s) => s.ticket)} href="#ranking" />
-        <CardAoVivo
-          rotulo="Conversão hoje"
-          valor={convHoje === null ? '—' : `${(convHoje * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`}
-          delta={convHoje !== null && convOntem ? pctDelta(convHoje, convOntem) : null}
-          serie={serieConv}
-          href="#funil"
-          ajuda={funilDias ? `${hoje.vendas} vendas de ${visitasHoje} visitas` : 'precisa do Upstash'}
-        />
-      </div>
+      {/* Indicadores do período × período anterior */}
+      <section aria-label="Indicadores">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+          <Kpi rotulo="Faturamento" icone="faturamento" valor={brl(kAtual.faturamento)} anterior={brl(kAnt.faturamento)} delta={variacao(kAtual.faturamento, kAnt.faturamento)} href="#grafico" />
+          <Kpi rotulo="Pedidos pagos" icone="pedidos" valor={String(kAtual.pedidos)} anterior={String(kAnt.pedidos)} delta={variacao(kAtual.pedidos, kAnt.pedidos)} href="/painel/pedidos" />
+          <Kpi rotulo="Ticket médio" icone="ticket" valor={brl(kAtual.ticket)} anterior={brl(kAnt.ticket)} delta={variacao(kAtual.ticket, kAnt.ticket)} />
+          <Kpi rotulo="Peças por pedido" icone="pecas" valor={dec(kAtual.pecasPorPedido)} anterior={dec(kAnt.pecasPorPedido)} delta={variacao(kAtual.pecasPorPedido, kAnt.pecasPorPedido)} ajuda={`${kAtual.pecas} peça(s) no período`} />
+          <Kpi
+            rotulo="Conversão"
+            icone="conversao"
+            valor={convAtual === null ? '—' : pct1(convAtual)}
+            anterior={convAnt === null ? null : pct1(convAnt)}
+            delta={convAtual !== null && convAnt ? variacao(convAtual, convAnt) : null}
+            href="#funil"
+            ajuda={integracoes.kv() ? `${kAtual.pedidos} venda(s) de ${visAtual} visita(s)` : 'precisa do Upstash'}
+          />
+        </div>
+        <p className="mt-2 text-right text-xs text-slate-400">Comparação: {intervalo.comparacao}</p>
+      </section>
+
+      {servicosComProblema.length > 0 && (
+        <Aviso tipo={servicosComProblema.some((x) => x.estado === 'erro') ? 'erro' : undefined}>
+          {servicosComProblema.length} item(ns) do sistema pedem atenção: {servicosComProblema.map((x) => x.nome).join(', ')}.{' '}
+          <Link href="/painel/configuracoes" className="font-semibold underline">Ver em Configurações</Link>
+        </Aviso>
+      )}
 
       {/* Black Friday + duelo */}
       <div className="grid gap-4 lg:grid-cols-5">
@@ -433,19 +382,9 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
         </section>
       </div>
 
-      {/* Pix + monitoramento */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Cartao titulo="Pagamentos (últimos 7 dias)">
-          <PagamentosAbas linhas={linhasPagamento} />
-        </Cartao>
-        <Cartao titulo="Monitoramento" acao={<Link href="/painel/alertas" className="text-xs underline text-sky-800">alertas no celular</Link>}>
-          <ul className="divide-y divide-slate-100">
-            {servicos.map((s) => (
-              <LinhaServico key={s.nome} nome={s.nome} estado={s.estado} detalhe={s.detalhe} />
-            ))}
-          </ul>
-        </Cartao>
-      </div>
+      <Cartao titulo="Pagamentos (últimos 7 dias)">
+        <PagamentosAbas linhas={linhasPagamento} />
+      </Cartao>
 
       <div id="recuperar">
         <Cartao
