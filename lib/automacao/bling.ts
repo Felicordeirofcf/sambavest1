@@ -312,11 +312,13 @@ export async function criarPedidoVenda(pedido: WcPedido): Promise<ResultadoPedid
 
   // Idempotência: se uma tentativa anterior criou o pedido mas não conseguiu gravar o ID
   // no WooCommerce, reaproveita em vez de duplicar.
-  const filtroLoja = config.bling.lojaId ? `&idLoja=${config.bling.lojaId}` : '';
+  // A integração nativa Bling ↔ WooCommerce também importa o pedido, com o número "1150_1150":
+  // procura os dois formatos (em qualquer loja do Bling) para não criar pedido nem NF-e em dobro.
+  const numerosAceitos = [numeroLoja, `${numeroLoja}_${numeroLoja}`];
   const ja = await bling<{ data: { id: number; numero?: number; numeroLoja?: string }[] }>(
-    `/pedidos/vendas?${lista('numerosLojas', [numeroLoja])}${filtroLoja}`
+    `/pedidos/vendas?${lista('numerosLojas', numerosAceitos)}`
   );
-  const existente = ja.data?.find((p) => p.numeroLoja === numeroLoja);
+  const existente = ja.data?.find((p) => numerosAceitos.includes(String(p.numeroLoja)));
   if (existente) return { id: existente.id, numero: existente.numero, jaExistia: true, avisos: [] };
 
   const avisos: string[] = [];

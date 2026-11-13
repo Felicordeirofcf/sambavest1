@@ -87,6 +87,7 @@ export async function POST(request: Request) {
       numeroDocumento: txt(cliente?.numeroDocumento),
       endereco: txt(cliente?.endereco),
       numero: txt(cliente?.numero) || 'S/N',
+      complemento: txt(cliente?.complemento),
       bairro: txt(cliente?.bairro),
       cidade: txt(cliente?.cidade),
       cep: txt(cliente?.cep),
@@ -140,7 +141,9 @@ export async function POST(request: Request) {
     const lastName = partesNome.slice(1).join(' ') || 'Da Loja';
     const documentoLimpo = clienteFinal.numeroDocumento.replace(/\D/g, '');
     const cepLimpo = clienteFinal.cep.replace(/\D/g, '');
-    const enderecoCompleto = `${clienteFinal.endereco}, ${clienteFinal.numero} - ${clienteFinal.bairro}`;
+    // Rua, número, complemento e bairro em campos separados: o Bling (integração com o WooCommerce)
+    // lê número e bairro dos campos do "Brazilian Market" e acusa "bairro vazio" se vierem dentro da rua.
+    const pessoaJuridica = documentoLimpo.length === 14;
 
     // 💰 PREÇOS DO SERVIDOR: busca o preço atual de cada produto/variação no WooCommerce.
     // O preço enviado pelo navegador é ignorado; o desconto do Pix é aplicado aqui.
@@ -219,7 +222,8 @@ export async function POST(request: Request) {
       billing: {
         first_name: firstName,
         last_name: lastName,
-        address_1: enderecoCompleto,
+        address_1: clienteFinal.endereco,
+        address_2: clienteFinal.complemento,
         city: clienteFinal.cidade,
         state: clienteFinal.uf,
         postcode: cepLimpo,
@@ -230,7 +234,8 @@ export async function POST(request: Request) {
       shipping: {
         first_name: firstName,
         last_name: lastName,
-        address_1: enderecoCompleto,
+        address_1: clienteFinal.endereco,
+        address_2: clienteFinal.complemento,
         city: clienteFinal.cidade,
         state: clienteFinal.uf,
         postcode: cepLimpo,
@@ -251,6 +256,12 @@ export async function POST(request: Request) {
         // Usados pelas automações (etiqueta do Melhor Envio, NF-e no Bling)
         { key: '_billing_number', value: clienteFinal.numero },
         { key: '_billing_neighborhood', value: clienteFinal.bairro },
+        { key: '_shipping_number', value: clienteFinal.numero },
+        { key: '_shipping_neighborhood', value: clienteFinal.bairro },
+        { key: '_billing_cellphone', value: clienteFinal.telefone },
+        // 1 = pessoa física, 2 = jurídica (padrão do Brazilian Market, lido pelo Bling)
+        { key: '_billing_persontype', value: pessoaJuridica ? '2' : '1' },
+        ...(pessoaJuridica ? [{ key: '_billing_cnpj', value: documentoLimpo }] : []),
         { key: '_sv_melhorenvio_servico', value: String(cotacao.id) },
         // Meta Ads: cookies do Pixel, IP e navegador, usados no evento Purchase quando o pagamento for aprovado
         ...metaDadosRastreio(request, eventId),
