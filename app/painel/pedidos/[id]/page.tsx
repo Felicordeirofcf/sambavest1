@@ -6,6 +6,7 @@ import { integracoes } from '../../../../lib/automacao/config';
 import { linkRastreio } from '../../../../lib/automacao/melhorenvio';
 import { enderecoEntrega, linkPagamento, obterPedido, wc, WcPedido } from '../../../../lib/automacao/woocommerce';
 import { telefoneWhatsapp } from '../../../../lib/automacao/whatsapp';
+import { linkWhats, mensagensDoPedido } from '../../../../lib/painel/mensagensWhats';
 import { exigirLogin } from '../../../../lib/painel/auth';
 import { resumir } from '../../../../lib/painel/dados';
 import { chaveCliente } from '../../../../lib/painel/metricas';
@@ -41,6 +42,13 @@ export default async function Pedido({
   const conversa = whats && integracoes.kv() ? await obterConversa(whats).catch(() => null) : null;
   const pago = p.status === 'processing' || p.status === 'completed';
   const aqui = `/painel/pedidos/${id}`;
+  const mensagens = whats
+    ? mensagensDoPedido(p, {
+        linkPagamento: p.status === 'pending' ? linkPagamento(bruto) : undefined,
+        linkRastreio: p.marcas.rastreio ? linkRastreio(p.marcas.rastreio) : undefined,
+      })
+    : [];
+  const principal = mensagens.find((m) => m.destaque);
 
   return (
     <div className="space-y-4 max-w-6xl">
@@ -115,6 +123,16 @@ export default async function Pedido({
             <br />
             {end.bairro} · {end.cidade}/{end.uf} · CEP {end.cep}
           </p>
+          {whats && principal && (
+            <a
+              href={linkWhats(whats, principal.texto)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-bold text-black hover:bg-[#1fbd5a]"
+            >
+              📲 Avisar no WhatsApp: {principal.rotulo.toLowerCase()}
+            </a>
+          )}
           {whats && (
             <div className="flex gap-3 mt-3 text-sm">
               <a href={`https://wa.me/${whats}`} target="_blank" rel="noreferrer" className="underline text-emerald-700">
@@ -238,13 +256,35 @@ export default async function Pedido({
         <Cartao titulo="WhatsApp">
           {!whats ? (
             <p className="text-sm text-slate-400">Pedido sem telefone válido.</p>
-          ) : !conversa ? (
-            <p className="text-sm text-slate-500">
-              Nenhuma conversa registrada com este cliente nos últimos 30 dias.{' '}
-              <a href={`https://wa.me/${whats}`} target="_blank" rel="noreferrer" className="underline text-emerald-700">Chamar no WhatsApp ↗</a>
-            </p>
           ) : (
-            <Conversa conversa={conversa} voltar={aqui} />
+            <>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Mensagens prontas (abre o seu WhatsApp com o texto)</p>
+              <ul className="space-y-2">
+                {mensagens.map((m) => (
+                  <li key={m.id} className={`rounded-xl border p-3 ${m.destaque ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200'}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-slate-800">{m.rotulo}</span>
+                      <a
+                        href={linkWhats(whats, m.texto)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-bold text-black hover:bg-[#1fbd5a]"
+                      >
+                        Abrir no WhatsApp ↗
+                      </a>
+                    </div>
+                    <p className="mt-1.5 whitespace-pre-line text-xs text-slate-600 line-clamp-4">{m.texto}</p>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4">
+                {conversa ? (
+                  <Conversa conversa={conversa} voltar={aqui} />
+                ) : (
+                  <p className="text-xs text-slate-400">Nenhuma conversa registrada com este cliente nos últimos 30 dias.</p>
+                )}
+              </div>
+            </>
           )}
         </Cartao>
       </div>
