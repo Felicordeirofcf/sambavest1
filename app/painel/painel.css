@@ -185,3 +185,57 @@
   background: #e7f6ef;
   color: #047857;
 }
+
+/* ---------------- Modo escuro (classe sv-escuro no .sv) ---------------- */
+.sv.sv-escuro {
+  color-scheme: dark;
+  --sv-palco: #0b0f1d;
+  --sv-tinta: #e8ebf6;
+  --color-slate-50: #121729;
+  --color-slate-100: #1a2036;
+  --color-slate-200: #262d47;
+  --color-slate-300: #353d5d;
+  --color-slate-400: #7f88a8;
+  --color-slate-500: #9aa2c1;
+  --color-slate-600: #b5bbd5;
+  --color-slate-700: #cdd2e6;
+  --color-slate-800: #e0e4f1;
+  --color-slate-900: #f2f4fb;
+  --color-sky-50: rgb(91 130 255 / 0.14);
+  --color-sky-200: rgb(91 130 255 / 0.35);
+  --color-sky-800: #9db6ff;
+  color: var(--sv-tinta);
+  background: var(--sv-palco);
+}
+.sv.sv-escuro .bg-white { background-color: #131a2e; }
+.sv.sv-escuro .bg-slate-100\/70 { background-color: rgb(38 45 71 / 0.6); }
+/* fundos pastel → translúcidos */
+.sv.sv-escuro .bg-emerald-50 { background-color: rgb(16 185 129 / 0.13); }
+.sv.sv-escuro .bg-emerald-100 { background-color: rgb(16 185 129 / 0.22); }
+.sv.sv-escuro .bg-amber-50 { background-color: rgb(245 158 11 / 0.13); }
+.sv.sv-escuro .bg-amber-100 { background-color: rgb(245 158 11 / 0.22); }
+.sv.sv-escuro .bg-red-50 { background-color: rgb(239 68 68 / 0.13); }
+.sv.sv-escuro .bg-sky-100 { background-color: rgb(91 130 255 / 0.22); }
+.sv.sv-escuro .border-emerald-200, .sv.sv-escuro .ring-emerald-200 { border-color: rgb(16 185 129 / 0.35); --tw-ring-color: rgb(16 185 129 / 0.35); }
+.sv.sv-escuro .border-amber-200, .sv.sv-escuro .ring-amber-200, .sv.sv-escuro .border-amber-300 { border-color: rgb(245 158 11 / 0.35); --tw-ring-color: rgb(245 158 11 / 0.35); }
+.sv.sv-escuro .border-red-200, .sv.sv-escuro .ring-red-200 { border-color: rgb(239 68 68 / 0.35); --tw-ring-color: rgb(239 68 68 / 0.35); }
+/* textos escuros sobre pastel → claros */
+.sv.sv-escuro .text-emerald-600, .sv.sv-escuro .text-emerald-700, .sv.sv-escuro .text-emerald-800, .sv.sv-escuro .text-emerald-900 { color: #6ee7b7; }
+.sv.sv-escuro .text-amber-700, .sv.sv-escuro .text-amber-800, .sv.sv-escuro .text-amber-900 { color: #fcd34d; }
+.sv.sv-escuro .text-red-700, .sv.sv-escuro .text-red-800, .sv.sv-escuro .text-rose-600, .sv.sv-escuro .text-\[\#dc2626\] { color: #fca5a5; }
+.sv.sv-escuro .text-sky-900, .sv.sv-escuro .text-\[\#1d4ed8\] { color: #9db6ff; }
+.sv.sv-escuro .text-\[\#0B1B34\] { color: var(--sv-tinta); }
+/* botões/barras azul-noite ficam um tom acima do fundo */
+.sv.sv-escuro .bg-\[\#0B1B34\], .sv.sv-escuro .bg-\[\#10173a\], .sv.sv-escuro .bg-slate-900 { background-color: #2b3766; }
+.sv.sv-escuro .border-\[\#0B1B34\] { border-color: #3a4780; }
+/* gráficos em SVG: CSS vence os atributos de cor */
+.sv.sv-escuro [fill='#10173a'], .sv.sv-escuro [fill='#0B1B34'] { fill: #f5b700; }
+.sv.sv-escuro [stroke='#10173a'] { stroke: #f5b700; }
+.sv.sv-escuro [stroke='#e1e4f0'], .sv.sv-escuro [stroke='#e2e8f0'] { stroke: #262d47; }
+.sv.sv-escuro [fill='#69708f'], .sv.sv-escuro [fill='#64748b'], .sv.sv-escuro [fill='#353b5c'] { fill: #9aa2c1; }
+.sv.sv-escuro [fill='#e8ebf6'] { fill: #1a2036; }
+.sv.sv-escuro .fill-\[\#10173a\], .sv.sv-escuro .fill-\[\#0B1B34\] { fill: #f5b700; }
+/* menu ativo e campos */
+.sv.sv-escuro .sv-trilho-link[aria-current='page'] { background: rgb(16 185 129 / 0.16); color: #6ee7b7; }
+.sv.sv-escuro input, .sv.sv-escuro select, .sv.sv-escuro textarea { background-color: #0f1426; color: var(--sv-tinta); border-color: #353d5d; }
+.sv.sv-escuro .shadow-sm, .sv.sv-escuro .shadow-md { --tw-shadow-color: rgb(0 0 0 / 0.4); }

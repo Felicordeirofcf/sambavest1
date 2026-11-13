@@ -6,6 +6,8 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import Menu from '../../components/painel/menu';
 import { logado } from '../../lib/painel/auth';
+import { cookies } from 'next/headers';
+import TemaEscuro from '../../components/painel/TemaEscuro';
 import { sair } from './actions';
 import './painel.css';
 
@@ -17,8 +19,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function PainelLayout({ children }: { children: ReactNode }) {
   const entrou = await logado();
+  const escuro = (await cookies()).get('sv_tema')?.value === 'escuro';
   return (
-    <div className={`sv ${display.variable} ${texto.variable} fixed inset-0 z-[1000] overflow-y-auto antialiased`}>
+    <div className={`sv ${escuro ? 'sv-escuro' : ''} ${display.variable} ${texto.variable} fixed inset-0 z-[1000] overflow-y-auto antialiased`}>
       {/* a página da loja fica atrás do painel: trava a rolagem dela */}
       <style>{'body{overflow:hidden} a[aria-label="Falar no WhatsApp"]{display:none!important}'}</style>
       {entrou ? (
@@ -29,6 +32,9 @@ export default async function PainelLayout({ children }: { children: ReactNode }
             </Link>
             <div className="flex flex-1 md:w-full md:flex-col md:pt-4 min-w-0">
               <Menu />
+            </div>
+            <div className="shrink-0 px-1 md:w-full md:px-0 md:pb-1 flex justify-center">
+              <TemaEscuro inicial={escuro} />
             </div>
             <form action={sair} className="shrink-0 px-2 md:w-full md:px-0 md:pb-4">
               <button className="sv-trilho-link w-full" title="Sair">
