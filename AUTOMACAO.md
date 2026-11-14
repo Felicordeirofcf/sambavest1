@@ -447,6 +447,25 @@ geral) lista os carrinhos das últimas 72 h com botão de WhatsApp. Rotina: cron
 - **Relatório da semana**: segunda às 9h no celular (vendas × semana anterior, mais vendidas, anúncios,
   carrinhos e falhas).
 
+### Atendente com IA (Claude)
+
+Em vez das regras fixas, a IA entende a mensagem, consulta o que precisa e responde em linguagem natural.
+Ferramentas que ela pode usar: `consultar_pedidos` (só os pedidos do telefone da própria conversa),
+`buscar_produtos` (catálogo do WooCommerce, com o preço cobrado no site) e `transferir_para_humano`
+(troca, devolução, defeito, cliente irritado, desconto, ou quando não sabe a resposta).
+Se a IA falhar, a mensagem cai no robô de regras. Código: `lib/automacao/agente.ts`.
+
+| Variável | Exemplo | Para quê |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | Chave da API (console.anthropic.com). Só com ela o simulador já funciona |
+| `WHATSAPP_IA` | `true` | Liga a IA no WhatsApp de verdade |
+| `WHATSAPP_IA_MODELO` | `claude-haiku-5-5` | Modelo (padrão: Haiku, barato e rápido) |
+| `WHATSAPP_IA_CONHECIMENTO` | `Medidas: P 50x70cm...\nPix ou cartão em até 3x` | O que a IA pode afirmar além das ferramentas. Use `\n` para quebrar linha |
+| `WHATSAPP_IA_HISTORICO` | `12` | Quantas mensagens anteriores ela lê |
+
+Teste antes em `/atendimento/simulador` (modo "IA"): dá para conversar várias mensagens seguidas e ver
+quais ferramentas ela usou, o que voltou de cada uma e quantos tokens gastou. Nada é enviado.
+
 ## 6. Meta Ads: rastreamento de compras e catálogo
 
 **Por quê:** o pagamento acontece na página da AppMax, fora do site, então o Pixel do navegador nunca
