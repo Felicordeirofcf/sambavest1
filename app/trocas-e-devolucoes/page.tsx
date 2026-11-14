@@ -37,7 +37,7 @@ export default function TrocasDevolucoesPage() {
             Se a camisa não serviu ou se você simplesmente se arrependeu da compra, você tem o prazo de <strong>até 7 (sete) dias corridos</strong>, contados a partir da data de recebimento do pedido, para solicitar a troca ou devolução.
           </p>
           <ul className="list-disc pl-5 space-y-2">
-            <li>O custo do frete da primeira troca por tamanho é dividido: você paga para enviar a peça de volta, e nós pagamos o frete para enviar a nova peça até você.</li>
+            <li>Na troca por tamanho, o frete de ida e volta é por nossa conta: você não paga nada para trocar. Nossa equipe envia as instruções de postagem e confirma o prazo de entrega da nova peça.</li>
             <li>No caso de devolução por arrependimento, o valor estornado será referente aos produtos adquiridos.</li>
           </ul>
         </section>
