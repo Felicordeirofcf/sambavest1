@@ -304,7 +304,9 @@ export async function buscarProdutos(busca: string) {
     pontuados.map(async ({ p }) => {
       const modelosBase = p.modelos || (p.id ? await modelosDoProduto(p.id) : undefined);
       // Link de cada modelo: abre a página já nele e a prévia do WhatsApp mostra a foto desse modelo
-      const modelos = modelosBase?.map((m) => ({ ...m, link: m.modelo === 'Único' ? p.link : `${p.link}?modelo=${encodeURIComponent(m.modelo)}` }));
+      // /produto/slug/vestido: abre no modelo e a prévia do link mostra a foto dele
+      const slug = (t: string) => normalizar(t).trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const modelos = modelosBase?.map((m) => ({ ...m, link: m.modelo === 'Único' ? p.link : `${p.link}/${slug(m.modelo)}` }));
       return {
         nome: p.nome,
         preco_a_partir_de: brl(p.preco),
