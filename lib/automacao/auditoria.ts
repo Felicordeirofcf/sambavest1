@@ -44,6 +44,12 @@ export async function auditoria(): Promise<Record<string, unknown>> {
       });
     })(),
 
+    // 2b) Entrega: a Meta está mostrando o anúncio agora? o saldo pré-pago aguenta? (sem valores em R$)
+    (async () => {
+      if (!integracoes.metaAds()) return;
+      r.entregaAnuncios = (await (await import('./vigiaEntrega')).resumoEntrega()).resumo;
+    })(),
+
     // 3) Funil do site (contadores anônimos)
     (async () => {
       const [h, o, hm, om] = await Promise.all([somaFunil([hoje]), somaFunil([ontem]), somaFunil([hoje], 'meta'), somaFunil([ontem], 'meta')]);
