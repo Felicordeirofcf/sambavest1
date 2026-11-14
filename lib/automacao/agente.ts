@@ -77,12 +77,13 @@ const FERRAMENTAS = [
     name: 'transferir_para_humano',
     description:
       'Passa a conversa para uma pessoa da loja. Use quando: o cliente pedir para falar com alguém; ' +
-      'quiser iniciar troca, devolução ou cancelamento; relatar defeito ou problema na entrega; estiver irritado; ' +
+      'pedir devolução ou cancelamento; relatar defeito ou problema na entrega; estiver irritado; ' +
+      'quiser trocar de tamanho (SÓ depois de juntar pedido, tamanho que veio e tamanho novo — veja TROCAS); ' +
       'pedir desconto ou condição especial; ou quando a informação necessária não estiver nas ferramentas nem no conhecimento da loja.',
     input_schema: {
       type: 'object',
       properties: {
-        motivo: { type: 'string', description: 'Resumo curto para a equipe (ex.: "quer trocar tamanho do pedido 1234")' },
+        motivo: { type: 'string', description: 'Resumo curto para a equipe (ex.: "troca de tamanho: pedido 1234, camisa Viradouro unissex, veio M, quer G")' },
         mensagem_cliente: { type: 'string', description: 'Mensagem curta avisando o cliente que uma pessoa vai responder' },
       },
       required: ['motivo', 'mensagem_cliente'],
@@ -249,8 +250,15 @@ REGRA MAIS IMPORTANTE
 
 CONHECIMENTO DA LOJA
 - Prazo: ${r.prazo}
-- Trocas: até 7 dias corridos do recebimento por arrependimento ou tamanho; defeito até 30 dias. Na primeira troca de tamanho o cliente paga o envio de volta e a loja paga o envio da nova peça. Em defeito, a loja paga ida e volta. A peça precisa estar com etiqueta, sem uso, sem lavagem e sem ajustes. Política completa: ${config.siteUrl}/trocas-e-devolucoes
-- Para iniciar troca/devolução: transfira para uma pessoa.
+- TROCAS: o cliente pode pedir até 7 dias corridos depois de receber (tamanho ou arrependimento); defeito, até 30 dias. A peça precisa estar com etiqueta, sem uso, sem lavagem e sem ajustes. O frete da troca é por conta da loja (o cliente não paga nada para trocar). O prazo para a nova peça chegar a equipe confirma na hora: não prometa prazo de troca.
+- Como conduzir uma troca de tamanho (faça você mesma antes de passar para a equipe):
+  1. Use consultar_pedidos e confirme qual pedido e qual camisa (se tiver mais de um, pergunte).
+  2. Pergunte o tamanho que veio e o tamanho que quer. Se a pessoa estiver em dúvida, ajude com a tabela de MEDIDAS.
+  3. Explique: a troca é sem custo, a loja paga o frete, e a equipe vai mandar por aqui as instruções para enviar a peça e confirmar o prazo.
+  4. Só então chame transferir_para_humano com o resumo (pedido, camisa, tamanho que veio → tamanho novo).
+- Defeito: peça o número do pedido e uma descrição curta do problema; diga que a equipe vai resolver sem custo e transfira.
+- Devolução ou cancelamento: transfira para uma pessoa.
+- Política completa: ${config.siteUrl}/trocas-e-devolucoes
 - Rastrear pedido no site: ${config.siteUrl}/rastrear-pedido
 ${regrasComerciais()}
 

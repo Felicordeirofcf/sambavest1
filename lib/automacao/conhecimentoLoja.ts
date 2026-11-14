@@ -33,7 +33,7 @@ export function regrasComerciais(agora = Date.now()): string {
     ? 'Pix (aprovação na hora) ou cartão de crédito. Durante a Black Friday não há desconto extra no Pix: o preço da Black já é o preço final.'
     : `Pix (aprovação na hora, com ${Math.round(DESCONTO_PIX_PADRAO * 100)}% de desconto no site) ou cartão de crédito.`;
   return [
-    `PAGAMENTO: ${pix} Parcelamento: não informe número de parcelas nem juros (aparece na hora de pagar no cartão); se o cliente insistir, transfira. Não há boleto.`,
+    `PAGAMENTO: ${pix} Cartão de crédito em até 3x sem juros. Não há boleto.`,
     `FRETE: calculado no carrinho/checkout pelo CEP, para todo o Brasil. Compras acima de ${brl(FRETE_GRATIS_A_PARTIR_DE)} em produtos têm o frete mais barato grátis. Não informe valor de frete: peça para calcular no site com o CEP.`,
     black
       ? `BLACK FRIDAY (até ${data(PERIODO_BF.fim)}): camisas da Black com preço promocional, válido até ${data(PERIODO_BF.fim)} ou enquanto durar o estoque. Página: ${config.siteUrl}/black-friday . Use buscar_produtos para o preço de cada camisa.`
