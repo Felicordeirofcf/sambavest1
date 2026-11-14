@@ -169,7 +169,8 @@ export const config = {
   // Evolution API (WhatsApp pelo QR Code, não oficial). Recebe e responde as conversas do painel;
   // com WHATSAPP_IA=true a IA responde os clientes por ela (mesmo fluxo da API oficial).
   evolution: {
-    url: (env('EVOLUTION_URL') || '').replace(/\/+$/, '') || undefined,
+    // Aceita o endereço copiado do gerenciador (…/manager) e barras no final
+    url: (env('EVOLUTION_URL') || '').trim().replace(/\/+$/, '').replace(/\/manager$/i, '') || undefined,
     apiKey: env('EVOLUTION_API_KEY'),
     instancia: env('EVOLUTION_INSTANCIA') || 'sambavest',
     // Senha que vai na URL do webhook (?token=...), para só a Evolution conseguir entregar mensagens

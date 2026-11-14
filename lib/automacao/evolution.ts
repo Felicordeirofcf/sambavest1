@@ -25,6 +25,16 @@ export async function evo<T = unknown>(caminho: string, init: Init = {}): Promis
   } catch {
     // resposta não-JSON
   }
+  if (res.ok && json === null) {
+    // Respondeu, mas não é a API da Evolution (ex.: tela do gerenciador, site, outro sistema)
+    const tipo = res.headers.get('content-type') || 'sem tipo';
+    const titulo = texto.match(/<title[^>]*>([^<]{0,80})/i)?.[1]?.trim();
+    const inicio = titulo ? `página "${titulo}"` : texto ? `"${texto.slice(0, 60).replace(/\s+/g, ' ')}"` : 'resposta vazia';
+    throw new Error(
+      `O endereço em EVOLUTION_URL respondeu, mas não como a API da Evolution (${tipo}; ${inicio}). ` +
+        'Confira se é o endereço da API (o mesmo que o gerenciador pede em "Server URL"), sem /manager no final.'
+    );
+  }
   if (!res.ok) {
     const j = json as { response?: { message?: unknown }; message?: unknown; error?: unknown } | null;
     const msg = j?.response?.message ?? j?.message ?? j?.error ?? texto.slice(0, 200);
@@ -40,8 +50,8 @@ export type EstadoEvolution = 'open' | 'connecting' | 'close' | 'inexistente' | 
 /** Situação da conexão: open = conectado; close/connecting = precisa ler o QR Code. */
 export async function estadoConexao(): Promise<{ estado: EstadoEvolution; detalhe?: string }> {
   try {
-    const r = await evo<{ instance?: { state?: string }; state?: string }>(`/instance/connectionState/${inst()}`);
-    const estado = (r.instance?.state || r.state || 'close') as EstadoEvolution;
+    const r = await evo<{ instance?: { state?: string }; state?: string } | null>(`/instance/connectionState/${inst()}`);
+    const estado = (r?.instance?.state || r?.state || 'close') as EstadoEvolution;
     return { estado };
   } catch (e) {
     const msg = (e as Error).message;
@@ -60,10 +70,10 @@ export async function criarInstancia(): Promise<void> {
 
 /** QR Code para conectar o número (imagem em base64, data URL). */
 export async function qrCode(): Promise<{ imagem?: string; codigoPareamento?: string }> {
-  const r = await evo<{ base64?: string; pairingCode?: string; qrcode?: { base64?: string } }>(`/instance/connect/${inst()}`);
-  const b64 = r.base64 || r.qrcode?.base64;
+  const r = await evo<{ base64?: string; pairingCode?: string; qrcode?: { base64?: string } } | null>(`/instance/connect/${inst()}`);
+  const b64 = r?.base64 || r?.qrcode?.base64;
   const imagem = b64 && !b64.startsWith('data:') ? `data:image/png;base64,${b64}` : b64;
-  return { imagem, codigoPareamento: r.pairingCode || undefined };
+  return { imagem, codigoPareamento: r?.pairingCode || undefined };
 }
 
 /** Aponta o webhook da instância para o site, só com o evento de mensagens. */
