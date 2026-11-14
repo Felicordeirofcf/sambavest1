@@ -168,8 +168,22 @@ function normalizar(t: string): string {
 
 // Catálogo: o mesmo do site (WooCommerce), com cache curto. O preço do Woo já é o preço cobrado
 // (inclusive promoções/Black Friday, que ficam como "preço promocional" no próprio Woo).
-type ItemCatalogo = { nome: string; preco: number; precoAntigo?: number; tamanhos: string[]; disponivel: boolean; link: string; busca: string };
+type ModeloCatalogo = { modelo: string; preco: string; preco_antigo: string | null; tamanhos_com_estoque: string[]; esgotados: string[] };
+type ItemCatalogo = {
+  id?: number;
+  nome: string;
+  preco: number;
+  precoAntigo?: number;
+  tamanhos: string[];
+  /** Modelos do produto (Unissex, Baby look, Regata, Vestido...), com preço e estoque por tamanho */
+  modelos?: ModeloCatalogo[];
+  disponivel: boolean;
+  link: string;
+  busca: string;
+};
 type WcProdutoLista = {
+  id: number;
+  type?: string;
   name: string;
   slug: string;
   price: string;
@@ -194,6 +208,7 @@ async function catalogo(): Promise<ItemCatalogo[]> {
       const preco = Number(p.price || p.regular_price || 0);
       const regular = Number(p.regular_price || 0);
       return {
+        id: p.type === 'variable' ? p.id : undefined,
         nome: p.name,
         preco,
         precoAntigo: p.on_sale && regular > preco ? regular : undefined,
@@ -211,6 +226,13 @@ async function catalogo(): Promise<ItemCatalogo[]> {
       preco: p.price,
       precoAntigo: p.originalPrice || undefined,
       tamanhos: [...new Set(p.variants.map((v) => v.size))],
+      modelos: [...new Set(p.variants.map((v) => v.model).filter(Boolean))].map((m) => ({
+        modelo: m,
+        preco: brl(p.variants.find((v) => v.model === m)?.price || p.price),
+        preco_antigo: null,
+        tamanhos_com_estoque: [...new Set(p.variants.filter((v) => v.model === m).map((v) => v.size))],
+        esgotados: [],
+      })),
       disponivel: true,
       link: `${config.siteUrl}/produto/${p.handle}`,
       busca: normalizar(`${p.name} ${p.categories.join(' ')} ${p.variants.map((v) => v.model).join(' ')}`),
@@ -221,10 +243,48 @@ async function catalogo(): Promise<ItemCatalogo[]> {
   return itens;
 }
 
+// Modelos e estoque por tamanho, lidos das variações do Woo (cache de 5 min por produto)
+type WcVariacaoLista = { price: string; regular_price: string; stock_status: string; attributes: { name: string; option: string }[] };
+const cacheModelos = new Map<number, { em: number; modelos: ModeloCatalogo[] }>();
+const ORDEM_TAMANHO = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XGG', 'EXG', 'EXGG', 'G1', 'G2', 'G3'];
+const ordenarTamanhos = (t: string[]) => [...t].sort((a, b) => (ORDEM_TAMANHO.indexOf(a) + 99) % 99 - (ORDEM_TAMANHO.indexOf(b) + 99) % 99);
+
+async function modelosDoProduto(id: number): Promise<ModeloCatalogo[] | undefined> {
+  const c = cacheModelos.get(id);
+  if (c && Date.now() - c.em < 5 * 60_000) return c.modelos;
+  try {
+    const vs = await wc<WcVariacaoLista[]>(`/products/${id}/variations?per_page=100`);
+    const attr = (v: WcVariacaoLista, re: RegExp) => v.attributes.find((a) => re.test(normalizar(a.name)))?.option || '';
+    const grupos = new Map<string, WcVariacaoLista[]>();
+    for (const v of vs) {
+      const m = attr(v, /modelo|tipo|model/) || 'Único';
+      grupos.set(m, [...(grupos.get(m) || []), v]);
+    }
+    const modelos = [...grupos.entries()].map(([modelo, lista]) => {
+      const comEstoque = lista.filter((v) => v.stock_status !== 'outofstock' && Number(v.price) > 0);
+      const precos = comEstoque.map((v) => Number(v.price)).filter(Boolean);
+      const regulares = comEstoque.map((v) => Number(v.regular_price)).filter(Boolean);
+      const preco = precos.length ? Math.min(...precos) : Number(lista[0]?.price) || 0;
+      const regular = regulares.length ? Math.min(...regulares) : 0;
+      return {
+        modelo,
+        preco: brl(preco),
+        preco_antigo: regular > preco ? brl(regular) : null,
+        tamanhos_com_estoque: ordenarTamanhos([...new Set(comEstoque.map((v) => attr(v, /tamanho|size/)).filter(Boolean))]),
+        esgotados: ordenarTamanhos([...new Set(lista.filter((v) => !comEstoque.includes(v)).map((v) => attr(v, /tamanho|size/)).filter(Boolean))]),
+      };
+    });
+    cacheModelos.set(id, { em: Date.now(), modelos });
+    return modelos;
+  } catch {
+    return undefined; // sem as variações, a IA usa os tamanhos gerais do produto
+  }
+}
+
 // Palavras que não ajudam a achar o produto
 const VAZIAS = new Set(['camisa', 'camisas', 'de', 'da', 'do', 'tem', 'voces', 'quero', 'a', 'o', 'e', 'pra', 'para', 'escola', 'samba']);
 
-async function buscarProdutos(busca: string) {
+export async function buscarProdutos(busca: string) {
   const termos = normalizar(busca).split(/[^a-z0-9]+/).filter((t) => t.length > 1 && !VAZIAS.has(t));
   const itens = await catalogo();
   const pontuados = (termos.length ? itens : [])
@@ -240,16 +300,25 @@ async function buscarProdutos(busca: string) {
       escolas_no_catalogo: [...new Set(itens.map((p) => p.nome))].slice(0, 15),
     };
   }
+  const produtos = await Promise.all(
+    pontuados.map(async ({ p }) => {
+      const modelos = p.modelos || (p.id ? await modelosDoProduto(p.id) : undefined);
+      return {
+        nome: p.nome,
+        preco_a_partir_de: brl(p.preco),
+        preco_antigo: p.precoAntigo ? brl(p.precoAntigo) : null,
+        // Cada modelo tem preço e tamanhos próprios (ex.: vestido vai até GG, baby look até XGG)
+        modelos: modelos?.length ? modelos : undefined,
+        tamanhos: modelos?.length ? undefined : p.tamanhos,
+        disponivel: p.disponivel,
+        link: p.link,
+      };
+    })
+  );
   return {
-    encontrados: pontuados.length,
-    produtos: pontuados.map(({ p }) => ({
-      nome: p.nome,
-      preco: brl(p.preco),
-      preco_antigo: p.precoAntigo ? brl(p.precoAntigo) : null,
-      tamanhos: p.tamanhos,
-      disponivel: p.disponivel,
-      link: p.link,
-    })),
+    encontrados: produtos.length,
+    produtos,
+    dica: 'Se o cliente não disse o modelo, pergunte qual (unissex, baby look, regata, vestido...) entre os que o produto tem. Use o preço e os tamanhos do modelo escolhido.',
   };
 }
 
@@ -271,7 +340,7 @@ REGRA MAIS IMPORTANTE
 - Se não souber, use transferir_para_humano. É melhor passar para uma pessoa do que chutar.
 - Nunca prometa desconto, brinde, frete grátis ou exceção.
 - Pedidos: sempre use consultar_pedidos antes de falar do status. Se não achar, peça o número do pedido.
-- Produtos/preços: sempre use buscar_produtos antes de citar.
+- Produtos/preços: sempre use buscar_produtos antes de citar. Muitas camisas têm vários MODELOS (unissex/masculina, baby look, regata, vestido), cada um com preço e tamanhos próprios: ofereça os modelos que o produto tem e use os dados do modelo certo. Nunca diga que um modelo não existe sem conferir em "modelos".
 - COMPRA PELO WHATSAPP: quando o cliente quiser comprar, confirme numa mensagem curta o que ele quer (produto, modelo, tamanho, quantidade e preço de buscar_produtos) e, com o "sim" dele, use montar_link_compra e mande o link com o resumo e o total dos produtos. Explique que é só abrir o link, colocar o CEP (o frete aparece lá) e pagar por Pix ou cartão em até 3x. NUNCA peça endereço, CPF ou dados de cartão pela conversa: isso é feito no site. Se montar_link_compra disser que algo está esgotado, ofereça os tamanhos com estoque.
 - Tamanho: use a tabela de MEDIDAS abaixo e o passo a passo de como ajudar. Diga as medidas do modelo que o cliente quer (unissex, baby look, regata ou vestido).
 
