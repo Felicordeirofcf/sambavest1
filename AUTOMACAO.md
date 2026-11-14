@@ -466,6 +466,18 @@ Se a IA falhar, a mensagem cai no robô de regras. Código: `lib/automacao/agent
 Teste antes em `/atendimento/simulador` (modo "IA"): dá para conversar várias mensagens seguidas e ver
 quais ferramentas ela usou, o que voltou de cada uma e quantos tokens gastou. Nada é enviado.
 
+### Agente de anúncios com IA
+
+No painel de anúncios, o cartão "Análise da IA" lê os números da Meta e do site e sugere o que fazer
+(pausar, escalar, trocar arte, ajustar o site). Ele só sugere: você marca "Fiz" ou "Ignorar" e executa no
+Gerenciador. Roda sozinho a cada 8 h (8h–22h) pelo workflow e no botão "Analisar agora".
+Código: `lib/automacao/agenteAnuncios.ts`.
+
+| Variável | Exemplo | Para quê |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | A mesma chave do atendente do WhatsApp |
+| `ANUNCIOS_IA_MODELO` | `claude-sonnet-5-5` | Opcional. Padrão `claude-opus-5-5`; use o Sonnet se a análise passar do tempo |
+
 ## 6. Meta Ads: rastreamento de compras e catálogo
 
 **Por quê:** o pagamento acontece na página da AppMax, fora do site, então o Pixel do navegador nunca
