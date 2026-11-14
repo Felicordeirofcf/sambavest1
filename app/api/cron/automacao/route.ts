@@ -9,7 +9,7 @@
 //   GET /api/cron/automacao?tarefa=abandono → só os e-mails de carrinho abandonado
 //   GET /api/cron/automacao?tarefa=diagnostico → confere a configuração do Bling (só leitura)
 //   GET /api/cron/automacao?tarefa=lembretes → lembretes pelo WhatsApp (Pix, cartão recusado, carrinho)
-//   GET /api/cron/automacao?tarefa=analise-anuncios → análise dos anúncios com IA (a cada 8 h)
+//   GET /api/cron/automacao?tarefa=analise-anuncios → análise dos anúncios com IA (1x por dia)
 //   GET /api/cron/automacao?modo=fundo     → responde na hora e roda em segundo plano
 //                                            (para o cron-job.org, que espera no máximo 30 s)
 //
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());
     if (tarefa === 'diagnostico-rastreio') await rodar('rastreioBling', async () => (await import('../../../../lib/automacao/diagnosticoBlingRastreio')).diagnosticoBlingRastreio());
     if (tarefa === 'diagnostico-me') await rodar('diagnosticoME', async () => (await import('../../../../lib/automacao/diagnosticoME')).diagnosticoMelhorEnvio());
-    // Análise dos anúncios com IA (a cada 8 h; ?forcar=1 roda na hora). Fora de "todas" porque pode levar ~40 s.
+    // Análise dos anúncios com IA (1x por dia; ?forcar=1 roda na hora). Fora de "todas" porque pode levar ~40 s.
     if (tarefa === 'analise-anuncios') {
       await rodar('analiseAnuncios', async () =>
         (await import('../../../../lib/automacao/agenteAnuncios')).rotinaAnaliseAnuncios(params.get('forcar') === '1')

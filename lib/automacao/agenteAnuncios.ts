@@ -26,8 +26,8 @@ import { anuncios, contaAnuncios, porDia, type Anuncio } from './metaAds';
 
 const CHAVE = 'anuncios:analise-ia';
 const CHAVE_DECISOES = 'anuncios:analise-ia:decisoes';
-/** De quanto em quanto tempo a análise automática roda (o botão no painel roda na hora). */
-export const INTERVALO_ANALISE_MS = 8 * 3_600_000;
+/** A análise automática roda 1x por dia, a partir desta hora (o botão no painel roda na hora). */
+export const HORA_ANALISE_DIARIA = 9;
 const INICIO_CAMPANHA = '2026-11-12';
 
 // ---------- Formato da resposta (o modelo é obrigado a seguir) ----------
@@ -245,13 +245,16 @@ export async function decidirSugestao(id: string, acao: Decisao['acao'] | 'desfa
 
 // ---------- Rotina automática (chamada pelo cron a cada 30 min; só roda quando vence) ----------
 
-/** Roda a análise se a última tiver mais de 8 h (entre 8h e 22h) e manda o resumo para o celular. */
+/**
+ * 1x por dia: a partir das 9h, se ainda não houver análise feita hoje (automática ou pelo botão),
+ * roda e manda o resumo para o celular. Assim o custo fica em ~1 análise por dia.
+ */
 export async function rotinaAnaliseAnuncios(forcar = false): Promise<string> {
   if (!iaAnunciosDisponivel()) return 'sem ANTHROPIC_API_KEY';
   const hora = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false }));
   const ultima = await lerAnaliseAnuncios();
-  if (!forcar && ultima && Date.now() - ultima.em < INTERVALO_ANALISE_MS) return 'ainda não venceu';
-  if (!forcar && (hora < 8 || hora >= 22)) return 'fora do horário';
+  if (!forcar && ultima && diaLocal(ultima.em) === diaLocal(Date.now())) return 'já analisou hoje';
+  if (!forcar && hora < HORA_ANALISE_DIARIA) return 'antes do horário';
   const r = await analisarAnuncios();
   const { alertarCelular, alertasLigados, preferenciasAlertas } = await import('./alertas');
   if (alertasLigados() && (await preferenciasAlertas()).melhoria) {

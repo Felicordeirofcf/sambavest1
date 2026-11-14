@@ -33,7 +33,7 @@ jobs:
           curl -sS --fail-with-body --max-time 90 \
             -H "Authorization: Bearer $CRON_SECRET" \
             "$SITE_URL/api/cron/automacao?tarefa=$TAREFA"
-      # Análise dos anúncios com IA: chamada à parte (pode levar ~40 s). Só roda de fato a cada 8 h.
+      # Análise dos anúncios com IA: chamada à parte (pode levar ~40 s). Só roda de fato 1x por dia (a partir das 9h).
       - name: Análise dos anúncios (IA)
         if: ${{ github.event_name == 'schedule' }}
         continue-on-error: true

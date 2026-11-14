@@ -46,7 +46,7 @@ export function AnaliseIA({
           </h2>
           <p className="text-xs text-slate-500">
             {analise
-              ? `Feita ${dataHora(analise.em)} · roda sozinha a cada 8 h (8h–22h) · a IA só sugere, quem decide é você`
+              ? `Feita ${dataHora(analise.em)} · roda sozinha 1x por dia (a partir das 9h) · a IA só sugere, quem decide é você`
               : 'A IA lê os números da Meta e do site e sugere o que fazer. Ela só sugere: quem decide é você.'}
           </p>
         </div>

@@ -478,7 +478,7 @@ Quando você responde pelo celular, ela fica quieta naquela conversa por `WHATSA
 
 No painel de anúncios, o cartão "Análise da IA" lê os números da Meta e do site e sugere o que fazer
 (pausar, escalar, trocar arte, ajustar o site). Ele só sugere: você marca "Fiz" ou "Ignorar" e executa no
-Gerenciador. Roda sozinho a cada 8 h (8h–22h) pelo workflow e no botão "Analisar agora".
+Gerenciador. Roda sozinho 1x por dia (a partir das 9h) pelo workflow e no botão "Analisar agora".
 Código: `lib/automacao/agenteAnuncios.ts`.
 
 | Variável | Exemplo | Para quê |
