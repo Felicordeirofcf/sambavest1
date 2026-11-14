@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { podeOtimizar } from '../../../lib/imagem';
 import { WHATSAPP_NUMBER } from '../../../lib/whatsapp';
 import { FREE_SHIPPING_THRESHOLD } from '../../../lib/shipping';
+import { chaveTamanho, MEDIDAS, tipoDoModelo } from '../../../lib/medidas';
 
 // ViewContent uma vez por produto por carregamento (a página pode remontar ao ler o ?modelo=)
 const jaRastreados = new Set<number>();
@@ -208,6 +209,25 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     matchedUrlModel || modeloEmPromocao || (availableModels[0] || '')
   );
   const [selectedSize, setSelectedSize] = useState<string>('');
+  // Barra fixa de compra no celular: aparece quando o botão principal sai da tela
+  // (ref por callback: o botão pode aparecer depois da primeira renderização)
+  const [botaoEl, setBotaoEl] = useState<HTMLButtonElement | null>(null);
+  const [barraFixa, setBarraFixa] = useState(false);
+  useEffect(() => {
+    if (!botaoEl) return;
+    let quadro = 0;
+    const conferir = () => {
+      cancelAnimationFrame(quadro);
+      quadro = requestAnimationFrame(() => setBarraFixa(botaoEl.getBoundingClientRect().bottom < 0));
+    };
+    window.addEventListener('scroll', conferir, { passive: true });
+    window.addEventListener('resize', conferir);
+    return () => {
+      cancelAnimationFrame(quadro);
+      window.removeEventListener('scroll', conferir);
+      window.removeEventListener('resize', conferir);
+    };
+  }, [botaoEl]);
   const [activeImage, setActiveImage] = useState(0);
   const toqueX = useRef(0);
   const [avisoTamanho, setAvisoTamanho] = useState(false);
@@ -363,6 +383,27 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
 
   return (
     <div className={`w-full min-h-screen ${T.pagina} ${T.fundo}`}>
+      {barraFixa && (
+        <div className={`fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t px-3 py-2.5 pl-24 shadow-[0_-8px_24px_rgba(0,0,0,0.18)] md:hidden ${
+          bk ? 'border-white/10 bg-[#0B1B34]/95 text-white backdrop-blur' : 'border-gray-200 bg-white/95 text-[#0B1B34] backdrop-blur'
+        }`}>
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block text-lg font-black">R$ {Number(currentPrice || 0).toFixed(2).replace('.', ',')}</span>
+            <span className={`block truncate text-[11px] ${bk ? 'text-white/60' : 'text-gray-500'}`}>
+              {selectedSize ? `${selectedModel ? `${selectedModel} · ` : ''}${selectedSize}` : 'Escolha o tamanho'}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className={`shrink-0 rounded-xl px-4 py-3 text-xs font-extrabold uppercase tracking-wider ${
+              bk ? (azul ? 'bg-sky-600 text-white' : 'bg-red-600 text-white') : 'bg-[#C9A227] text-[#0B1B34]'
+            }`}
+          >
+            {matchedVariant ? '🛒 Adicionar' : 'Escolher tamanho'}
+          </button>
+        </div>
+      )}
       {guiaAberto && (
         <div
           role="dialog"
@@ -614,6 +655,50 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                   </p>
                 )}
 
+                {(() => {
+                  // Medidas em texto (sem precisar abrir imagem): a dúvida de tamanho é o que mais trava a compra
+                  const tabela = MEDIDAS[tipoDoModelo(selectedModel, product?.name || '')];
+                  const tams = Object.keys(tabela.tamanhos).filter((t) => availableSizes.some((a: string) => chaveTamanho(a) === t));
+                  if (!tams.length) return null;
+                  const sel = chaveTamanho(selectedSize || '');
+                  const m = tabela.tamanhos[sel];
+                  return (
+                    <div className={`mt-3 rounded-xl border p-3 text-xs ${bk ? 'border-white/15 bg-white/[0.06]' : 'border-gray-200 bg-white'}`}>
+                      <p className={`mb-2 font-bold ${bk ? 'text-white' : 'text-[#0B1B34]'}`}>
+                        📏{' '}
+                        {m
+                          ? `${sel}: ${tabela.colunas.map((c, i) => `${c.toLowerCase()} ${m[i]} cm`).join(' · ')}`
+                          : `Medidas da ${tabela.nome.toLowerCase()} (cm)`}
+                      </p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-center tabular-nums">
+                          <thead>
+                            <tr className={bk ? 'text-white/60' : 'text-gray-500'}>
+                              <th className="py-1 pr-2 text-left font-semibold"> </th>
+                              {tams.map((t) => (
+                                <th key={t} className={`px-1.5 py-1 font-bold ${t === sel ? (azul ? 'text-sky-400' : bk ? 'text-red-400' : 'text-[#0B1B34]') : ''}`}>{t}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {tabela.colunas.map((c, i) => (
+                              <tr key={c} className={bk ? 'text-white/85' : 'text-gray-700'}>
+                                <td className={`py-0.5 pr-2 text-left ${bk ? 'text-white/60' : 'text-gray-500'}`}>{c}</td>
+                                {tams.map((t) => (
+                                  <td key={t} className={`px-1.5 py-0.5 ${t === sel ? 'font-black' : ''}`}>{tabela.tamanhos[t][i]}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className={`mt-2 ${bk ? 'text-white/55' : 'text-gray-500'}`}>
+                        Dica: meça uma camisa sua que veste bem, deitada, de axila a axila, e compare com a largura. Entre dois tamanhos, escolha o maior.
+                      </p>
+                    </div>
+                  );
+                })()}
+
                 <p className={`mt-2.5 text-xs ${bk ? 'text-white/70' : 'text-gray-600'}`}>
                   🔄 Não serviu? Fazemos a troca de tamanho.{' '}
                   <a href={whatsappTamanhoUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2">
@@ -624,6 +709,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
             )}
 
             <button
+              ref={setBotaoEl}
               onClick={handleAddToCart}
               className={`w-full py-4 uppercase tracking-widest text-sm font-extrabold rounded-xl transition-colors shadow-md ${
                 matchedVariant
