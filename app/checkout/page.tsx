@@ -55,6 +55,30 @@ export default function CheckoutPage() {
       });
   }, []);
 
+  // Link da IA do WhatsApp (?sacola=...): troca o conteúdo da sacola pelos itens combinados na conversa
+  const [sacolaPronta, setSacolaPronta] = useState(0);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('sacola');
+    if (!id) return;
+    fetch(`/api/sacola?id=${encodeURIComponent(id)}`)
+      .then((r) => r.json())
+      .then((d: { ok?: boolean; itens?: { id: number; nome: string; qtd: number; preco: number; imagem?: string; tamanho?: string }[] }) => {
+        if (!d?.ok || !d.itens?.length) return;
+        const loja = useCartStore.getState();
+        loja.clearCart();
+        for (const i of d.itens) {
+          loja.addItem({ id: i.id, name: i.nome, price: i.preco, image: i.imagem || '', size: i.tamanho || '', quantity: i.qtd });
+        }
+        setSacolaPronta((n) => n + 1); // reconfere os preços com os itens novos
+      })
+      .catch(() => {})
+      .finally(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('sacola');
+        window.history.replaceState(null, '', url.toString());
+      });
+  }, []);
+
   // A sacola guarda o preço de quando o item foi adicionado. Antes de mostrar o total,
   // busca o preço atual (promoção que começou ou acabou) e avisa se algo mudou ou esgotou.
   useEffect(() => {
@@ -92,7 +116,7 @@ export default function CheckoutPage() {
     return () => {
       cancelado = true;
     };
-  }, [isMounted]);
+  }, [isMounted, sacolaPronta]);
 
   const [formData, setFormData] = useState({
     nome: '',
