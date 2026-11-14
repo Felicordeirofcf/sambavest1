@@ -406,6 +406,11 @@ painel) e **WhatsApp pessoal** (`ALERTA_WHATSAPP_NUMERO`, enviado pela Evolution
 estoque e resumo rodam na rotina do cron (a cada 15 min no cron-job.org); venda, recusa e erro
 chegam na hora pelo webhook do WooCommerce. Nenhum alerta se repete.
 
+O vigia da entrega dos anúncios (`tarefa=entrega`, também em `todas`) usa os mesmos canais: avisa quando
+o anúncio fica 2 h sem exibição, a entrega cai 80% ou mais em relação a ontem no mesmo horário, a Meta
+aponta problema num conjunto ou o saldo pré-pago não cobre 2 dias. A auditoria mostra em
+`rotinas.alertasNoCelular` se os canais estão ligados. Variável nova na Vercel só vale depois de um deploy.
+
 ### 5.3 Funil e monitoramento
 
 A visão geral do painel mostra o funil (visitou → abriu camisa → sacola → checkout → pagou) com
