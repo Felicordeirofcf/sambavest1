@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   const params = new URL(request.url).searchParams;
   const tarefa = params.get('tarefa') || 'todas';
-  const emFundo = params.get('modo') === 'fundo' && tarefa !== 'diagnostico' && tarefa !== 'auditoria' && tarefa !== 'diagnostico-me' && tarefa !== 'diagnostico-rastreio';
+  const emFundo = params.get('modo') === 'fundo' && tarefa !== 'diagnostico' && tarefa !== 'auditoria' && tarefa !== 'diagnostico-me' && tarefa !== 'diagnostico-rastreio' && !tarefa.startsWith('precos-black');
   // Em segundo plano o relógio começa na resposta; o limite da função continua sendo 60 s.
   const prazo = Date.now() + (emFundo ? 40_000 : 45_000);
   const resultado: Record<string, unknown> = {};
@@ -78,6 +78,10 @@ export async function GET(request: Request) {
       await rodar('analiseAnuncios', async () =>
         (await import('../../../../lib/automacao/agenteAnuncios')).rotinaAnaliseAnuncios(params.get('forcar') === '1')
       );
+    }
+    // Preço da Black em todos os modelos (Regata, Baby look, Vestido...): simula ou aplica no WooCommerce
+    if (tarefa === 'precos-black' || tarefa === 'precos-black-aplicar') {
+      await rodar('precosBlack', async () => (await import('../../../../lib/automacao/precosBlack')).precosBlack(tarefa === 'precos-black-aplicar'));
     }
     if (tarefa === 'auditoria') await rodar('auditoria', async () => (await import('../../../../lib/automacao/auditoria')).auditoria());
     const falhas = Object.entries(resultado).filter(([, v]) => v && typeof v === 'object' && 'erro' in (v as object));
