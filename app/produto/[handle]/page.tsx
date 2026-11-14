@@ -79,17 +79,12 @@ function imagemPrevia(original: string | undefined): string | undefined {
   return `${SITE}/_next/image?url=${encodeURIComponent(abs)}&w=640&q=75`; // q precisa estar em images.qualities (padrão: só 75)
 }
 
-export async function generateMetadata({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ handle: string }>;
-  searchParams: Promise<{ modelo?: string }>;
-}): Promise<Metadata> {
+// A página é estática (ISR): NÃO ler searchParams aqui (vira "dynamic server usage" e a página quebra).
+export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const dados = await buscarProduto(handleDe((await params).handle)).catch(() => null);
   if (!dados) return { title: 'Produto não encontrado | Samba Vest', robots: { index: false } };
   const { product, variations } = dados;
-  const modelo = String((await searchParams)?.modelo || '').trim().toLowerCase();
+  const modelo = '';
   const descricao = (semHtml(product.short_description) || semHtml(product.description)).slice(0, 160) ||
     `${product.name} — camisa de escola de samba da Samba Vest.`;
   // Foto da variação do modelo pedido; senão a 1ª foto do produto
