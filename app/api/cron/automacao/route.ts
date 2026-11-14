@@ -93,10 +93,29 @@ export async function GET(request: Request) {
     console.log('[automacao] cron', tarefa, emFundo ? '(segundo plano)' : '', JSON.stringify(resultado));
   };
 
+  // A resposta aparece no log PÚBLICO do GitHub Actions: pedidos e Pix viram só contagens (sem nº de
+  // pedido, rastreio, link de etiqueta ou endereço). O detalhe completo fica no log privado da Vercel.
+  const publico = (r: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(r).map(([k, v]) => [k, Array.isArray(v) && (k === 'pedidos' || k === 'pix') ? resumoPedidos(v as Relatorio[]) : v]));
+
   if (emFundo) {
     after(executar);
     return NextResponse.json({ ok: true, tarefa, modo: 'fundo', mensagem: 'rotina iniciada em segundo plano' });
   }
   await executar();
-  return NextResponse.json({ ok: true, tarefa, resultado });
+  return NextResponse.json({ ok: true, tarefa, resultado: publico(resultado) });
+}
+
+type Relatorio = { feito: string[]; erros: string[]; ignorado?: string };
+/** Quantos pedidos passaram por cada etapa (ex.: "rastreio: 3"), sem dados do pedido. */
+function resumoPedidos(lista: Relatorio[]) {
+  const etapa = (t: string) => t.split(':')[0].trim();
+  const contar = (itens: string[]) => itens.reduce<Record<string, number>>((acc, t) => ((acc[etapa(t)] = (acc[etapa(t)] || 0) + 1), acc), {});
+  return {
+    pedidos: lista.length,
+    comErro: lista.filter((r) => r.erros.length).length,
+    ignorados: lista.filter((r) => r.ignorado).length,
+    feito: contar(lista.flatMap((r) => r.feito)),
+    errosPorEtapa: contar(lista.flatMap((r) => r.erros)),
+  };
 }
