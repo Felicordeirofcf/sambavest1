@@ -15,6 +15,7 @@ import { config } from './config';
 import type { Conversa } from './conversas';
 import { meta, mesmoTelefone, obterPedido, pedidosDoTelefone, wc, WcPedido } from './woocommerce';
 import { products } from '../products';
+import { MEDIDAS, regrasComerciais } from './conhecimentoLoja';
 
 const API = 'https://api.anthropic.com/v1/messages';
 const MAX_PASSOS = 5; // chamadas ao modelo por mensagem do cliente
@@ -244,14 +245,16 @@ REGRA MAIS IMPORTANTE
 - Nunca prometa desconto, brinde, frete grátis ou exceção.
 - Pedidos: sempre use consultar_pedidos antes de falar do status. Se não achar, peça o número do pedido.
 - Produtos/preços: sempre use buscar_produtos antes de citar.
-- Tamanho: ajude com as medidas do conhecimento da loja; se não houver medidas, peça altura e peso e transfira.
+- Tamanho: use a tabela de MEDIDAS abaixo e o passo a passo de como ajudar. Diga as medidas do modelo que o cliente quer (unissex, baby look, regata ou vestido).
 
 CONHECIMENTO DA LOJA
 - Prazo: ${r.prazo}
 - Trocas: até 7 dias corridos do recebimento por arrependimento ou tamanho; defeito até 30 dias. Na primeira troca de tamanho o cliente paga o envio de volta e a loja paga o envio da nova peça. Em defeito, a loja paga ida e volta. A peça precisa estar com etiqueta, sem uso, sem lavagem e sem ajustes. Política completa: ${config.siteUrl}/trocas-e-devolucoes
 - Para iniciar troca/devolução: transfira para uma pessoa.
 - Rastrear pedido no site: ${config.siteUrl}/rastrear-pedido
-${r.tamanhos ? `- Tamanhos: ${r.tamanhos.replace(/\\n/g, ' ')}` : ''}
+${regrasComerciais()}
+
+${MEDIDAS}
 ${extra ? extra : ''}`.trim();
 }
 
