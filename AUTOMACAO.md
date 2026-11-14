@@ -462,6 +462,8 @@ Se a IA falhar, a mensagem cai no robô de regras. Código: `lib/automacao/agent
 | `WHATSAPP_IA_MODELO` | `claude-haiku-5-5` | Modelo (padrão: Haiku, barato e rápido) |
 | `WHATSAPP_IA_CONHECIMENTO` | `Medidas: P 50x70cm...\nPix ou cartão em até 3x` | O que a IA pode afirmar além das ferramentas. Use `\n` para quebrar linha |
 | `WHATSAPP_IA_HISTORICO` | `12` | Quantas mensagens anteriores ela lê |
+| `WHATSAPP_LEMBRETES` | `true` | Lembretes automáticos pelo WhatsApp (Evolution): Pix não pago (30 min), cartão recusado (10 min) e carrinho abandonado com telefone (1 h). Um por pedido/carrinho, um por telefone a cada 24 h, pula número sem WhatsApp e quem respondeu SAIR |
+| `WHATSAPP_LEMBRETES_DIA` | `20` | Máximo de lembretes por dia (2 por rodada do cron, a cada 30 min) |
 
 Teste antes em `/atendimento/simulador` (modo "IA"): dá para conversar várias mensagens seguidas e ver
 quais ferramentas ela usou, o que voltou de cada uma e quantos tokens gastou. Nada é enviado.

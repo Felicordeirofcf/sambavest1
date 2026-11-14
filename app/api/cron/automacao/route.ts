@@ -8,6 +8,7 @@
 //   GET /api/cron/automacao?tarefa=saude    → só a checagem de saúde (loja, WooCommerce, frete, banco)
 //   GET /api/cron/automacao?tarefa=abandono → só os e-mails de carrinho abandonado
 //   GET /api/cron/automacao?tarefa=diagnostico → confere a configuração do Bling (só leitura)
+//   GET /api/cron/automacao?tarefa=lembretes → lembretes pelo WhatsApp (Pix, cartão recusado, carrinho)
 //   GET /api/cron/automacao?tarefa=analise-anuncios → análise dos anúncios com IA (a cada 8 h)
 //   GET /api/cron/automacao?modo=fundo     → responde na hora e roda em segundo plano
 //                                            (para o cron-job.org, que espera no máximo 30 s)
@@ -64,6 +65,10 @@ export async function GET(request: Request) {
     }
     if (tarefa === 'todas' || tarefa === 'abandono') await rodar('abandono', () => rotinaAbandono(prazo));
     if (tarefa === 'todas' || tarefa === 'alertas') await rodar('alertas', () => rotinaAlertas(prazo));
+    // Lembretes pelo WhatsApp (Pix não pago, cartão recusado, carrinho): só com WHATSAPP_LEMBRETES=true
+    if (tarefa === 'todas' || tarefa === 'lembretes') {
+      await rodar('lembretes', async () => (await import('../../../../lib/automacao/lembretesWhats')).rotinaLembretesWhats(prazo));
+    }
     // Só roda quando pedido explicitamente (não entra em "todas").
     if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());
     if (tarefa === 'diagnostico-rastreio') await rodar('rastreioBling', async () => (await import('../../../../lib/automacao/diagnosticoBlingRastreio')).diagnosticoBlingRastreio());

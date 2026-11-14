@@ -312,7 +312,11 @@ function historico(c: Conversa | null, novaMensagem: string): MensagemApi[] {
     if (ultima?.role === 'user') ultima.content = `${ultima.content}\n${novaMensagem}`;
     else msgs.push({ role: 'user', content: novaMensagem });
   }
-  while (msgs.length && msgs[0].role !== 'user') msgs.shift(); // a API exige começar pelo cliente
+  // A API exige começar pelo cliente. O que a loja mandou antes (ex.: lembrete de Pix ou de
+  // carrinho) vira contexto na primeira mensagem do cliente, para a IA saber do que se trata.
+  const antes: string[] = [];
+  while (msgs.length && msgs[0].role !== 'user') antes.push(String(msgs.shift()!.content));
+  if (antes.length && msgs[0]) msgs[0].content = `(Antes, a loja tinha mandado: "${antes.join(' / ').slice(0, 800)}")\n${msgs[0].content}`;
   return msgs;
 }
 

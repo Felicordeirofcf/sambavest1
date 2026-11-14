@@ -89,6 +89,13 @@ export async function auditoria(): Promise<Record<string, unknown>> {
         ultimaTentativaMinAtras: minutosAtras(registro[0]?.em),
         ultimosErros: erros.map((x) => ({ minAtras: minutosAtras(x.em), erro: x.detalhe })),
       };
+      const { lembretesLigados } = await import('./lembretesWhats');
+      const { kvGet } = await import('./kv');
+      r.lembretesWhatsapp = {
+        ligado: lembretesLigados(),
+        enviadosHoje: (await kvGet<number>(`lembretes:dia:${new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}`)) || 0,
+        limiteDia: Math.max(0, Number(process.env.WHATSAPP_LEMBRETES_DIA) || 20),
+      };
     })(),
 
     // 4) Rotinas e falhas
