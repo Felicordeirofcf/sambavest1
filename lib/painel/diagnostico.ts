@@ -82,7 +82,7 @@ export function diagnosticar(e: EntradaDiagnostico): Achado[] {
       r.push({ nivel: 'atencao', titulo: `Poucos abrem uma camisa (${pct(s.produto / s.visita)} das visitas)`, detalhe: `${s.visita} visitas e ${s.produto} abriram uma camisa.`, acao: 'A página da Black precisa chamar mais: foto da camisa vestida, preço grande e botão visível sem rolar.' });
     }
     if (s.produto >= 15 && s.sacola / s.produto < 0.08) {
-      r.push({ nivel: 'atencao', titulo: `Abrem a camisa mas não colocam na sacola (${pct(s.sacola / s.produto)})`, detalhe: `${s.produto} abriram e ${s.sacola} colocaram na sacola.`, acao: 'Dúvida de tamanho, preço ou frete. Deixe a tabela de medidas e o "frete para todo o Brasil" bem visíveis.' });
+      r.push({ nivel: 'atencao', titulo: `Abrem a camisa mas não colocam na sacola (${pct(s.sacola / s.produto)})`, detalhe: `${s.produto} abriram e ${s.sacola} colocaram na sacola.`, acao: 'A página já mostra as medidas em texto, o frete para todo o Brasil e a barra de compra fixa no celular. Se continuar baixo por 2–3 dias, o próximo teste é o preço do frete (ex.: frete grátis a partir de 2 camisas) e foto de gente vestindo logo na primeira imagem. Chame no WhatsApp quem aparece em "Recuperar vendas".' });
     }
     if (s.sacola >= 8 && s.checkout / s.sacola < 0.4) {
       r.push({ nivel: 'atencao', titulo: `Colocam na sacola e não vão ao checkout (${pct(s.checkout / s.sacola)})`, detalhe: `${s.sacola} sacolas e ${s.checkout} chegaram no checkout.`, acao: 'Geralmente é o valor do frete. Teste mostrar o frete antes ou oferecer frete grátis acima de um valor menor.' });
