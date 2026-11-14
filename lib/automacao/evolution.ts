@@ -93,6 +93,57 @@ export async function configurarWebhook(): Promise<string> {
   return url.replace(/token=[^&]+/, 'token=…');
 }
 
+/** Como o webhook está cadastrado na Evolution (para o diagnóstico do painel; o token não sai daqui). */
+export async function situacaoWebhook(): Promise<{
+  cadastrado: boolean;
+  ligado: boolean;
+  apontaParaOSite: boolean;
+  senhaConfere: boolean;
+  eventos: string[];
+  endereco?: string;
+}> {
+  type W = { enabled?: boolean; url?: string; events?: string[]; webhook?: { enabled?: boolean; url?: string; events?: string[] } } | null;
+  const r = await evo<W>(`/webhook/find/${inst()}`);
+  const w = r?.webhook || r;
+  const url = w?.url || '';
+  const esperado = `${config.siteUrl.replace(/\/$/, '')}/api/webhooks/evolution`;
+  let token = '';
+  try {
+    token = new URL(url).searchParams.get('token') || '';
+  } catch {
+    // url vazia ou inválida
+  }
+  return {
+    cadastrado: Boolean(url),
+    ligado: Boolean(w?.enabled),
+    apontaParaOSite: url.split('?')[0].replace(/\/$/, '') === esperado,
+    senhaConfere: Boolean(token) && token === config.evolution.webhookToken,
+    eventos: w?.events || [],
+    endereco: url ? url.replace(/token=[^&]+/, 'token=…') : undefined,
+  };
+}
+
+// ---------- Diagnóstico do recebimento (sem telefone nem texto das mensagens) ----------
+
+const CHAVE_DIAG = 'evo:diag';
+export type RegistroDiag = { em: number; resultado: string };
+
+export async function registrarDiag(resultado: string): Promise<void> {
+  try {
+    const { kvGet, kvSet } = await import('./kv');
+    const lista = (await kvGet<RegistroDiag[]>(CHAVE_DIAG)) || [];
+    lista.unshift({ em: Date.now(), resultado: resultado.slice(0, 120) });
+    await kvSet(CHAVE_DIAG, lista.slice(0, 15), 7 * 86_400);
+  } catch {
+    // diagnóstico nunca derruba o webhook
+  }
+}
+
+export async function ultimosDiag(): Promise<RegistroDiag[]> {
+  const { kvGet } = await import('./kv');
+  return (await kvGet<RegistroDiag[]>(CHAVE_DIAG)) || [];
+}
+
 /** Desconecta o número (o celular continua com o WhatsApp normal). */
 export async function desconectar(): Promise<void> {
   await evo(`/instance/logout/${inst()}`, { method: 'DELETE' });
@@ -122,12 +173,24 @@ export type MensagemEvolution = {
   messageTimestamp?: number | string;
 };
 
+/** Por que a mensagem não tem telefone (para o diagnóstico). */
+export function motivoSemTelefone(m: MensagemEvolution): string {
+  const jid = m.key?.remoteJid || '';
+  if (!jid) return 'sem remetente';
+  if (jid.endsWith('@g.us')) return 'grupo (ignorado)';
+  if (jid.startsWith('status@') || jid.endsWith('@broadcast')) return 'status/transmissão (ignorado)';
+  if (jid.endsWith('@newsletter')) return 'canal (ignorado)';
+  if (jid.endsWith('@lid')) return 'contato com LID sem telefone: a Evolution não mandou o número (atualize a Evolution para a v2.3 ou mais nova)';
+  return 'telefone inválido';
+}
+
 /** Telefone (só dígitos) da conversa; null para grupos, status, canais etc. */
 export function telefoneDaMensagem(m: MensagemEvolution): string | null {
   const jid = m.key?.remoteJid || '';
   if (!jid || jid.endsWith('@g.us') || jid.startsWith('status@') || jid.endsWith('@newsletter') || jid.endsWith('@broadcast')) return null;
   // Contatos com "LID" (identificador sem telefone): a Evolution manda o número em senderPn/remoteJidAlt
   const comTelefone = jid.endsWith('@lid') ? m.key?.senderPn || m.key?.remoteJidAlt || '' : jid;
+  if (!comTelefone) return null; // LID sem telefone (Evolution antiga): ver motivoSemTelefone
   const d = comTelefone.split('@')[0].split(':')[0].replace(/\D/g, '');
   return d.length >= 10 ? d : null;
 }

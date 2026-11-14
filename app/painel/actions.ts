@@ -348,3 +348,40 @@ export async function marcarChamadoRecuperar(formData: FormData) {
   revalidatePath('/painel');
   redirect('/painel#recuperar');
 }
+
+// ---------- Atendimento (tela de conversas do WhatsApp) ----------
+
+const voltarAtendimento = (numero: string, extra = ''): never =>
+  redirect(`/painel/atendimento?n=${encodeURIComponent(numero)}${extra}`);
+
+/** Ações de uma conversa: marcar lida, assumir (pausa a IA) ou devolver para a IA. */
+export async function acaoAtendimento(formData: FormData) {
+  await exigirLogin();
+  const numero = txt(formData, 'numero').replace(/\D/g, '');
+  const acao = txt(formData, 'acao');
+  if (numero && (await obterConversa(numero))) {
+    await alterarConversa(numero, (c) => {
+      c.naoLidas = 0;
+      if (acao === 'assumir') c.humanoAte = Date.now() + 12 * 3_600_000;
+      if (acao === 'devolver') c.humanoAte = undefined;
+    });
+  }
+  revalidatePath('/painel/atendimento');
+  voltarAtendimento(numero);
+}
+
+/** Resposta digitada na tela de atendimento (sai pelo WhatsApp conectado). */
+export async function responderAtendimento(formData: FormData) {
+  await exigirLogin();
+  const numero = txt(formData, 'numero').replace(/\D/g, '');
+  const texto = txt(formData, 'texto').slice(0, 4000);
+  if (!numero || !texto) voltarAtendimento(numero);
+  let erro = '';
+  try {
+    await responderPeloPainel(numero, texto);
+  } catch (e) {
+    erro = (e as Error).message;
+  }
+  revalidatePath('/painel/atendimento');
+  voltarAtendimento(numero, erro ? `&erro=${encodeURIComponent(erro)}` : '');
+}

@@ -195,7 +195,7 @@
   --color-slate-100: #1a2036;
   --color-slate-200: #262d47;
   --color-slate-300: #353d5d;
-  --color-slate-400: #7f88a8;
+  --color-slate-400: #8f98b8;
   --color-slate-500: #9aa2c1;
   --color-slate-600: #b5bbd5;
   --color-slate-700: #cdd2e6;
@@ -225,6 +225,23 @@
 .sv.sv-escuro .text-red-700, .sv.sv-escuro .text-red-800, .sv.sv-escuro .text-rose-600, .sv.sv-escuro .text-\[\#dc2626\] { color: #fca5a5; }
 .sv.sv-escuro .text-sky-900, .sv.sv-escuro .text-\[\#1d4ed8\] { color: #9db6ff; }
 .sv.sv-escuro .text-\[\#0B1B34\] { color: var(--sv-tinta); }
+/* demais tons usados no painel (laranja, violeta, rosa, cinza): fundo translúcido + texto claro */
+.sv.sv-escuro .bg-orange-50 { background-color: rgb(249 115 22 / 0.13); }
+.sv.sv-escuro .bg-violet-50 { background-color: rgb(139 92 246 / 0.13); }
+.sv.sv-escuro .bg-violet-100 { background-color: rgb(139 92 246 / 0.24); }
+.sv.sv-escuro .bg-rose-50 { background-color: rgb(244 63 94 / 0.13); }
+.sv.sv-escuro .bg-rose-100 { background-color: rgb(244 63 94 / 0.22); }
+.sv.sv-escuro .bg-green-100 { background-color: rgb(34 197 94 / 0.2); }
+.sv.sv-escuro .bg-gray-50, .sv.sv-escuro .bg-gray-100 { background-color: var(--color-slate-100); }
+.sv.sv-escuro .ring-violet-200 { --tw-ring-color: rgb(139 92 246 / 0.4); }
+.sv.sv-escuro .ring-orange-200 { --tw-ring-color: rgb(249 115 22 / 0.4); }
+.sv.sv-escuro .border-emerald-300, .sv.sv-escuro .border-emerald-400 { border-color: rgb(16 185 129 / 0.55); }
+.sv.sv-escuro .text-orange-700, .sv.sv-escuro .text-orange-800 { color: #fdba74; }
+.sv.sv-escuro .text-violet-700, .sv.sv-escuro .text-violet-800 { color: #c4b5fd; }
+.sv.sv-escuro .text-rose-700, .sv.sv-escuro .text-red-600 { color: #fca5a5; }
+.sv.sv-escuro .text-gray-500 { color: var(--color-slate-500); }
+.sv.sv-escuro .text-gray-600, .sv.sv-escuro .text-gray-700 { color: var(--color-slate-700); }
+.sv.sv-escuro .text-sky-700 { color: #9db6ff; }
 /* botões/barras azul-noite ficam um tom acima do fundo */
 .sv.sv-escuro .bg-\[\#0B1B34\], .sv.sv-escuro .bg-\[\#10173a\], .sv.sv-escuro .bg-slate-900 { background-color: #2b3766; }
 .sv.sv-escuro .border-\[\#0B1B34\] { border-color: #3a4780; }
@@ -239,3 +256,91 @@
 .sv.sv-escuro .sv-trilho-link[aria-current='page'] { background: rgb(16 185 129 / 0.16); color: #6ee7b7; }
 .sv.sv-escuro input, .sv.sv-escuro select, .sv.sv-escuro textarea { background-color: #0f1426; color: var(--sv-tinta); border-color: #353d5d; }
 .sv.sv-escuro .shadow-sm, .sv.sv-escuro .shadow-md { --tw-shadow-color: rgb(0 0 0 / 0.4); }
+
+/* ---------- Atendimento no visual do WhatsApp Web ---------- */
+.sv .wa {
+  --wa-fundo: #ffffff;
+  --wa-barra: #f0f2f5;
+  --wa-borda: #e9edef;
+  --wa-texto: #111b21;
+  --wa-suave: #667781;
+  --wa-verde: #008069;
+  --wa-badge: #25d366;
+  --wa-hover: #f5f6f6;
+  --wa-ativo: #f0f2f5;
+  --wa-papel: #efeae2;
+  --wa-desenho: rgba(0, 0, 0, 0.035);
+  --wa-entrada: #ffffff;
+  --wa-saida: #d9fdd3;
+  --wa-chip: #e7fce3;
+  --wa-chip-texto: #008069;
+  --wa-aviso: #ffeecd;
+  color: var(--wa-texto);
+}
+.sv.sv-escuro .wa {
+  --wa-fundo: #111b21;
+  --wa-barra: #202c33;
+  --wa-borda: #222d34;
+  --wa-texto: #e9edef;
+  --wa-suave: #9eadb6;
+  --wa-verde: #00a884;
+  --wa-hover: #202c33;
+  --wa-ativo: #2a3942;
+  --wa-papel: #0b141a;
+  --wa-desenho: rgba(255, 255, 255, 0.025);
+  --wa-entrada: #202c33;
+  --wa-saida: #005c4b;
+  --wa-chip: #0a332c;
+  --wa-chip-texto: #00a884;
+  --wa-aviso: #182229;
+}
+.wa-fundo { background: var(--wa-fundo); }
+.wa-barra { background: var(--wa-barra); }
+.wa-borda { border-color: var(--wa-borda) !important; }
+.wa-suave { color: var(--wa-suave); }
+.wa-verde { color: var(--wa-verde); }
+.wa-item:hover { background: var(--wa-hover); }
+.wa-item[aria-current='true'] { background: var(--wa-ativo); }
+.wa-papel {
+  background-color: var(--wa-papel);
+  background-image:
+    radial-gradient(var(--wa-desenho) 1.2px, transparent 1.3px),
+    radial-gradient(var(--wa-desenho) 1.2px, transparent 1.3px);
+  background-size: 22px 22px;
+  background-position: 0 0, 11px 11px;
+}
+.wa-busca { background: var(--wa-barra); color: var(--wa-texto); }
+.wa-busca::placeholder, .wa-campo::placeholder { color: var(--wa-suave); }
+.wa-campo { background: var(--wa-entrada); color: var(--wa-texto); }
+.wa-chip { background: var(--wa-barra); color: var(--wa-suave); }
+.wa-chip[aria-current='true'] { background: var(--wa-chip); color: var(--wa-chip-texto); }
+.wa-badge { background: var(--wa-badge); color: #111b21; }
+.wa-balao { position: relative; border-radius: 7.5px; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); color: var(--wa-texto); }
+.wa-balao.entrada { background: var(--wa-entrada); }
+.wa-balao.saida { background: var(--wa-saida); }
+.wa-balao.aviso { background: var(--wa-aviso); }
+.wa-balao.rabo.entrada { border-top-left-radius: 0; }
+.wa-balao.rabo.saida, .wa-balao.rabo.aviso { border-top-right-radius: 0; }
+.wa-balao.rabo::before { content: ''; position: absolute; top: 0; width: 8px; height: 13px; }
+.wa-balao.rabo.entrada::before { left: -8px; background: var(--wa-entrada); clip-path: polygon(100% 0, 0 0, 100% 100%); }
+.wa-balao.rabo.saida::before { right: -8px; background: var(--wa-saida); clip-path: polygon(0 0, 100% 0, 0 100%); }
+.wa-balao.rabo.aviso::before { right: -8px; background: var(--wa-aviso); clip-path: polygon(0 0, 100% 0, 0 100%); }
+.wa-dia { background: var(--wa-entrada); color: var(--wa-suave); box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13); }
+.wa-enviar { background: var(--wa-verde); color: #fff; }
+.sv.sv-escuro .wa .wa-campo, .sv.sv-escuro .wa .wa-busca { border-color: transparent; }
+.sv.sv-escuro .wa .wa-campo { background-color: var(--wa-entrada); color: var(--wa-texto); }
+.sv.sv-escuro .wa .wa-busca { background-color: var(--wa-barra); color: var(--wa-texto); }
+.sv .wa .wa-busca { background-color: var(--wa-barra); border: 0; }
+.sv .wa .wa-campo { border: 0; }
+
+/* Celular: menu numa faixa só, que rola de lado */
+@media (max-width: 767px) {
+  .sv .sv-trilho-link { width: 58px; min-width: 58px; padding: 0.45rem 0.15rem; font-size: 10.5px; }
+  .sv .sv-trilho-link svg { width: 20px; height: 20px; }
+}
+/* textos dentro dos balões: no escuro, o verde/cinza padrão some no balão verde */
+.wa-balao .wa-verde { color: var(--wa-verde); }
+.wa-balao .wa-suave { color: var(--wa-suave); }
+.sv.sv-escuro .wa-balao.saida .wa-verde { color: #7ae3c3; }
+.sv.sv-escuro .wa-balao.saida .wa-suave { color: rgb(233 237 239 / 0.72); }
+.sv.sv-escuro .wa-balao.aviso .wa-verde { color: #7ae3c3; }

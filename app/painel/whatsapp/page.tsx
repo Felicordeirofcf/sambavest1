@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Aviso, Cartao } from '../../../components/painel/ui';
 import { config, integracoes } from '../../../lib/automacao/config';
-import { estadoConexao, qrCode } from '../../../lib/automacao/evolution';
+import { estadoConexao, qrCode, situacaoWebhook, ultimosDiag } from '../../../lib/automacao/evolution';
 import { exigirLogin } from '../../../lib/painel/auth';
 import { configurarRecebimentoWhatsapp, criarConexaoWhatsapp, desconectarWhatsapp } from '../actions';
 
@@ -35,6 +35,12 @@ export default async function WhatsappPage({ searchParams }: { searchParams: Pro
     }
   }
   const conectado = estado === 'open';
+  const [webhook, diag] = await Promise.all([
+    conectado ? situacaoWebhook().catch((e: Error) => ({ erro: e.message })) : Promise.resolve(null),
+    ultimosDiag().catch(() => []),
+  ]);
+  const hora = (ms: number) =>
+    new Date(ms).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   return (
     <div className="space-y-5 max-w-4xl">
@@ -42,8 +48,8 @@ export default async function WhatsappPage({ searchParams }: { searchParams: Pro
       <div>
         <h1 className="text-2xl md:text-3xl">WhatsApp</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Conexão pelo QR Code (Evolution). As conversas aparecem no <Link href="/painel/crm" className="underline">CRM</Link> e você responde por
-          aqui. Nada é enviado automaticamente.
+          Conexão pelo QR Code (Evolution). As conversas aparecem no <Link href="/painel/atendimento" className="underline">Atendimento</Link>; com a
+          IA ligada (WHATSAPP_IA=true), ela responde os clientes por aqui.
         </p>
       </div>
       {ok && <Aviso tipo="ok">{ok}</Aviso>}
@@ -112,6 +118,52 @@ export default async function WhatsappPage({ searchParams }: { searchParams: Pro
           </div>
         )}
       </Cartao>
+
+      {conectado && (
+        <Cartao titulo="Recebimento de mensagens (diagnóstico)">
+          {webhook && 'erro' in webhook ? (
+            <p className="text-sm text-red-700">Não consegui ler o webhook na Evolution: {webhook.erro}</p>
+          ) : webhook ? (
+            <ul className="text-sm space-y-1.5">
+              {[
+                [webhook.cadastrado, 'Webhook cadastrado na Evolution', 'Clique em "Configurar recebimento de mensagens".'],
+                [webhook.ligado, 'Webhook ligado', 'Clique em "Configurar recebimento de mensagens".'],
+                [webhook.apontaParaOSite, 'Aponta para este site', `Está apontando para: ${webhook.endereco || 'nada'}`],
+                [webhook.senhaConfere, 'Senha (token) confere com EVOLUTION_WEBHOOK_TOKEN', 'Clique em "Configurar recebimento" de novo.'],
+                [
+                  webhook.eventos.some((e) => /messages[._]upsert/i.test(e)),
+                  'Evento de mensagens novas (MESSAGES_UPSERT) assinado',
+                  `Eventos: ${webhook.eventos.join(', ') || 'nenhum'}`,
+                ],
+              ].map(([ok, rotulo, ajuda]) => (
+                <li key={String(rotulo)} className="flex gap-2">
+                  <span aria-hidden>{ok ? '✅' : '❌'}</span>
+                  <span>
+                    {String(rotulo)}
+                    {!ok && <span className="block text-xs text-slate-500">{String(ajuda)}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mt-5 mb-2">Últimas chegadas no site</h3>
+          {diag.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              Nenhuma chamada da Evolution chegou ao site ainda. Se o webhook acima está todo ✅ e você mandou uma mensagem, o servidor da Evolution não está
+              conseguindo chamar o site (veja os logs da Evolution).
+            </p>
+          ) : (
+            <ul className="text-sm divide-y divide-slate-100">
+              {diag.map((d, i) => (
+                <li key={i} className="py-1.5 flex gap-3">
+                  <span className="text-slate-500 tabular-nums shrink-0">{hora(d.em)}</span>
+                  <span className={d.resultado.startsWith('recebida') ? 'text-emerald-700' : 'text-amber-800'}>{d.resultado}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Cartao>
+      )}
 
       <Cartao titulo="Bom saber">
         <ul className="text-sm text-slate-600 space-y-2 list-disc pl-5">
