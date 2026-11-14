@@ -466,6 +466,12 @@ Se a IA falhar, a mensagem cai no robô de regras. Código: `lib/automacao/agent
 Teste antes em `/atendimento/simulador` (modo "IA"): dá para conversar várias mensagens seguidas e ver
 quais ferramentas ela usou, o que voltou de cada uma e quantos tokens gastou. Nada é enviado.
 
+**O que a IA resolve sozinha e o que vai para uma pessoa.** Ela responde tamanho e medidas, preço e
+disponibilidade, pagamento, frete, prazo, status do pedido e rastreio, e a Black Friday. Passa para uma pessoa
+(avisando o cliente) troca, defeito, pedido de desconto, cliente irritado, parcelamento e áudio/foto.
+Quando você responde pelo celular, ela fica quieta naquela conversa por `WHATSAPP_HUMANO_SILENCIO_HORAS`
+(padrão 12 h); no painel, "Devolver para a IA" libera antes.
+
 ### Agente de anúncios com IA
 
 No painel de anúncios, o cartão "Análise da IA" lê os números da Meta e do site e sugere o que fazer
