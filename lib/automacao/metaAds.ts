@@ -242,3 +242,115 @@ export const STATUS_CONTA: Record<number, string> = {
   100: 'Encerramento pendente',
   101: 'Encerrada',
 };
+
+// ---------- Entrega dos anúncios (a Meta está mostrando? o saldo dá para hoje?) ----------
+
+export type EntregaAnuncios = {
+  /** Conjuntos ligados e o que a Meta diz sobre eles (aprendizado, problemas). */
+  conjuntos: { nome: string; status: string; aprendizado?: string; problemas?: string[] }[];
+  /** Exibições por hora hoje (hora local da conta, 0–23). */
+  porHora: { hora: number; impressoes: number }[];
+  /** Horas seguidas, até agora, sem nenhuma exibição (com anúncio ligado). */
+  horasSemEntrega: number;
+  /** Saldo pré-pago em R$ (texto da Meta convertido) e orçamento diário somado dos conjuntos ligados. */
+  saldo: number | null;
+  orcamentoDia: number | null;
+  /** Situação para o dono: ok | atencao | parado */
+  situacao: 'ok' | 'atencao' | 'parado';
+  motivos: string[];
+};
+
+type ConjuntoApi = {
+  name: string;
+  effective_status: string;
+  daily_budget?: string;
+  learning_stage_info?: { status?: string };
+  issues_info?: { error_summary?: string; error_message?: string }[];
+};
+
+/** Lê o saldo do texto da Meta, ex.: "Saldo disponível (R$ 134,01 BRL)" → 134.01 */
+export function saldoDoTexto(t?: string): number | null {
+  const m = (t || '').match(/R\$\s*([\d.]+,\d{2})/);
+  return m ? Number(m[1].replace(/\./g, '').replace(',', '.')) : null;
+}
+
+export async function entregaAnuncios(hoje: string, horaAgora: number): Promise<EntregaAnuncios> {
+  const pedirConjuntos = (campos: string) =>
+    graph<{ data: ConjuntoApi[] }>(`${conta()}/adsets`, {
+      fields: campos,
+      effective_status: JSON.stringify(['ACTIVE', 'PENDING_REVIEW', 'WITH_ISSUES', 'IN_PROCESS', 'PREAPPROVED']),
+      limit: '50',
+    });
+  const [conjuntosApi, horas, contaInfo] = await Promise.all([
+    // learning_stage_info / issues_info podem exigir mais permissão: tenta sem eles
+    pedirConjuntos('name,effective_status,daily_budget,learning_stage_info,issues_info').catch((e) =>
+      semPermissao(e) ? pedirConjuntos('name,effective_status,daily_budget') : Promise.reject(e)
+    ),
+    graph<{ data: { impressions?: string; hourly_stats_aggregated_by_advertiser_time_zone?: string }[] }>(`${conta()}/insights`, {
+      level: 'account',
+      fields: 'impressions',
+      time_range: intervalo({ desde: hoje, ate: hoje }),
+      breakdowns: 'hourly_stats_aggregated_by_advertiser_time_zone',
+      limit: '48',
+    }).catch(() => ({ data: [] })),
+    contaAnuncios().catch(() => null),
+  ]);
+
+  const porHora = horas.data
+    .map((l) => ({ hora: Number((l.hourly_stats_aggregated_by_advertiser_time_zone || '').slice(0, 2)), impressoes: n(l.impressions) }))
+    .filter((x) => Number.isFinite(x.hora))
+    .sort((a, b) => a.hora - b.hora);
+  const ligados = conjuntosApi.data.filter((c) => c.effective_status === 'ACTIVE');
+  // Horas completas sem exibição, contando de trás para frente a partir da hora anterior à atual
+  // (a hora atual ainda está em andamento e a Meta atrasa os números em até ~30 min)
+  let horasSemEntrega = 0;
+  if (ligados.length) {
+    for (let h = horaAgora - 1; h >= 0; h--) {
+      if ((porHora.find((x) => x.hora === h)?.impressoes || 0) > 0) break;
+      horasSemEntrega++;
+    }
+    if (!porHora.some((x) => x.impressoes > 0)) horasSemEntrega = horaAgora; // nada hoje ainda
+  }
+  const orcamentoDia = ligados.length ? ligados.reduce((s, c) => s + n(c.daily_budget) / 100, 0) || null : null;
+  const saldo = saldoDoTexto(contaInfo?.saldo);
+
+  const motivos: string[] = [];
+  let situacao: EntregaAnuncios['situacao'] = 'ok';
+  if (contaInfo && contaInfo.status !== 1) {
+    situacao = 'parado';
+    motivos.push('conta de anúncios não está ativa');
+  }
+  if (!ligados.length) {
+    situacao = 'parado';
+    motivos.push('nenhum conjunto de anúncios ligado e entregando');
+  }
+  // De madrugada a Meta entrega pouco: só acusa "parado" a partir das 9h
+  if (ligados.length && horaAgora >= 9 && horasSemEntrega >= 2) {
+    situacao = 'parado';
+    motivos.push(`${horasSemEntrega} h seguidas sem nenhuma exibição`);
+  }
+  if (saldo !== null && orcamentoDia && saldo < orcamentoDia) {
+    situacao = 'parado';
+    motivos.push('saldo pré-pago menor que 1 dia de orçamento');
+  } else if (saldo !== null && orcamentoDia && saldo < orcamentoDia * 2) {
+    if (situacao === 'ok') situacao = 'atencao';
+    motivos.push('saldo pré-pago para menos de 2 dias');
+  }
+  const conjuntos = conjuntosApi.data.map((c) => ({
+    nome: c.name,
+    status: c.effective_status,
+    aprendizado: c.learning_stage_info?.status,
+    problemas: c.issues_info?.map((i) => i.error_summary || i.error_message || '').filter(Boolean),
+  }));
+  for (const c of conjuntos) {
+    if (c.problemas?.length) {
+      if (situacao === 'ok') situacao = 'atencao';
+      motivos.push(`problema no conjunto "${c.nome}": ${c.problemas.join('; ')}`);
+    }
+    if (c.aprendizado === 'FAIL') {
+      if (situacao === 'ok') situacao = 'atencao';
+      motivos.push(`conjunto "${c.nome}" com aprendizado limitado`);
+    }
+  }
+  return { conjuntos, porHora, horasSemEntrega, saldo, orcamentoDia, situacao, motivos };
+}

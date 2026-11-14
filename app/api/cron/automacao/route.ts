@@ -8,6 +8,7 @@
 //   GET /api/cron/automacao?tarefa=saude    → só a checagem de saúde (loja, WooCommerce, frete, banco)
 //   GET /api/cron/automacao?tarefa=abandono → só os e-mails de carrinho abandonado
 //   GET /api/cron/automacao?tarefa=diagnostico → confere a configuração do Bling (só leitura)
+//   GET /api/cron/automacao?tarefa=entrega   → vigia da entrega dos anúncios (avisa se parar / saldo baixo)
 //   GET /api/cron/automacao?tarefa=lembretes → lembretes pelo WhatsApp (Pix, cartão recusado, carrinho)
 //   GET /api/cron/automacao?tarefa=analise-anuncios → análise dos anúncios com IA (1x por dia)
 //   GET /api/cron/automacao?modo=fundo     → responde na hora e roda em segundo plano
@@ -70,6 +71,9 @@ export async function GET(request: Request) {
       await rodar('lembretes', async () => (await import('../../../../lib/automacao/lembretesWhats')).rotinaLembretesWhats(prazo));
     }
     // Só roda quando pedido explicitamente (não entra em "todas").
+    if ((tarefa === 'todas' || tarefa === 'entrega') && integracoes.metaAds()) {
+      await rodar('entregaAnuncios', async () => (await import('../../../../lib/automacao/vigiaEntrega')).rotinaVigiaEntrega());
+    }
     if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());
     if (tarefa === 'diagnostico-rastreio') await rodar('rastreioBling', async () => (await import('../../../../lib/automacao/diagnosticoBlingRastreio')).diagnosticoBlingRastreio());
     if (tarefa === 'diagnostico-me') await rodar('diagnosticoME', async () => (await import('../../../../lib/automacao/diagnosticoME')).diagnosticoMelhorEnvio());
