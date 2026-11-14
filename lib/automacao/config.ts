@@ -166,8 +166,8 @@ export const config = {
     },
   },
 
-  // Evolution API (WhatsApp pelo QR Code, não oficial). Usada só para receber e responder
-  // conversas no painel — sem robô e sem mensagens automáticas.
+  // Evolution API (WhatsApp pelo QR Code, não oficial). Recebe e responde as conversas do painel;
+  // com WHATSAPP_IA=true a IA responde os clientes por ela (mesmo fluxo da API oficial).
   evolution: {
     url: (env('EVOLUTION_URL') || '').replace(/\/+$/, '') || undefined,
     apiKey: env('EVOLUTION_API_KEY'),

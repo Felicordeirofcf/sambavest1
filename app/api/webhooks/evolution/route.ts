@@ -3,15 +3,19 @@
 // Configurado sozinho pelo painel (/painel/whatsapp → "Configurar recebimento"):
 //   URL: https://SEU-SITE/api/webhooks/evolution?token=<EVOLUTION_WEBHOOK_TOKEN>
 //   Evento: MESSAGES_UPSERT
-// Sem automação: nada é respondido daqui. Só registra mensagens do cliente e as suas (pelo celular).
+// Mensagem do cliente: segue o mesmo caminho da API oficial (processarMensagem): grava no CRM,
+// avisa o dono e, com WHATSAPP_IA=true, a IA responde (envio pela própria Evolution).
+// Mensagem sua pelo celular: grava e silencia a IA nessa conversa (uma pessoa assumiu).
 import crypto from 'node:crypto';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
+import { ehSaidaDoRobo, processarMensagem } from '../../../../lib/automacao/atendimento';
 import { config } from '../../../../lib/automacao/config';
 import { alterarConversa } from '../../../../lib/automacao/conversas';
 import { MensagemEvolution, telefoneDaMensagem, textoEvolution } from '../../../../lib/automacao/evolution';
 import { adquirirTrava } from '../../../../lib/automacao/kv';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 function tokenValido(recebido: string | null): boolean {
   const esperado = config.evolution.webhookToken;
@@ -43,34 +47,55 @@ export async function POST(request: Request) {
   const d = corpo.data;
   const lista: MensagemEvolution[] = Array.isArray(d) ? d : d && 'messages' in d && Array.isArray(d.messages) ? d.messages : d ? [d as MensagemEvolution] : [];
 
+  const doCliente: { m: MensagemEvolution; numero: string; texto: string; id: string }[] = [];
   let gravadas = 0;
   for (const m of lista) {
     const numero = telefoneDaMensagem(m);
     const texto = textoEvolution(m);
     const id = m.key?.id;
     if (!numero || !texto || !id) continue;
+
+    if (!m.key?.fromMe) {
+      // A trava contra repetição fica dentro de processarMensagem
+      doCliente.push({ m, numero, texto, id });
+      continue;
+    }
+
     // A Evolution pode reenviar o mesmo evento
     if (!(await adquirirTrava(`wa:msg:${id}`, 3 * 86_400))) continue;
+    // Resposta que o robô/IA acabou de mandar: ele mesmo registra na conversa
+    if (await ehSaidaDoRobo(numero, texto)) continue;
     const em = Number(m.messageTimestamp) * 1000 || Date.now();
-
-    if (m.key?.fromMe) {
-      // Enviada pela loja: pelo celular (app) ou pelo próprio painel (já registrada com o mesmo ID)
-      await alterarConversa(numero, (c) => {
-        if (c.mensagens.some((x) => x.id === id)) return;
-        c.numero = c.numero || numero;
-        c.mensagens.push({ id, de: 'loja', texto: `${texto} (pelo celular)`, em });
-        c.naoLidas = 0;
-      });
-    } else {
-      await alterarConversa(numero, (c) => {
-        c.numero = numero;
-        if (m.pushName) c.nome = m.pushName;
-        c.mensagens.push({ id, de: 'cliente', texto, em });
-        c.ultimaDoClienteEm = Date.now();
-        c.naoLidas = (c.naoLidas || 0) + 1;
-      });
-    }
+    // Enviada pela loja: pelo celular (app) ou pelo próprio painel (já registrada com o mesmo ID)
+    await alterarConversa(numero, (c) => {
+      if (c.mensagens.some((x) => x.id === id)) return;
+      c.numero = c.numero || numero;
+      c.mensagens.push({ id, de: 'loja', texto: `${texto} (pelo celular)`, em });
+      c.naoLidas = 0;
+      // Uma pessoa respondeu pelo celular: a IA fica quieta nesta conversa por um tempo
+      c.humanoAte = Date.now() + config.whatsapp.respostas.silencioHoras * 3_600_000;
+    });
     gravadas++;
   }
-  return NextResponse.json({ ok: true, gravadas });
+
+  // A IA pode levar alguns segundos: responde 200 já e processa depois (a Evolution não reenvia à toa).
+  if (doCliente.length) {
+    after(async () => {
+      for (const { m, numero, texto, id } of doCliente) {
+        try {
+          const msg = (m.message || {}) as Record<string, unknown>;
+          const ehTexto = typeof msg.conversation === 'string' || Boolean(msg.extendedTextMessage);
+          const r = await processarMensagem(
+            { id, from: numero, timestamp: String(m.messageTimestamp || ''), type: ehTexto ? 'text' : m.messageType || 'midia' },
+            m.pushName,
+            { texto, ehTexto }
+          );
+          console.log('[evolution] mensagem', JSON.stringify(r));
+        } catch (e) {
+          console.error('[evolution] erro ao processar mensagem', id, (e as Error).message);
+        }
+      }
+    });
+  }
+  return NextResponse.json({ ok: true, gravadas, clientes: doCliente.length });
 }
