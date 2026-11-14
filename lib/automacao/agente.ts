@@ -74,6 +74,32 @@ const FERRAMENTAS = [
     },
   },
   {
+    name: 'montar_link_compra',
+    description:
+      'Monta a sacola com os itens que o cliente escolheu e devolve um link: o cliente abre, põe o CEP e paga no site. ' +
+      'Use quando o cliente quiser comprar e você já tiver confirmado com ele produto, modelo, tamanho e quantidade. ' +
+      'Use o nome exato do produto que veio de buscar_produtos.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        itens: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              produto: { type: 'string', description: 'Nome exato do produto (de buscar_produtos)' },
+              modelo: { type: 'string', description: 'Ex.: "Unissex", "Baby look", "Regata", "Vestido". Vazio se o produto só tem um modelo' },
+              tamanho: { type: 'string', description: 'Ex.: "P", "M", "G", "GG", "XGG", "EXG"' },
+              quantidade: { type: 'integer', description: 'Padrão 1' },
+            },
+            required: ['produto', 'tamanho'],
+          },
+        },
+      },
+      required: ['itens'],
+    },
+  },
+  {
     name: 'transferir_para_humano',
     description:
       'Passa a conversa para uma pessoa da loja. Use quando: o cliente pedir para falar com alguém; ' +
@@ -246,6 +272,7 @@ REGRA MAIS IMPORTANTE
 - Nunca prometa desconto, brinde, frete grátis ou exceção.
 - Pedidos: sempre use consultar_pedidos antes de falar do status. Se não achar, peça o número do pedido.
 - Produtos/preços: sempre use buscar_produtos antes de citar.
+- COMPRA PELO WHATSAPP: quando o cliente quiser comprar, confirme numa mensagem curta o que ele quer (produto, modelo, tamanho, quantidade e preço de buscar_produtos) e, com o "sim" dele, use montar_link_compra e mande o link com o resumo e o total dos produtos. Explique que é só abrir o link, colocar o CEP (o frete aparece lá) e pagar por Pix ou cartão em até 3x. NUNCA peça endereço, CPF ou dados de cartão pela conversa: isso é feito no site. Se montar_link_compra disser que algo está esgotado, ofereça os tamanhos com estoque.
 - Tamanho: use a tabela de MEDIDAS abaixo e o passo a passo de como ajudar. Diga as medidas do modelo que o cliente quer (unissex, baby look, regata ou vestido).
 
 CONHECIMENTO DA LOJA
@@ -360,6 +387,9 @@ export async function responderComIA(params: {
           saida = await consultarPedidos(params.numeroCliente, num);
           const achados = (saida as { pedidos?: { pedido: number }[] }).pedidos;
           if (achados) res.pedidos = achados.map((p) => p.pedido);
+        } else if (f.name === 'montar_link_compra') {
+          const { montarLinkCompra } = await import('./sacolaPronta');
+          saida = await montarLinkCompra(Array.isArray(f.input.itens) ? (f.input.itens as never[]) : []);
         } else if (f.name === 'buscar_produtos') {
           saida = await buscarProdutos(String(f.input.busca || ''));
         } else {
