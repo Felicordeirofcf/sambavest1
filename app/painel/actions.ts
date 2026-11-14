@@ -366,8 +366,18 @@ export async function acaoAtendimento(formData: FormData) {
       if (acao === 'devolver') c.humanoAte = undefined;
     });
   }
+  // Devolver para a IA: se o cliente está esperando, ela responde agora (e mostra o erro, se houver)
+  let extra = '';
+  if (acao === 'devolver' && numero) {
+    try {
+      const { responderPendenteComIA } = await import('../../lib/automacao/atendimento');
+      extra = `&ok=${encodeURIComponent(await responderPendenteComIA(numero))}`;
+    } catch (e) {
+      extra = `&erro=${encodeURIComponent(`A IA não conseguiu responder: ${(e as Error).message}`.slice(0, 300))}`;
+    }
+  }
   revalidatePath('/painel/atendimento');
-  voltarAtendimento(numero);
+  voltarAtendimento(numero, extra);
 }
 
 /** Resposta digitada na tela de atendimento (sai pelo WhatsApp conectado). */

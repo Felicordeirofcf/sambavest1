@@ -10,6 +10,7 @@ import { Conversa, janelaAberta, listarConversas, obterConversa, type Mensagem }
 import { estadoConexao } from '../../../lib/automacao/evolution';
 import { chaveTelefone } from '../../../lib/automacao/whatsapp';
 import { exigirLogin } from '../../../lib/painel/auth';
+import { lerRegistroIA } from '../../../lib/automacao/registroIA';
 import { pedidosPorTelefone } from '../../../lib/painel/crmDados';
 import { pedidosRecentes } from '../../../lib/painel/dados';
 import { MEDIDAS } from '../../../lib/medidas';
@@ -106,12 +107,15 @@ export default async function AtendimentoPainel({
   if (!integracoes.kv()) return <Aviso tipo="erro">O atendimento precisa do Upstash (KV) configurado para guardar as conversas.</Aviso>;
 
   const evolution = semJanela24h();
-  const [conversas, aberta, conexao, pedidos] = await Promise.all([
+  const [conversas, aberta, conexao, pedidos, registroIA] = await Promise.all([
     listarConversas(120),
     sp.n ? obterConversa(sp.n) : Promise.resolve(null),
     evolution ? estadoConexao().catch(() => ({ estado: 'erro' as const, detalhe: 'sem resposta' })) : Promise.resolve(null),
     sp.n ? pedidosRecentes(365).catch(() => []) : Promise.resolve([]),
+    lerRegistroIA(),
   ]);
+  const ultimaIA = registroIA[0];
+  const hojeIA = registroIA.filter((x) => diaChave(x.em) === diaChave(agora));
 
   // ----- situação do canal e da IA -----
   const canal = evolution
@@ -125,7 +129,9 @@ export default async function AtendimentoPainel({
       : { ok: false as const, valor: 'Não conectado', ajuda: undefined };
   const iaLigada = config.whatsapp.ia.ativa && iaDisponivel();
   const ia = iaLigada
-    ? { ok: true as const, valor: 'Respondendo clientes' }
+    ? ultimaIA?.resultado === 'erro'
+      ? { ok: false as const, valor: 'Com erro', ajuda: ultimaIA.detalhe }
+      : { ok: true as const, valor: `Respondendo · ${hojeIA.filter((x) => x.resultado === 'respondeu').length} hoje`, ajuda: undefined }
     : iaDisponivel()
       ? { ok: 'aviso' as const, valor: 'Pronta, mas desligada', ajuda: 'Crie WHATSAPP_IA=true na Vercel e faça Redeploy.' }
       : { ok: false as const, valor: 'Sem chave da Anthropic', ajuda: 'Crie ANTHROPIC_API_KEY na Vercel.' };
@@ -184,6 +190,12 @@ export default async function AtendimentoPainel({
         </div>
       </div>
       {sp.erro && <Aviso tipo="erro">{sp.erro}</Aviso>}
+      {sp.ok && <Aviso tipo="ok">{sp.ok}</Aviso>}
+      {iaLigada && ultimaIA?.resultado === 'erro' && (
+        <Aviso tipo="erro">
+          A última tentativa da IA deu erro ({quandoCurto(ultimaIA.em, agora)}): {ultimaIA.detalhe}. Enquanto isso, as mensagens vão para você.
+        </Aviso>
+      )}
 
       <div
         className={`wa wa-fundo grid overflow-hidden border wa-borda shadow-sm md:rounded-xl md:h-[calc(100dvh-6rem)] md:min-h-[560px] md:grid-cols-[minmax(280px,34%)_minmax(0,1fr)] lg:grid-cols-[minmax(300px,30%)_minmax(0,1fr)] 2xl:grid-cols-[minmax(340px,26%)_minmax(0,1fr)_300px] ${

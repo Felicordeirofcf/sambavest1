@@ -54,6 +54,43 @@ export async function auditoria(): Promise<Record<string, unknown>> {
       r.paginaBlackHoje = { todos: soNaoZero(bh), vindoDoAnuncio: soNaoZero(bm) };
     })(),
 
+    // 3b) IA do WhatsApp: ligada? a chave e o modelo funcionam? o que ela fez hoje?
+    (async () => {
+      const ia = config.whatsapp.ia;
+      const { lerRegistroIA } = await import('./registroIA');
+      const registro = await lerRegistroIA();
+      const deHoje = registro.filter((x) => diaLocal(x.em) === hoje);
+      const conta = (t: string) => deHoje.filter((x) => x.resultado === t).length;
+      const erros = registro.filter((x) => x.resultado === 'erro').slice(0, 3);
+      let teste = 'sem ANTHROPIC_API_KEY';
+      if (ia.chave) {
+        // Chamada mínima (poucos tokens) só para provar que chave, modelo e crédito estão ok
+        const t0 = Date.now();
+        try {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-api-key': ia.chave, 'anthropic-version': '2023-06-01' },
+            body: JSON.stringify({ model: ia.modelo, max_tokens: 16, messages: [{ role: 'user', content: 'Responda só: ok' }] }),
+            signal: AbortSignal.timeout(20_000),
+          });
+          const corpo = (await res.json().catch(() => ({}))) as { error?: { type?: string; message?: string } };
+          teste = res.ok ? `ok (${Date.now() - t0} ms)` : `FALHA ${res.status}: ${corpo.error?.type || ''} ${corpo.error?.message || ''}`.trim();
+        } catch (e) {
+          teste = `FALHA: ${(e as Error).message}`;
+        }
+      }
+      r.iaWhatsapp = {
+        ligada: ia.ativa,
+        chave: Boolean(ia.chave),
+        modelo: ia.modelo,
+        testeDaChave: teste,
+        canal: integracoes.whatsapp() ? 'API oficial' : integracoes.evolution() ? 'Evolution' : 'nenhum',
+        hoje: { respondeu: conta('respondeu'), passouParaPessoa: conta('transferiu'), pediuTexto: conta('pediu-texto'), erros: conta('erro') },
+        ultimaTentativaMinAtras: minutosAtras(registro[0]?.em),
+        ultimosErros: erros.map((x) => ({ minAtras: minutosAtras(x.em), erro: x.detalhe })),
+      };
+    })(),
+
     // 4) Rotinas e falhas
     (async () => {
       const [cron, webhook, alerta, falhas] = await Promise.all([
