@@ -19,11 +19,19 @@ function caminhos(obj: unknown, prefixo = '', saida: string[] = [], prof = 0): s
 }
 
 export async function diagnosticoBlingRastreio(): Promise<Record<string, unknown>> {
-  const pagos = await listarPedidos('processing', new Date(Date.now() - 14 * 86_400_000), 10);
+  const pagos = await listarPedidos('processing,completed', new Date(Date.now() - 14 * 86_400_000), 20);
   const r: Record<string, unknown>[] = [];
-  for (const p of pagos.slice(0, 3)) {
+  for (const p of pagos.slice(-4)) {
     const id = Number(meta(p, '_sv_bling_pedido_id'));
-    const item: Record<string, unknown> = { pedido: p.id, idBling: id || null };
+    const item: Record<string, unknown> = {
+      pedido: p.id,
+      status: p.status,
+      idBling: id || null,
+      rastreioNoSite: Boolean(meta(p, '_sv_rastreio') || meta(p, '_correios_tracking_code')),
+      avisoEnviadoAoCliente: Boolean(meta(p, '_sv_aviso_enviado')),
+      // campos de rastreio de outros plugins (só os nomes)
+      outrosCamposRastreio: p.meta_data.filter((m) => /track|rastre|correios/i.test(m.key)).map((m) => m.key),
+    };
     if (id) {
       try {
         const pv = await bling.bling<{ data: Record<string, unknown> }>(`/pedidos/vendas/${id}`);
