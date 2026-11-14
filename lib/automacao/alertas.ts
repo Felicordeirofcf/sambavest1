@@ -106,6 +106,8 @@ export async function confirmarConexaoTelegram(): Promise<string> {
  * `chave`: não repete o mesmo alerta (ex.: "venda:1187") durante `ttlS` segundos.
  */
 export async function alertarCelular(texto: string, opcoes: { chave?: string; ttlS?: number } = {}): Promise<string[]> {
+  // Sem canal configurado: não "gasta" a trava, para o aviso sair assim que um canal for ligado
+  if (!alertasLigados()) return [];
   try {
     if (opcoes.chave && !(await adquirirTrava(`alerta:${opcoes.chave}`, opcoes.ttlS ?? 3 * 86_400))) return [];
   } catch {

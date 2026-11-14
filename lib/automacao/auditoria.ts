@@ -117,6 +117,7 @@ export async function auditoria(): Promise<Record<string, unknown>> {
         cronOk: cron?.ok ?? null,
         webhookWooMinAtras: minutosAtras(webhook?.em),
         ultimoAlertaMinAtras: minutosAtras(alerta?.em),
+        alertasNoCelular: (await import('./alertas')).alertasLigados() ? 'ligados' : 'DESLIGADOS: falta ALERTA_WHATSAPP_NUMERO (ou Telegram) na Vercel',
       };
       r.falhasOntemEHoje = falhas;
     })(),
