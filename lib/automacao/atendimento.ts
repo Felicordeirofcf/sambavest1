@@ -315,10 +315,34 @@ export async function processarMensagem(
     return res;
   }
 
+  // Áudio, foto ou vídeo sem legenda: a IA só lê texto. Em vez de passar para uma pessoa,
+  // pede para o cliente escrever (no máximo 1 vez a cada 30 min por conversa).
+  const legenda = ehTexto ? '' : (texto.match(/^\[[^\]]+\]\s+([\s\S]+)$/)?.[1] || texto.match(/^[^:]{1,25}:\s+([\s\S]+)$/)?.[1] || '').trim();
+  if (iaLigada && !ehTexto && !legenda && podeResponder(conversa)) {
+    if (await adquirirTrava(`wa:pede-texto:${chaveTelefone(numero)}`, 30 * 60)) {
+      try {
+        const pedido = /udio|ptt|audio/i.test(`${m.type} ${texto}`)
+          ? 'Oi! Por aqui eu ainda não consigo ouvir áudio 🙏 Pode escrever pra mim o que você precisa?'
+          : 'Recebi! Por aqui eu consigo ler só mensagens escritas 🙂 Pode me contar por escrito o que você precisa?';
+        const id = await enviarAoCliente(numero, pedido);
+        conversa = await registrarSaida(numero, pedido, 'robo', id);
+        res.respondeu = true;
+        res.intencao = 'midia → pediu texto';
+        return res;
+      } catch (e) {
+        res.erro = (e as Error).message;
+      }
+    } else {
+      res.ignorada = 'mídia (já pediu para escrever há pouco)';
+      return res;
+    }
+  }
+
   // Atendente com IA. Se a IA falhar (API fora, erro), cai no robô de regras logo abaixo.
-  if (iaLigada && ehTexto && podeResponder(conversa)) {
+  if (iaLigada && (ehTexto || legenda) && podeResponder(conversa)) {
     try {
-      const ia = await responderComIA({ numeroCliente: numero, texto, conversa });
+      const textoIA = ehTexto ? texto : `(o cliente mandou uma foto/vídeo com a legenda) ${legenda}`;
+      const ia = await responderComIA({ numeroCliente: numero, texto: textoIA, conversa });
       res.intencao = `ia (${ia.ferramentas.map((f) => f.nome).join(', ') || 'sem ferramentas'}; ${ia.tokens.entrada}+${ia.tokens.saida} tokens)`;
       if (ia.texto) {
         const id = await enviarAoCliente(numero, ia.texto);
