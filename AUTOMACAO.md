@@ -231,6 +231,13 @@ com o código. O cliente é avisado na hora. O campo do plugin "Correios for Woo
 
 ## 4. Avisos ao cliente (WhatsApp e e-mail)
 
+### WhatsApp pela Evolution (sem a API oficial)
+Sem `WHATSAPP_TOKEN`, com a Evolution conectada, os avisos de **pagamento aprovado** e **pedido enviado**
+(com o rastreio) saem como mensagem normal pelo WhatsApp da loja, só para números que têm WhatsApp, e
+aparecem na conversa do cliente no painel. O lembrete de Pix pela Evolution é o de `WHATSAPP_LEMBRETES`.
+Para mandar o rastreio pelo WhatsApp a pedidos já enviados que só foram avisados por e-mail (últimos
+10 dias), rode a tarefa `rastreio-whatsapp` algumas vezes (6 por rodada, até `restantes` chegar a 0).
+
 ### WhatsApp (API oficial da Meta)
 1. Em developers.facebook.com, crie um app do tipo Business e adicione o WhatsApp. Use um número que
    **não** esteja no app WhatsApp comum.

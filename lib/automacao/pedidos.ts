@@ -9,7 +9,7 @@ import { adquirirTrava, liberarTrava } from './kv';
 import * as melhorEnvio from './melhorenvio';
 import { enviarCompra } from './meta';
 import { alertaErroPedido, alertaPagamentoRecusado, alertaVenda } from './alertas';
-import { alertarLoja, avisarCliente, escapar } from './notificacoes';
+import { alertarLoja, avisarCliente, enviarPelaEvolution, escapar } from './notificacoes';
 import { adicionarNota, linkPagamento, listarPedidos, meta, obterPedido, salvarNoPedido, WcPedido } from './woocommerce';
 
 export const M = {
@@ -319,6 +319,45 @@ export async function rotinaPedidos(prazo: number): Promise<Relatorio[]> {
     relatorios.push(await processarPedido(p.id));
   }
   return relatorios;
+}
+
+/**
+ * Manda pelo WhatsApp (Evolution) o rastreio dos pedidos já enviados que só foram avisados por
+ * e-mail, de antes de os avisos de pedido saírem pela Evolution. Uma vez por pedido (trava de 30 dias),
+ * com pausa entre envios, poucos por rodada. Devolve só contagens (o log do GitHub é público).
+ */
+export async function rastreioPeloWhatsapp(prazo: number, dias = 10) {
+  const r = { candidatos: 0, enviados: 0, semWhatsapp: 0, jaTentados: 0, erros: 0, restantes: 0 };
+  if (!integracoes.evolution()) return { ...r, pulado: 'Evolution não configurada' };
+  const desde = new Date(Date.now() - dias * 86_400_000);
+  const pedidos = [...(await listarPedidos('completed', desde, 200)), ...(await listarPedidos('processing', desde, 200))];
+  const pendentes = pedidos.filter((p) => meta(p, M.rastreio) && !(meta(p, M.avisoEnviado) || '').includes('whatsapp'));
+  r.candidatos = pendentes.length;
+  for (const p of pendentes) {
+    if (r.enviados >= 6 || Date.now() > prazo - 12_000) break;
+    if (!(await adquirirTrava(`rastreio-wa:${p.id}`, 30 * 86_400))) {
+      r.jaTentados++; // já mandado (ou sem WhatsApp) numa rodada anterior
+      continue;
+    }
+    const codigo = meta(p, M.rastreio)!;
+    try {
+      // Pausa entre envios: espaça as mensagens (a Evolution não é a API oficial)
+      if (r.enviados) await new Promise((ok) => setTimeout(ok, 4_000 + Math.random() * 4_000));
+      const foi = await enviarPelaEvolution('enviado', p, { rastreio: codigo, linkRastreio: melhorEnvio.linkRastreio(codigo) });
+      if (!foi) {
+        r.semWhatsapp++;
+        continue;
+      }
+      const antes = meta(p, M.avisoEnviado);
+      await salvarNoPedido(p, { [M.avisoEnviado]: antes && antes !== 'nenhum canal' ? `${antes},whatsapp` : 'whatsapp' });
+      r.enviados++;
+    } catch {
+      r.erros++;
+      await liberarTrava(`rastreio-wa:${p.id}`); // tenta de novo na próxima rodada
+    }
+  }
+  r.restantes = Math.max(0, r.candidatos - r.enviados - r.semWhatsapp - r.jaTentados - r.erros);
+  return r;
 }
 
 export async function rotinaPix(prazo: number): Promise<Relatorio[]> {
