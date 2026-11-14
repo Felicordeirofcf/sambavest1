@@ -234,6 +234,7 @@
 .sv.sv-escuro .bg-green-100 { background-color: rgb(34 197 94 / 0.2); }
 .sv.sv-escuro .bg-gray-50, .sv.sv-escuro .bg-gray-100 { background-color: var(--color-slate-100); }
 .sv.sv-escuro .ring-violet-200 { --tw-ring-color: rgb(139 92 246 / 0.4); }
+.sv.sv-escuro .border-violet-200 { border-color: rgb(139 92 246 / 0.4); }
 .sv.sv-escuro .ring-orange-200 { --tw-ring-color: rgb(249 115 22 / 0.4); }
 .sv.sv-escuro .border-emerald-300, .sv.sv-escuro .border-emerald-400 { border-color: rgb(16 185 129 / 0.55); }
 .sv.sv-escuro .text-orange-700, .sv.sv-escuro .text-orange-800 { color: #fdba74; }

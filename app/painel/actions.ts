@@ -385,3 +385,32 @@ export async function responderAtendimento(formData: FormData) {
   revalidatePath('/painel/atendimento');
   voltarAtendimento(numero, erro ? `&erro=${encodeURIComponent(erro)}` : '');
 }
+
+// ---------- Análise dos anúncios com IA ----------
+
+/** Botão "Analisar agora" no painel de anúncios. */
+export async function gerarAnaliseAnuncios() {
+  await exigirLogin();
+  let erro = '';
+  try {
+    const { analisarAnuncios } = await import('../../lib/automacao/agenteAnuncios');
+    await analisarAnuncios();
+  } catch (e) {
+    erro = (e as Error).message;
+  }
+  revalidatePath('/painel/anuncios');
+  redirect(`/painel/anuncios?${erro ? `erroIA=${encodeURIComponent(erro.slice(0, 200))}` : 'okIA=1'}#analise-ia`);
+}
+
+/** "Fiz" / "Ignorar" / "Desfazer" numa sugestão da IA. */
+export async function decidirSugestaoAnuncio(formData: FormData) {
+  await exigirLogin();
+  const id = txt(formData, 'id').slice(0, 80);
+  const acao = txt(formData, 'acao');
+  if (id && (acao === 'fiz' || acao === 'ignorar' || acao === 'desfazer')) {
+    const { decidirSugestao } = await import('../../lib/automacao/agenteAnuncios');
+    await decidirSugestao(id, acao);
+  }
+  revalidatePath('/painel/anuncios');
+  redirect('/painel/anuncios#analise-ia');
+}
