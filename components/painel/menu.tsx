@@ -31,7 +31,7 @@ const ITENS: { href: string; rotulo: string; icone: string }[] = [
   { href: '/painel', rotulo: 'Início', icone: 'geral' },
   { href: '/painel/pedidos', rotulo: 'Pedidos', icone: 'pedidos' },
   { href: '/painel/clientes', rotulo: 'Clientes', icone: 'clientes' },
-  { href: '/painel/crm', rotulo: 'WhatsApp', icone: 'crm' },
+  { href: '/painel/atendimento', rotulo: 'WhatsApp', icone: 'crm' },
   { href: '/painel/anuncios', rotulo: 'Anúncios', icone: 'anuncios' },
   { href: '/painel/produtos', rotulo: 'Estoque', icone: 'produtos' },
   { href: '/painel/financeiro', rotulo: 'Financeiro', icone: 'financeiro' },
@@ -49,10 +49,15 @@ const ENGRENAGEM = ic(
 
 export default function Menu() {
   const caminho = usePathname() || '';
-  const ativo = (href: string) => (href === '/painel' ? caminho === '/painel' : caminho === href || caminho.startsWith(`${href}/`));
+  const ativo = (href: string) => {
+    if (href === '/painel') return caminho === '/painel';
+    // O CRM (contatos) faz parte do WhatsApp
+    if (href === '/painel/atendimento' && caminho.startsWith('/painel/crm')) return true;
+    return caminho === href || caminho.startsWith(`${href}/`);
+  };
   const naConfig = TELAS_CONFIG.some((t) => caminho === t || caminho.startsWith(`${t}/`));
   return (
-    <nav aria-label="Menu do painel" className="flex flex-1 md:flex-col items-center gap-1 overflow-x-auto px-2 md:px-0 md:pb-4">
+    <nav aria-label="Menu do painel" className="flex flex-1 md:flex-col items-center gap-0.5 px-1 md:gap-1 md:px-0 md:pb-4">
       {ITENS.map((i) => (
         <Link key={i.href} href={i.href} className="sv-trilho-link" aria-current={ativo(i.href) ? 'page' : undefined} title={i.rotulo}>
           {ICONES[i.icone]}

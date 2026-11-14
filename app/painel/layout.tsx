@@ -26,11 +26,11 @@ export default async function PainelLayout({ children }: { children: ReactNode }
       <style>{'body{overflow:hidden} a[aria-label="Falar no WhatsApp"]{display:none!important}'}</style>
       {entrou ? (
         <div className="min-h-full md:flex">
-          <aside className="sticky top-0 z-20 flex shrink-0 items-center border-b border-slate-200 bg-white md:h-screen md:w-[84px] md:flex-col md:border-b-0 md:border-r">
+          <aside className="sticky top-0 z-20 flex shrink-0 items-center overflow-x-auto border-b border-slate-200 bg-white [scrollbar-width:none] md:h-screen md:w-[84px] md:flex-col md:overflow-visible md:border-b-0 md:border-r">
             <Link href="/painel" className="sv-display hidden md:grid h-16 w-full place-items-center border-b border-slate-100 text-[11px] font-extrabold uppercase tracking-[0.25em] text-slate-500" title="Samba Vest">
               SVEST
             </Link>
-            <div className="flex flex-1 md:w-full md:flex-col md:pt-4 min-w-0">
+            <div className="flex shrink-0 md:w-full md:min-w-0 md:flex-1 md:shrink md:flex-col md:pt-4">
               <Menu />
             </div>
             <div className="shrink-0 px-1 md:w-full md:px-0 md:pb-1 flex justify-center">

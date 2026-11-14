@@ -11,7 +11,7 @@ import { after, NextResponse } from 'next/server';
 import { ehSaidaDoRobo, processarMensagem } from '../../../../lib/automacao/atendimento';
 import { config } from '../../../../lib/automacao/config';
 import { alterarConversa } from '../../../../lib/automacao/conversas';
-import { MensagemEvolution, telefoneDaMensagem, textoEvolution } from '../../../../lib/automacao/evolution';
+import { MensagemEvolution, motivoSemTelefone, registrarDiag, telefoneDaMensagem, textoEvolution } from '../../../../lib/automacao/evolution';
 import { adquirirTrava } from '../../../../lib/automacao/kv';
 
 export const dynamic = 'force-dynamic';
@@ -29,31 +29,43 @@ type CorpoEvolution = { event?: string; instance?: string; data?: MensagemEvolut
 
 export async function POST(request: Request) {
   if (!tokenValido(new URL(request.url).searchParams.get('token'))) {
+    // Registra no máximo 1 por minuto (qualquer um pode bater nesta URL)
+    if (await adquirirTrava('evo:diag:401', 60)) await registrarDiag('recusada: senha (token) do webhook não confere com EVOLUTION_WEBHOOK_TOKEN');
     return NextResponse.json({ ok: false, error: 'não autorizado' }, { status: 401 });
   }
   let corpo: CorpoEvolution;
   try {
     corpo = await request.json();
   } catch {
+    await registrarDiag('recusada: corpo não é JSON');
     return NextResponse.json({ ok: false, error: 'json inválido' }, { status: 400 });
   }
 
   const evento = String(corpo.event || '').toLowerCase().replace(/_/g, '.');
-  if (evento !== 'messages.upsert') return NextResponse.json({ ok: true, ignorado: corpo.event || 'sem evento' });
+  if (evento !== 'messages.upsert') {
+    await registrarDiag(`ignorada: evento ${corpo.event || 'sem nome'}`);
+    return NextResponse.json({ ok: true, ignorado: corpo.event || 'sem evento' });
+  }
   if (corpo.instance && corpo.instance !== config.evolution.instancia) {
+    await registrarDiag(`ignorada: veio da instância "${String(corpo.instance).slice(0, 40)}", o site usa "${config.evolution.instancia}"`);
     return NextResponse.json({ ok: true, ignorado: 'outra instância' });
   }
 
   const d = corpo.data;
   const lista: MensagemEvolution[] = Array.isArray(d) ? d : d && 'messages' in d && Array.isArray(d.messages) ? d.messages : d ? [d as MensagemEvolution] : [];
 
+  if (!lista.length) await registrarDiag('ignorada: evento sem mensagens no formato esperado');
   const doCliente: { m: MensagemEvolution; numero: string; texto: string; id: string }[] = [];
   let gravadas = 0;
   for (const m of lista) {
     const numero = telefoneDaMensagem(m);
     const texto = textoEvolution(m);
     const id = m.key?.id;
-    if (!numero || !texto || !id) continue;
+    if (!numero || !texto || !id) {
+      await registrarDiag(`ignorada: ${!numero ? motivoSemTelefone(m) : !texto ? 'sem texto (reação/sistema)' : 'sem ID'}`);
+      continue;
+    }
+    await registrarDiag(m.key?.fromMe ? 'recebida: enviada pela loja' : 'recebida: mensagem de cliente');
 
     if (!m.key?.fromMe) {
       // A trava contra repetição fica dentro de processarMensagem
