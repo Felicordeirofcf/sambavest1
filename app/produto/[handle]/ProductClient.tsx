@@ -243,10 +243,55 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     return v ? imagemDaVariante(v) : '';
   };
 
-  const mostrarFotoDoModelo = (modelo: string) => {
-    const img = imagemDoModelo(modelo);
-    const idx = img ? gallery.indexOf(img) : -1;
-    if (idx >= 0) setActiveImage(idx);
+  // Galeria do modelo escolhido: primeiro as fotos desse modelo, depois as gerais; sem as fotos dos
+  // OUTROS modelos (vestido não aparece na unissex), sem repetidas e no máximo 10.
+  const chaveFoto = (u: string) =>
+    (u || '')
+      .split('?')[0]
+      .replace(/-\d+x\d+(?=\.\w+$)/, '') // miniatura do WordPress (-300x300)
+      .replace(/-scaled(?=\.\w+$)/, '')
+      .replace(/-\d{1,2}(?=\.\w+$)/, '') // mesma foto enviada de novo (foto-1.jpg, foto-2.jpg)
+      .toLowerCase();
+  const PALAVRAS_MODELO: Record<string, RegExp> = {
+    regata: /regata/,
+    baby: /baby|babylook/,
+    vestido: /vestido/,
+  };
+  const grupoDoModelo = (m: string) => Object.keys(PALAVRAS_MODELO).find((k) => PALAVRAS_MODELO[k].test(m.toLowerCase())) || 'comum';
+  const galeriaVisivel = useMemo(() => {
+    const modelo = selectedModel || '';
+    const grupo = grupoDoModelo(modelo);
+    const doModelo: string[] = [];
+    const deOutros = new Set<string>();
+    for (const v of variantsList) {
+      const img = imagemDaVariante(v);
+      if (!img) continue;
+      const m = extractModelFromVariant(v);
+      if (modelo && m.toLowerCase() === modelo.toLowerCase()) doModelo.push(img);
+      else if (modelo && grupoDoModelo(m) !== grupo) deOutros.add(chaveFoto(img));
+    }
+    // Fotos gerais com o nome de outro modelo no arquivo (ex.: "...-vestido.jpg") também saem
+    const ehDeOutroModelo = (img: string) => {
+      if (deOutros.has(chaveFoto(img))) return true;
+      const g = Object.keys(PALAVRAS_MODELO).find((k) => PALAVRAS_MODELO[k].test(chaveFoto(img)));
+      return Boolean(modelo && g && g !== grupo);
+    };
+    const doNome = gallery.filter((img: string) => grupo !== 'comum' && PALAVRAS_MODELO[grupo]?.test(chaveFoto(img)));
+    const lista: string[] = [];
+    const vistas = new Set<string>();
+    for (const img of [...doModelo, ...doNome, ...gallery.filter((g: string) => !ehDeOutroModelo(g))]) {
+      const k = chaveFoto(img);
+      if (!img || vistas.has(k)) continue;
+      vistas.add(k);
+      lista.push(img);
+    }
+    return (lista.length ? lista : gallery).slice(0, 10);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gallery, variantsList, selectedModel]);
+
+  // Trocou o modelo: volta para a 1ª foto (que já é a desse modelo)
+  const mostrarFotoDoModelo = (_modelo: string) => {
+    setActiveImage(0);
   };
 
   // Veio da vitrine com ?modelo=Regata: já abre na foto desse modelo
@@ -373,7 +418,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     openCart();
   };
 
-  const displayedImage = gallery[activeImage] || '';
+  const displayedImage = galeriaVisivel[activeImage] || galeriaVisivel[0] || '';
   
   const whatsappMessage = encodeURIComponent(`Olá! Tenho dúvida sobre o produto: ${product?.name} (${selectedModel ? selectedModel : 'Modelo padrão'})`);
   const whatsappTamanhoUrl = `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(
@@ -450,7 +495,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
               onTouchStart={(e) => (toqueX.current = e.touches[0].clientX)}
               onTouchEnd={(e) => {
                 const dx = e.changedTouches[0].clientX - toqueX.current;
-                if (Math.abs(dx) > 40 && gallery.length > 1) setActiveImage((i) => (i + (dx < 0 ? 1 : -1) + gallery.length) % gallery.length);
+                if (Math.abs(dx) > 40 && galeriaVisivel.length > 1) setActiveImage((i) => (i + (dx < 0 ? 1 : -1) + galeriaVisivel.length) % galeriaVisivel.length);
               }}
             >
               {product?.badge && (
@@ -469,12 +514,12 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                   className={`h-full w-full transition-all duration-300 ease-in-out ${T.foto}`}
                 />
               )}
-              {gallery.length > 1 && (
+              {galeriaVisivel.length > 1 && (
                 <>
                   <button
                     type="button"
                     aria-label="Foto anterior"
-                    onClick={() => setActiveImage((i) => (i - 1 + gallery.length) % gallery.length)}
+                    onClick={() => setActiveImage((i) => (i - 1 + galeriaVisivel.length) % galeriaVisivel.length)}
                     className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-xl text-white opacity-90 backdrop-blur transition hover:bg-black/75 md:opacity-0 md:group-hover/foto:opacity-100"
                   >
                     ‹
@@ -482,23 +527,21 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                   <button
                     type="button"
                     aria-label="Próxima foto"
-                    onClick={() => setActiveImage((i) => (i + 1) % gallery.length)}
+                    onClick={() => setActiveImage((i) => (i + 1) % galeriaVisivel.length)}
                     className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-xl text-white opacity-90 backdrop-blur transition hover:bg-black/75 md:opacity-0 md:group-hover/foto:opacity-100"
                   >
                     ›
                   </button>
-                  <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-1.5">
-                    {gallery.map((_: string, i: number) => (
-                      <span key={i} className={`h-1.5 rounded-full transition-all ${activeImage === i ? 'w-5 bg-black/70' : 'w-1.5 bg-black/25'}`} />
-                    ))}
-                  </div>
+                  <span className="absolute bottom-3 right-3 z-10 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
+                    {Math.min(activeImage, galeriaVisivel.length - 1) + 1} / {galeriaVisivel.length}
+                  </span>
                 </>
               )}
             </div>
 
-            {gallery.length > 1 && (
+            {galeriaVisivel.length > 1 && (
               <div className="mt-4 flex gap-3 overflow-x-auto px-1 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:overflow-visible">
-                {gallery.map((img: string, i: number) => (
+                {galeriaVisivel.map((img: string, i: number) => (
                   <button
                     key={`${img}-${i}`}
                     type="button"

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { podeOtimizar } from '../../../lib/imagem';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import ProdutoComModelo from './ProdutoComModelo';
@@ -67,13 +68,37 @@ const buscarProduto = cache(async (handleOrId: string): Promise<any | null> => {
 
 const semHtml = (t: string) => (t || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 
-export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
+/**
+ * Imagem da prévia do link (WhatsApp, Instagram...): a do modelo pedido em ?modelo= (Vestido, Baby look...)
+ * e passada pelo otimizador de imagens do site (JPEG/PNG leve). O WhatsApp mostra borrada a foto pesada.
+ */
+function imagemPrevia(original: string | undefined): string | undefined {
+  if (!original) return undefined;
+  if (!podeOtimizar(original)) return original;
+  const abs = original.startsWith('/') ? `${SITE}${original}` : original;
+  return `${SITE}/_next/image?url=${encodeURIComponent(abs)}&w=640&q=75`; // q precisa estar em images.qualities (padrão: só 75)
+}
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ handle: string }>;
+  searchParams: Promise<{ modelo?: string }>;
+}): Promise<Metadata> {
   const dados = await buscarProduto(handleDe((await params).handle)).catch(() => null);
   if (!dados) return { title: 'Produto não encontrado | Samba Vest', robots: { index: false } };
-  const { product } = dados;
+  const { product, variations } = dados;
+  const modelo = String((await searchParams)?.modelo || '').trim().toLowerCase();
   const descricao = (semHtml(product.short_description) || semHtml(product.description)).slice(0, 160) ||
     `${product.name} — camisa de escola de samba da Samba Vest.`;
-  const imagem = product.images?.[0]?.src;
+  // Foto da variação do modelo pedido; senão a 1ª foto do produto
+  const doModelo = modelo
+    ? (variations as { image?: { src?: string }; attributes?: { name?: string; option?: string }[] }[]).find(
+        (v) => v.image?.src && v.attributes?.some((a) => /modelo|style|model/i.test(a.name || '') && (a.option || '').toLowerCase() === modelo)
+      )?.image?.src
+    : undefined;
+  const imagem = imagemPrevia(doModelo || product.images?.[0]?.src);
   const url = `${SITE}/produto/${product.slug}`;
   return {
     title: product.name,

@@ -302,7 +302,9 @@ export async function buscarProdutos(busca: string) {
   }
   const produtos = await Promise.all(
     pontuados.map(async ({ p }) => {
-      const modelos = p.modelos || (p.id ? await modelosDoProduto(p.id) : undefined);
+      const modelosBase = p.modelos || (p.id ? await modelosDoProduto(p.id) : undefined);
+      // Link de cada modelo: abre a página já nele e a prévia do WhatsApp mostra a foto desse modelo
+      const modelos = modelosBase?.map((m) => ({ ...m, link: m.modelo === 'Único' ? p.link : `${p.link}?modelo=${encodeURIComponent(m.modelo)}` }));
       return {
         nome: p.nome,
         preco_a_partir_de: brl(p.preco),
@@ -318,7 +320,7 @@ export async function buscarProdutos(busca: string) {
   return {
     encontrados: produtos.length,
     produtos,
-    dica: 'Se o cliente não disse o modelo, pergunte qual (unissex, baby look, regata, vestido...) entre os que o produto tem. Use o preço e os tamanhos do modelo escolhido.',
+    dica: 'Se o cliente não disse o modelo, pergunte qual (unissex, baby look, regata, vestido...) entre os que o produto tem. Use o preço e os tamanhos do modelo escolhido e mande o link DO MODELO (campo link dentro de modelos), para a foto certa aparecer.',
   };
 }
 
