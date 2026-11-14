@@ -1,5 +1,5 @@
 // Vigia da entrega dos anúncios: avisa no celular quando a Meta para de mostrar o anúncio
-// (horas sem exibição, conta bloqueada, conjunto desligado) ou quando o saldo pré-pago está acabando.
+// (horas sem exibição, entrega que despenca em relação a ontem, conta bloqueada, conjunto com problema) ou quando o saldo pré-pago está acabando.
 // Roda junto com o cron (a cada 30 min). O resultado vai para o log público do GitHub Actions,
 // então só devolve situação e motivos, sem valores em R$.
 import { alertarCelular } from './alertas';
@@ -10,20 +10,24 @@ const horaLocal = () => Number(new Date().toLocaleString('en-US', { timeZone: 'A
 
 export async function resumoEntrega() {
   const { entregaAnuncios } = await import('./metaAds');
-  const e = await entregaAnuncios(diaLocal(Date.now()), horaLocal());
+  const e = await entregaAnuncios(diaLocal(Date.now()), horaLocal(), diaLocal(Date.now() - 86_400_000));
   const resumo: Record<string, unknown> = {
     situacao: e.situacao,
     motivos: e.motivos,
     horasSemEntrega: e.horasSemEntrega,
     exibicoesPorHoraHoje: Object.fromEntries(e.porHora.map((x) => [`${x.hora}h`, x.impressoes])),
+    ultimas3h: e.ultimas3h,
     saldo:
-      e.saldo === null || !e.orcamentoDia
-        ? 'desconhecido (conta pós-paga ou sem permissão)'
-        : e.saldo < e.orcamentoDia
-          ? 'baixo: menos de 1 dia de orçamento'
-          : e.saldo < e.orcamentoDia * 2
-            ? 'atenção: menos de 2 dias de orçamento'
-            : 'ok',
+      e.saldo === null
+        ? 'sem saldo pré-pago (conta paga no cartão?)'
+        : !e.orcamentoDia
+          ? 'saldo lido, mas não achei o orçamento diário (orçamento total?)'
+          : e.saldo < e.orcamentoDia
+            ? 'baixo: menos de 1 dia de orçamento'
+            : e.saldo < e.orcamentoDia * 2
+              ? 'atenção: menos de 2 dias de orçamento'
+              : 'ok',
+    orcamentoDiario: e.orcamentoDia ? 'encontrado' : 'não encontrado (orçamento total ou sem permissão)',
     conjuntos: e.conjuntos.map((c) => ({ nome: c.nome, status: c.status, aprendizado: c.aprendizado, problemas: c.problemas?.length ? c.problemas : undefined })),
   };
   return { resumo, detalhe: e };

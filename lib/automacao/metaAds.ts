@@ -252,7 +252,10 @@ export type EntregaAnuncios = {
   porHora: { hora: number; impressoes: number }[];
   /** Horas seguidas, até agora, sem nenhuma exibição (com anúncio ligado). */
   horasSemEntrega: number;
-  /** Saldo pré-pago em R$ (texto da Meta convertido) e orçamento diário somado dos conjuntos ligados. */
+  /** Últimas 3 horas completas: exibições hoje x ontem no mesmo horário. */
+  ultimas3h: { hoje: number; ontem: number; queda: number | null };
+  /** Saldo pré-pago em R$ (null = conta paga no cartão / sem saldo) e orçamento diário somado
+   *  (do conjunto, ou da campanha quando o orçamento fica na campanha, como no Advantage+). */
   saldo: number | null;
   orcamentoDia: number | null;
   /** Situação para o dono: ok | atencao | parado */
@@ -264,6 +267,7 @@ type ConjuntoApi = {
   name: string;
   effective_status: string;
   daily_budget?: string;
+  campaign?: { id: string; daily_budget?: string };
   learning_stage_info?: { status?: string };
   issues_info?: { error_summary?: string; error_message?: string }[];
 };
@@ -274,48 +278,81 @@ export function saldoDoTexto(t?: string): number | null {
   return m ? Number(m[1].replace(/\./g, '').replace(',', '.')) : null;
 }
 
-export async function entregaAnuncios(hoje: string, horaAgora: number): Promise<EntregaAnuncios> {
+/** Queda que conta como "despencou": hoje com menos de 20% de ontem no mesmo horário. */
+const QUEDA_FORTE = 0.8;
+/** Abaixo disso ontem, a comparação não é confiável (pouca gente vendo). */
+const MINIMO_ONTEM_3H = 60;
+
+export async function entregaAnuncios(hoje: string, horaAgora: number, ontem?: string): Promise<EntregaAnuncios> {
   const pedirConjuntos = (campos: string) =>
     graph<{ data: ConjuntoApi[] }>(`${conta()}/adsets`, {
       fields: campos,
       effective_status: JSON.stringify(['ACTIVE', 'PENDING_REVIEW', 'WITH_ISSUES', 'IN_PROCESS', 'PREAPPROVED']),
       limit: '50',
     });
-  const [conjuntosApi, horas, contaInfo] = await Promise.all([
-    // learning_stage_info / issues_info podem exigir mais permissão: tenta sem eles
-    pedirConjuntos('name,effective_status,daily_budget,learning_stage_info,issues_info').catch((e) =>
-      semPermissao(e) ? pedirConjuntos('name,effective_status,daily_budget') : Promise.reject(e)
-    ),
+  const porHoraDo = (dia: string) =>
     graph<{ data: { impressions?: string; hourly_stats_aggregated_by_advertiser_time_zone?: string }[] }>(`${conta()}/insights`, {
       level: 'account',
       fields: 'impressions',
-      time_range: intervalo({ desde: hoje, ate: hoje }),
+      time_range: intervalo({ desde: dia, ate: dia }),
       breakdowns: 'hourly_stats_aggregated_by_advertiser_time_zone',
       limit: '48',
-    }).catch(() => ({ data: [] })),
+    })
+      .then((r) =>
+        r.data
+          .map((l) => ({ hora: Number((l.hourly_stats_aggregated_by_advertiser_time_zone || '').slice(0, 2)), impressoes: n(l.impressions) }))
+          .filter((x) => Number.isFinite(x.hora))
+          .sort((a, b) => a.hora - b.hora)
+      )
+      .catch(() => null);
+  const BASICO = 'name,effective_status,daily_budget,campaign{id,daily_budget}';
+  const [conjuntosApi, porHoraHoje, porHoraOntem, contaInfo] = await Promise.all([
+    // learning_stage_info / issues_info podem exigir mais permissão: tenta sem eles
+    pedirConjuntos(`${BASICO},learning_stage_info,issues_info`).catch((e) =>
+      semPermissao(e) ? pedirConjuntos(BASICO) : Promise.reject(e)
+    ),
+    porHoraDo(hoje),
+    ontem ? porHoraDo(ontem) : Promise.resolve(null),
     contaAnuncios().catch(() => null),
   ]);
+  const porHora = porHoraHoje || [];
+  const naHora = (lista: { hora: number; impressoes: number }[] | null, h: number) => lista?.find((x) => x.hora === h)?.impressoes || 0;
 
-  const porHora = horas.data
-    .map((l) => ({ hora: Number((l.hourly_stats_aggregated_by_advertiser_time_zone || '').slice(0, 2)), impressoes: n(l.impressions) }))
-    .filter((x) => Number.isFinite(x.hora))
-    .sort((a, b) => a.hora - b.hora);
   const ligados = conjuntosApi.data.filter((c) => c.effective_status === 'ACTIVE');
   // Horas completas sem exibição, contando de trás para frente a partir da hora anterior à atual
   // (a hora atual ainda está em andamento e a Meta atrasa os números em até ~30 min)
   let horasSemEntrega = 0;
   if (ligados.length) {
     for (let h = horaAgora - 1; h >= 0; h--) {
-      if ((porHora.find((x) => x.hora === h)?.impressoes || 0) > 0) break;
+      if (naHora(porHora, h) > 0) break;
       horasSemEntrega++;
     }
-    if (!porHora.some((x) => x.impressoes > 0)) horasSemEntrega = horaAgora; // nada hoje ainda
   }
-  const orcamentoDia = ligados.length ? ligados.reduce((s, c) => s + n(c.daily_budget) / 100, 0) || null : null;
+  // Últimas 3 horas completas, hoje x ontem no mesmo horário
+  const horas3 = [horaAgora - 3, horaAgora - 2, horaAgora - 1].filter((h) => h >= 0);
+  const ultimas3h = {
+    hoje: horas3.reduce((s, h) => s + naHora(porHora, h), 0),
+    ontem: horas3.reduce((s, h) => s + naHora(porHoraOntem, h), 0),
+    queda: null as number | null,
+  };
+  if (porHoraOntem && ultimas3h.ontem > 0) ultimas3h.queda = Math.round((1 - ultimas3h.hoje / ultimas3h.ontem) * 100) / 100;
+
+  // Orçamento: o do conjunto; se o conjunto não tem (orçamento na campanha), o da campanha, uma vez por campanha
+  let orcamento = 0;
+  const campanhasContadas = new Set<string>();
+  for (const c of ligados) {
+    if (n(c.daily_budget)) orcamento += n(c.daily_budget) / 100;
+    else if (c.campaign && n(c.campaign.daily_budget) && !campanhasContadas.has(c.campaign.id)) {
+      campanhasContadas.add(c.campaign.id);
+      orcamento += n(c.campaign.daily_budget) / 100;
+    }
+  }
+  const orcamentoDia = orcamento || null;
   const saldo = saldoDoTexto(contaInfo?.saldo);
 
   const motivos: string[] = [];
   let situacao: EntregaAnuncios['situacao'] = 'ok';
+  const atencao = () => situacao === 'ok' && (situacao = 'atencao');
   if (contaInfo && contaInfo.status !== 1) {
     situacao = 'parado';
     motivos.push('conta de anúncios não está ativa');
@@ -324,16 +361,27 @@ export async function entregaAnuncios(hoje: string, horaAgora: number): Promise<
     situacao = 'parado';
     motivos.push('nenhum conjunto de anúncios ligado e entregando');
   }
-  // De madrugada a Meta entrega pouco: só acusa "parado" a partir das 9h
+  // De madrugada a Meta entrega pouco: só acusa a partir das 9h
   if (ligados.length && horaAgora >= 9 && horasSemEntrega >= 2) {
     situacao = 'parado';
     motivos.push(`${horasSemEntrega} h seguidas sem nenhuma exibição`);
+  } else if (
+    ligados.length &&
+    horaAgora >= 9 &&
+    ultimas3h.queda !== null &&
+    ultimas3h.ontem >= MINIMO_ONTEM_3H &&
+    ultimas3h.queda >= QUEDA_FORTE
+  ) {
+    atencao();
+    motivos.push(
+      `entrega despencou: ${ultimas3h.hoje} exibições nas últimas 3 h contra ${ultimas3h.ontem} ontem no mesmo horário (-${Math.round(ultimas3h.queda * 100)}%)`
+    );
   }
   if (saldo !== null && orcamentoDia && saldo < orcamentoDia) {
     situacao = 'parado';
     motivos.push('saldo pré-pago menor que 1 dia de orçamento');
   } else if (saldo !== null && orcamentoDia && saldo < orcamentoDia * 2) {
-    if (situacao === 'ok') situacao = 'atencao';
+    atencao();
     motivos.push('saldo pré-pago para menos de 2 dias');
   }
   const conjuntos = conjuntosApi.data.map((c) => ({
@@ -344,13 +392,13 @@ export async function entregaAnuncios(hoje: string, horaAgora: number): Promise<
   }));
   for (const c of conjuntos) {
     if (c.problemas?.length) {
-      if (situacao === 'ok') situacao = 'atencao';
+      atencao();
       motivos.push(`problema no conjunto "${c.nome}": ${c.problemas.join('; ')}`);
     }
     if (c.aprendizado === 'FAIL') {
-      if (situacao === 'ok') situacao = 'atencao';
+      atencao();
       motivos.push(`conjunto "${c.nome}" com aprendizado limitado`);
     }
   }
-  return { conjuntos, porHora, horasSemEntrega, saldo, orcamentoDia, situacao, motivos };
+  return { conjuntos, porHora, horasSemEntrega, ultimas3h, saldo, orcamentoDia, situacao, motivos };
 }
