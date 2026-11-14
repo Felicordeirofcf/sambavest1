@@ -8,6 +8,7 @@
 // Os textos das respostas vêm das variáveis WHATSAPP_RESPOSTA_* (aprovadas pelo dono).
 // Resposta sem texto configurado = a dúvida vai para o atendimento humano.
 import { responderComIA, iaDisponivel } from './agente';
+import { registrarIA } from './registroIA';
 import { config, integracoes } from './config';
 import { alterarConversa, Conversa, janelaAberta, obterConversa, registrarSaida } from './conversas';
 import { enviarTextoEvolution } from './evolution';
@@ -276,6 +277,83 @@ export type ResultadoMensagem = {
   erro?: string;
 };
 
+/**
+ * Roda a IA para uma mensagem do cliente e entrega o resultado (resposta, transferência, alerta).
+ * terminou = false quando a IA falhou: quem chamou segue para o plano B (robô de regras / pessoa).
+ */
+async function atenderComIA(
+  numero: string,
+  texto: string,
+  conversaInicial: Conversa,
+  trecho: string,
+  res: ResultadoMensagem
+): Promise<{ conversa: Conversa; terminou: boolean }> {
+  const r = config.whatsapp.respostas;
+  let conversa = conversaInicial;
+  try {
+    const ia = await responderComIA({ numeroCliente: numero, texto, conversa });
+    const nomes = ia.ferramentas.map((f) => f.nome);
+    res.intencao = `ia (${nomes.join(', ') || 'sem ferramentas'}; ${ia.tokens.entrada}+${ia.tokens.saida} tokens)`;
+    if (ia.texto) {
+      const id = await enviarAoCliente(numero, ia.texto);
+      conversa = await alterarConversa(numero, (c) => {
+        c.mensagens.push({ id, de: 'robo', texto: ia.texto!, em: Date.now() });
+        if (ia.pedidos) c.pedidos = ia.pedidos;
+        if (ia.humano) c.humanoAte = Date.now() + r.silencioHoras * 3_600_000;
+      });
+      res.respondeu = true;
+    }
+    await registrarIA({
+      resultado: ia.humano ? 'transferiu' : 'respondeu',
+      detalhe: ia.humano ? 'passou para uma pessoa' : undefined,
+      tokens: ia.tokens.entrada + ia.tokens.saida,
+      ferramentas: nomes,
+    });
+    if (ia.humano) {
+      res.humano = true;
+      if (!ia.texto) {
+        conversa = await alterarConversa(numero, (c) => {
+          c.humanoAte = Date.now() + r.silencioHoras * 3_600_000;
+        });
+        const aviso = r.humano || AVISO_HUMANO_PADRAO;
+        const id = await enviarAoCliente(numero, preencher(aviso, { site: config.siteUrl }));
+        conversa = await registrarSaida(numero, aviso, 'robo', id);
+      }
+      res.alertas = await alertarDono(conversa, trecho, `Precisa de atendimento: ${ia.motivoHumano || ''}`.trim(), true);
+      return { conversa, terminou: true };
+    }
+    if (res.respondeu) {
+      res.alertas = await alertarDono(conversa, trecho, 'Respondida pela IA', false);
+      return { conversa, terminou: true };
+    }
+  } catch (e) {
+    res.erro = `IA: ${(e as Error).message}`;
+    console.error('[atendimento] IA falhou, usando o plano B:', res.erro);
+    await registrarIA({ resultado: 'erro', detalhe: (e as Error).message });
+  }
+  return { conversa, terminou: false };
+}
+
+/** Quando a IA está ligada, o cliente nunca fica sem resposta: se cair para uma pessoa, avisa. */
+const AVISO_HUMANO_PADRAO = 'Recebi sua mensagem! Já já alguém da nossa equipe te responde por aqui 🙂';
+
+/**
+ * "Devolver para a IA" no painel: se a última mensagem da conversa é do cliente e ficou sem
+ * resposta, a IA responde agora (em vez de esperar o cliente escrever de novo).
+ */
+export async function responderPendenteComIA(numero: string): Promise<string> {
+  if (!(config.whatsapp.ia.ativa && iaDisponivel())) return 'A IA está desligada (WHATSAPP_IA).';
+  const conversa = await obterConversa(numero);
+  if (!conversa) return 'Conversa não encontrada.';
+  const ultima = [...conversa.mensagens].sort((a, b) => a.em - b.em).pop();
+  if (!ultima || ultima.de !== 'cliente') return 'IA liberada: ela responde a próxima mensagem do cliente.';
+  if (!podeResponder(conversa)) return 'Janela de 24h fechada: a IA responde quando o cliente escrever de novo.';
+  const res: ResultadoMensagem = { numero };
+  const r = await atenderComIA(numero, ultima.texto, conversa, ultima.texto.slice(0, 300), res);
+  if (!r.terminou) throw new Error(res.erro || 'a IA não respondeu');
+  return res.humano ? 'A IA respondeu e passou a conversa para você.' : 'A IA respondeu o cliente.';
+}
+
 export async function processarMensagem(
   m: MensagemMeta,
   nomeContato?: string,
@@ -328,6 +406,7 @@ export async function processarMensagem(
         conversa = await registrarSaida(numero, pedido, 'robo', id);
         res.respondeu = true;
         res.intencao = 'midia → pediu texto';
+        await registrarIA({ resultado: 'pediu-texto' });
         return res;
       } catch (e) {
         res.erro = (e as Error).message;
@@ -340,41 +419,10 @@ export async function processarMensagem(
 
   // Atendente com IA. Se a IA falhar (API fora, erro), cai no robô de regras logo abaixo.
   if (iaLigada && (ehTexto || legenda) && podeResponder(conversa)) {
-    try {
-      const textoIA = ehTexto ? texto : `(o cliente mandou uma foto/vídeo com a legenda) ${legenda}`;
-      const ia = await responderComIA({ numeroCliente: numero, texto: textoIA, conversa });
-      res.intencao = `ia (${ia.ferramentas.map((f) => f.nome).join(', ') || 'sem ferramentas'}; ${ia.tokens.entrada}+${ia.tokens.saida} tokens)`;
-      if (ia.texto) {
-        const id = await enviarAoCliente(numero, ia.texto);
-        conversa = await alterarConversa(numero, (c) => {
-          c.mensagens.push({ id, de: 'robo', texto: ia.texto!, em: Date.now() });
-          if (ia.pedidos) c.pedidos = ia.pedidos;
-          if (ia.humano) c.humanoAte = Date.now() + r.silencioHoras * 3_600_000;
-        });
-        res.respondeu = true;
-      }
-      if (ia.humano) {
-        res.humano = true;
-        if (!ia.texto) {
-          conversa = await alterarConversa(numero, (c) => {
-            c.humanoAte = Date.now() + r.silencioHoras * 3_600_000;
-          });
-          if (r.humano) {
-            const id = await enviarAoCliente(numero, preencher(r.humano, { site: config.siteUrl }));
-            conversa = await registrarSaida(numero, r.humano, 'robo', id);
-          }
-        }
-        res.alertas = await alertarDono(conversa, trecho, `Precisa de atendimento: ${ia.motivoHumano || ''}`.trim(), true);
-        return res;
-      }
-      if (res.respondeu) {
-        res.alertas = await alertarDono(conversa, trecho, 'Respondida pela IA', false);
-        return res;
-      }
-    } catch (e) {
-      res.erro = `IA: ${(e as Error).message}`;
-      console.error('[atendimento] IA falhou, usando o robô de regras:', res.erro);
-    }
+    const textoIA = ehTexto ? texto : `(o cliente mandou uma foto/vídeo com a legenda) ${legenda}`;
+    const r2 = await atenderComIA(numero, textoIA, conversa, trecho, res);
+    conversa = r2.conversa;
+    if (r2.terminou) return res;
   }
 
   // Respostas automáticas (estamos dentro da janela de 24h: o cliente acabou de escrever).
@@ -408,15 +456,17 @@ export async function processarMensagem(
   conversa = await alterarConversa(numero, (c) => {
     c.humanoAte = Date.now() + r.silencioHoras * 3_600_000;
   });
-  if (r.humano) {
+  // Com a IA ligada, o cliente sempre recebe um aviso (mesmo sem WHATSAPP_RESPOSTA_HUMANO)
+  const aviso = r.humano || (iaLigada ? AVISO_HUMANO_PADRAO : '');
+  if (aviso) {
     try {
-      const id = await enviarAoCliente(numero, preencher(r.humano, { site: config.siteUrl }));
-      conversa = await registrarSaida(numero, r.humano, 'robo', id);
+      const id = await enviarAoCliente(numero, preencher(aviso, { site: config.siteUrl }));
+      conversa = await registrarSaida(numero, aviso, 'robo', id);
     } catch (e) {
-      res.erro = (e as Error).message;
+      res.erro = res.erro ? `${res.erro} | ${(e as Error).message}` : (e as Error).message;
     }
   }
-  res.alertas = await alertarDono(conversa, trecho, 'Precisa de atendimento', true);
+  res.alertas = await alertarDono(conversa, trecho, res.erro ? `Precisa de atendimento (${res.erro.slice(0, 120)})` : 'Precisa de atendimento', true);
   return res;
 }
 
