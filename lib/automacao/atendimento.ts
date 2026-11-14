@@ -393,6 +393,24 @@ export async function processarMensagem(
     return res;
   }
 
+  // "SAIR": não recebe mais lembretes automáticos (a conversa continua normal)
+  if (ehTexto && texto.trim().length <= 30) {
+    const { PALAVRAS_SAIR, sairDosLembretes } = await import('./lembretesWhats');
+    const t = normalizar(texto).replace(/[^a-z ]/g, '').trim();
+    if (PALAVRAS_SAIR.includes(t)) {
+      await sairDosLembretes(numero);
+      const ok = 'Pronto! Você não vai mais receber lembretes automáticos. Se precisar de algo, é só chamar aqui 🙂';
+      try {
+        const id = await enviarAoCliente(numero, ok);
+        conversa = await registrarSaida(numero, ok, 'robo', id);
+      } catch (e) {
+        res.erro = (e as Error).message;
+      }
+      res.intencao = 'saiu dos lembretes';
+      return res;
+    }
+  }
+
   // Áudio, foto ou vídeo sem legenda: a IA só lê texto. Em vez de passar para uma pessoa,
   // pede para o cliente escrever (no máximo 1 vez a cada 30 min por conversa).
   const legenda = ehTexto ? '' : (texto.match(/^\[[^\]]+\]\s+([\s\S]+)$/)?.[1] || texto.match(/^[^:]{1,25}:\s+([\s\S]+)$/)?.[1] || '').trim();

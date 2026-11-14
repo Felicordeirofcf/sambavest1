@@ -149,6 +149,17 @@ export async function desconectar(): Promise<void> {
   await evo(`/instance/logout/${inst()}`, { method: 'DELETE' });
 }
 
+/** O número tem WhatsApp? true/false; null se a Evolution não souber responder. */
+export async function temWhatsapp(numero: string): Promise<boolean | null> {
+  const n = numero.replace(/\D/g, '');
+  const r = await evo<{ exists?: boolean; number?: string }[] | null>(`/chat/whatsappNumbers/${inst()}`, {
+    method: 'POST',
+    body: { numbers: [n] },
+  });
+  const item = Array.isArray(r) ? r[0] : null;
+  return typeof item?.exists === 'boolean' ? item.exists : null;
+}
+
 /** Envia texto. Devolve o ID da mensagem no WhatsApp. */
 export async function enviarTextoEvolution(numero: string, texto: string): Promise<string | undefined> {
   const n = numero.replace(/\D/g, '');

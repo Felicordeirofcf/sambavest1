@@ -73,6 +73,7 @@ Regras:
 - Uma campanha recém-ligada ou recém-alterada passa por aprendizado de 1 a 3 dias: não sugira pausar só por isso.
 - Escalar = aumentar o orçamento aos poucos (no máximo +20% a 30% por vez), só no que já vende com custo por venda bom. Meta da loja: custo por venda de até R$ 35.
 - Se o problema estiver no site (muitos cliques e visitas, pouca sacola ou pouco checkout), diga isso: trocar anúncio não resolve problema de página.
+- O WhatsApp também é canal de venda: muita gente vê o anúncio e chama no WhatsApp (a IA atende e manda link de compra). Antes de dizer que o anúncio "não vende", olhe "whatsapp" (conversas novas, links de compra, pedidos vindos do WhatsApp) e "loja_toda" (vendas de todas as origens; "direto/sem origem" pode ser gente do anúncio que voltou depois). Cite esses números quando forem relevantes.
 - Respeite as "regras fixas" que já rodam (lista "regras"); você pode concordar, discordar com motivo ou complementar, sem repetir igual.
 - Você só sugere. Quem decide e executa é o dono, no Gerenciador de Anúncios. Nunca diga que você fez algo.
 - No máximo 5 sugestões, da mais importante para a menos. Se está tudo bem, uma sugestão "manter" basta.
@@ -125,6 +126,33 @@ export async function coletarDadosAnuncios(agora = Date.now()) {
     lerMelhorias(),
   ]);
 
+  // WhatsApp: muita gente vê o anúncio e chama no WhatsApp em vez de comprar direto no site
+  const [conversas, registroIA] = await Promise.all([
+    import('./conversas').then((m) => m.listarConversas(200)).catch(() => []),
+    import('./registroIA').then((m) => m.lerRegistroIA()).catch(() => []),
+  ]);
+  const noDia = (ms: number | undefined, dias: string[]) => Boolean(ms) && dias.includes(diaLocal(ms!));
+  const whatsapp = (dias: string[]) => ({
+    conversas_novas: conversas.filter((c) => noDia(c.mensagens[0]?.em, dias)).length,
+    conversas_com_mensagem_do_cliente: conversas.filter((c) => noDia(c.ultimaDoClienteEm, dias)).length,
+    ia_respondeu: registroIA.filter((x) => x.resultado === 'respondeu' && noDia(x.em, dias)).length,
+    ia_mandou_link_de_compra: registroIA.filter((x) => x.ferramentas?.includes('montar_link_compra') && noDia(x.em, dias)).length,
+    pedidos_pagos_vindos_do_whatsapp: pedidos.filter((p) => p.origem?.source === 'whatsapp' && pago(p) && dias.includes(diaLocal(quando(p)))).length,
+  });
+  // Vendas da loja inteira (todas as origens), para não concluir "0 compras" olhando só o anúncio
+  const lojaToda = (dias: string[]) => {
+    const ps = pedidos.filter((p) => dias.includes(diaLocal(quando(p))));
+    return {
+      pedidos_pagos: ps.filter(pago).length,
+      pedidos_aguardando_pagamento: ps.filter((p) => p.status === 'pending' || p.status === 'on-hold').length,
+      por_origem: Object.fromEntries(
+        Object.entries(
+          ps.filter(pago).reduce<Record<string, number>>((acc, p) => ((acc[p.origem?.source || 'direto/sem origem'] = (acc[p.origem?.source || 'direto/sem origem'] || 0) + 1), acc), {})
+        )
+      ),
+    };
+  };
+
   const vendas = (dias: string[]) => {
     const ps = pedidos.filter((p) => p.origem?.source === 'meta' && pago(p) && dias.includes(diaLocal(quando(p))));
     return { pedidos_pagos: ps.length, faturamento: r2(ps.reduce((s, p) => s + p.total, 0)) };
@@ -148,6 +176,8 @@ export async function coletarDadosAnuncios(agora = Date.now()) {
       desde_inicio: funilCampanha ? { ...funilCampanha, ...vendas(diasCampanha) } : null,
     },
     pagina_black_vindos_do_anuncio: bf,
+    whatsapp: { hoje: whatsapp([hoje]), ultimos_3_dias: whatsapp(dias3), desde_inicio: whatsapp(diasCampanha) },
+    loja_toda: { hoje: lojaToda([hoje]), ultimos_3_dias: lojaToda(dias3) },
     regras: (regras?.lista || []).map((m) => ({ nivel: m.nivel, titulo: m.titulo, acao: m.acao })),
   };
 }

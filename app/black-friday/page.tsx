@@ -63,12 +63,20 @@ function CamisaTopo({ p, fase }: { p: ProdutoBF; fase: ReturnType<typeof faseBF>
       </span>
       <span className="flex flex-1 flex-col gap-2 p-2.5 sm:p-4">
         <span className="text-[11px] font-bold uppercase leading-tight tracking-wide text-white/80 sm:text-sm">{p.enredo}</span>
+        {fase === 'durante' && (
+          <span className="block text-xl font-black leading-none text-white sm:text-2xl">
+            {brl(p.precoAtual || p.precoBlack)}
+            {p.precoCheio && p.precoCheio > (p.precoAtual || p.precoBlack) && (
+              <span className="ml-1.5 align-middle text-xs font-bold text-white/50 line-through">{brl(p.precoCheio)}</span>
+            )}
+          </span>
+        )}
         <span
-          className={`mt-auto block rounded-xl py-2.5 text-center text-sm font-black uppercase tracking-wider text-white sm:py-3 sm:text-base ${
+          className={`mt-auto block rounded-xl py-3 text-center text-[15px] font-black uppercase tracking-wider text-white shadow-lg ring-2 ring-white/20 sm:py-3.5 sm:text-base ${
             azul ? 'bg-sky-600 group-hover:bg-sky-500' : 'bg-red-600 group-hover:bg-red-500'
           }`}
         >
-          {fase === 'durante' ? 'Comprar' : 'Ver camisa'}
+          {fase === 'durante' ? 'Comprar →' : 'Ver camisa'}
         </span>
       </span>
     </a>
@@ -217,15 +225,9 @@ export default async function BlackFridayPage() {
         </div>
       </section>
 
-      {/* O DUELO */}
-      <section id="duelo" className="mx-auto max-w-6xl px-4 py-12">
-        <div className="mb-8 text-center">
-          <h2 className="text-3xl font-black uppercase sm:text-4xl">Qual é a sua escola de samba favorita?</h2>
-          <p className="mt-2 text-white/60">Vote no duelo e veja quem está ganhando no placar ao vivo.</p>
-        </div>
-        <Duelo inicial={placar} />
-
-        <div className="relative mt-12 grid gap-6 md:grid-cols-2">
+      {/* AS CAMISAS (antes do duelo: quem rola chega primeiro em "comprar") */}
+      <section id="camisas" className="mx-auto max-w-6xl px-4 pt-10 pb-4">
+        <div className="relative grid gap-6 md:grid-cols-2">
           <Cartao p={beija} fase={fase} destaque />
           <span
             aria-hidden
@@ -235,6 +237,22 @@ export default async function BlackFridayPage() {
           </span>
           <Cartao p={viradouro} fase={fase} destaque />
         </div>
+      </section>
+
+      {/* O DUELO: depois de votar, aparece o botão de comprar a camisa da escola escolhida */}
+      <section id="duelo" className="mx-auto max-w-6xl px-4 py-12">
+        <div className="mb-8 text-center">
+          <h2 className="text-3xl font-black uppercase sm:text-4xl">Qual é a sua escola de samba favorita?</h2>
+          <p className="mt-2 text-white/60">Vote no duelo e veja quem está ganhando no placar ao vivo.</p>
+        </div>
+        <Duelo
+          inicial={placar}
+          comprar={
+            fase === 'durante'
+              ? { 'beija-flor': linkCompra(beija) || '#camisas', viradouro: linkCompra(viradouro) || '#camisas' }
+              : undefined
+          }
+        />
       </section>
 
       {/* ALGODÃO */}
