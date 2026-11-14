@@ -18,9 +18,11 @@ export default async function Entrar({ searchParams }: { searchParams: Promise<{
         )}
         {erro === 'senha' && <p className="text-sm text-red-700">Senha incorreta. Tente de novo.</p>}
         {erro === 'bloqueado' && <p className="text-sm text-red-700">Muitas tentativas. Aguarde 15 minutos.</p>}
+        {/* "usuário" escondido: deixa o celular/navegador salvar e preencher a senha sozinho */}
+        <input type="text" name="usuario" autoComplete="username" defaultValue="painel-samba-vest" hidden readOnly />
         <label className="flex flex-col gap-1.5 text-sm font-medium">
           Senha
-          <input name="senha" type="password" required autoFocus className="border border-slate-300 rounded-lg px-3 py-2.5" />
+          <input name="senha" type="password" autoComplete="current-password" required autoFocus className="border border-slate-300 rounded-lg px-3 py-2.5" />
         </label>
         <button className="bg-[#0B1B34] text-white rounded-lg py-3 font-semibold">Entrar no painel</button>
       </form>

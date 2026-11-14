@@ -68,9 +68,11 @@ export async function tentarEntrar(tentativa: string): Promise<'ok' | 'senha' | 
   jar.set(COOKIE, assinatura()!, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    // lax: o login vale também ao abrir o painel por um link (alerta no WhatsApp/Telegram, e-mail).
+    // As ações do painel continuam protegidas (o Next confere a origem de cada envio de formulário).
+    sameSite: 'lax',
     path: '/', // vale também no /atendimento: um login só
-    maxAge: 30 * 86_400,
+    maxAge: 365 * 86_400, // fica logado por 1 ano (até sair ou trocar a senha)
   });
   // Mesmo login libera o atendimento do WhatsApp (/atendimento), se ele tiver senha configurada.
   if (config.whatsapp.painelSenha) await entrarAtendimento();

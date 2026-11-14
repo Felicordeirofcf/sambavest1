@@ -68,16 +68,13 @@ function Selo({ c, agora }: { c: Conversa; agora: number }) {
   return null;
 }
 
-function StatusLinha({ ok, rotulo, valor, ajuda }: { ok: boolean | 'aviso'; rotulo: string; valor: string; ajuda?: string }) {
+function Pilula({ ok, texto, ajuda }: { ok: boolean | 'aviso'; texto: string; ajuda?: string }) {
   const cor = ok === true ? 'bg-emerald-500' : ok === 'aviso' ? 'bg-amber-500' : 'bg-rose-500';
   return (
-    <div className="flex min-w-[210px] shrink-0 snap-start items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 sm:min-w-0" title={ajuda}>
-      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${cor}`} aria-hidden />
-      <div className="min-w-0">
-        <div className="text-[11px] uppercase tracking-wide text-slate-500">{rotulo}</div>
-        <div className="truncate text-sm font-semibold text-slate-800">{valor}</div>
-      </div>
-    </div>
+    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-700" title={ajuda}>
+      <span className={`h-2 w-2 rounded-full ${cor}`} aria-hidden />
+      {texto}
+    </span>
   );
 }
 
@@ -159,17 +156,22 @@ export default async function AtendimentoPainel({
   const AUTOR: Record<string, string> = { cliente: '', robo: iaLigada ? '🤖 IA' : '🤖 Robô', loja: 'Você', aviso: '🔔 Aviso automático' };
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-4">
+    <div className="space-y-3 md:-m-4 lg:-m-6">
       <AutoAtualizar />
-      <div className={`flex-wrap items-end justify-between gap-3 ${aberta ? 'hidden md:flex' : 'flex'}`}>
-        <div>
-          <h1 className="text-2xl md:text-3xl">Atendimento</h1>
-          <p className="text-sm text-slate-500">
-            Conversas do WhatsApp da loja. Atualiza sozinho a cada 15 s.
-            {pendentes > 0 && <b className="ml-1 text-rose-700">{pendentes} esperando você.</b>}
-          </p>
+      {/* Topo compacto numa linha só: título, situação (canal, IA, última mensagem) e atalhos */}
+      <div className={`flex-wrap items-center gap-x-4 gap-y-2 ${aberta ? 'hidden md:flex' : 'flex'}`}>
+        <h1 className="text-2xl">Atendimento</h1>
+        {pendentes > 0 && <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-sm font-semibold text-rose-700">{pendentes} esperando você</span>}
+        <div className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-2 overflow-x-auto px-4 text-xs [scrollbar-width:none] sm:mx-0 sm:w-auto sm:flex-wrap sm:px-0 sm:text-sm">
+          <Pilula ok={canal.ok} texto={`WhatsApp: ${canal.valor}`} ajuda={canal.ajuda} />
+          <Pilula ok={ia.ok} texto={`IA: ${ia.valor}`} ajuda={ia.ajuda} />
+          <Pilula
+            ok={ultimaRecebida ? true : 'aviso'}
+            texto={`Última mensagem: ${ultimaRecebida ? quandoCurto(ultimaRecebida, agora) : 'nenhuma'}`}
+            ajuda="Se o celular recebe mensagens e aqui não aparece nada, clique em Conexão → Configurar recebimento."
+          />
         </div>
-        <div className="flex flex-wrap gap-2 text-sm">
+        <div className="ml-auto flex flex-wrap gap-2 text-sm">
           <Link href="/atendimento/simulador" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">
             🧪 Testar a IA
           </Link>
@@ -181,27 +183,11 @@ export default async function AtendimentoPainel({
           </Link>
         </div>
       </div>
-
-      <div className={`-mx-4 snap-x gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 ${aberta ? 'hidden md:grid' : 'flex'}`}>
-        <StatusLinha ok={canal.ok} rotulo="WhatsApp" valor={canal.valor} ajuda={canal.ajuda} />
-        <StatusLinha ok={ia.ok} rotulo="Atendente com IA" valor={ia.valor} ajuda={ia.ajuda} />
-        <StatusLinha
-          ok={ultimaRecebida ? true : 'aviso'}
-          rotulo="Última mensagem recebida"
-          valor={ultimaRecebida ? `${quandoCurto(ultimaRecebida, agora)}${diaChave(ultimaRecebida) === diaChave(agora) ? ' de hoje' : ''}` : 'Nenhuma ainda'}
-          ajuda="Se o celular recebe mensagens e aqui não aparece nada, clique em Conexão → Configurar recebimento."
-        />
-      </div>
-      {!iaLigada && iaDisponivel() && (
-        <p className={`text-xs text-slate-500 ${aberta ? 'hidden md:block' : ''}`}>
-          A IA está desligada: as mensagens ficam para você. Para ligar, crie <b>WHATSAPP_IA=true</b> na Vercel e faça Redeploy (teste antes em “Testar a IA”).
-        </p>
-      )}
       {sp.erro && <Aviso tipo="erro">{sp.erro}</Aviso>}
 
       <div
-        className={`wa wa-fundo grid overflow-hidden border wa-borda shadow-sm md:rounded-xl md:h-[calc(100dvh-13.5rem)] md:min-h-[520px] md:grid-cols-[minmax(280px,34%)_minmax(0,1fr)] lg:grid-cols-[minmax(300px,30%)_minmax(0,1fr)] 2xl:grid-cols-[minmax(340px,26%)_minmax(0,1fr)_300px] ${
-          aberta ? '-mx-4 -mb-4 -mt-4 h-[calc(100dvh-4.4rem)] md:m-0' : 'rounded-xl h-[calc(100dvh-17rem)] min-h-[420px]'
+        className={`wa wa-fundo grid overflow-hidden border wa-borda shadow-sm md:rounded-xl md:h-[calc(100dvh-6rem)] md:min-h-[560px] md:grid-cols-[minmax(280px,34%)_minmax(0,1fr)] lg:grid-cols-[minmax(300px,30%)_minmax(0,1fr)] 2xl:grid-cols-[minmax(340px,26%)_minmax(0,1fr)_300px] ${
+          aberta ? '-mx-4 -mb-4 -mt-4 h-[calc(100dvh-4.4rem)] md:m-0' : 'rounded-xl h-[calc(100dvh-13rem)] min-h-[420px]'
         }`}
       >
         {/* ---------- Lista de conversas ---------- */}
@@ -225,7 +211,7 @@ export default async function AtendimentoPainel({
               />
             </div>
           </form>
-          <div className="flex gap-2 overflow-x-auto px-3 pb-2">
+          <div className="flex gap-2 overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
             {FILTROS.map(([v, r]) => (
               <Link
                 key={v}
@@ -248,11 +234,11 @@ export default async function AtendimentoPainel({
                     <span className={`grid h-[49px] w-[49px] shrink-0 place-items-center rounded-full text-lg font-semibold text-white ${corAvatar(c.numero)}`}>{inicial(c)}</span>
                     <span className="min-w-0 flex-1 border-b wa-borda py-3 pr-3">
                       <span className="flex items-baseline justify-between gap-2">
-                        <span className="truncate text-[16px]">{nomeDe(c)}</span>
+                        <span className="truncate text-[17px]">{nomeDe(c)}</span>
                         <span className={`shrink-0 text-xs ${c.naoLidas ? 'wa-verde font-medium' : 'wa-suave'}`}>{quandoCurto(c.atualizadaEm, agora)}</span>
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2">
-                        <span className="wa-suave truncate text-sm">
+                        <span className="wa-suave truncate text-[15px]">
                           {u?.de === 'loja' ? 'Você: ' : u?.de === 'robo' ? '🤖 ' : u?.de === 'aviso' ? '🔔 ' : ''}
                           {u?.texto || ''}
                         </span>
@@ -359,7 +345,7 @@ export default async function AtendimentoPainel({
                         </div>
                       )}
                       <div className={`flex ${cliente ? 'justify-start' : 'justify-end'} ${rabo ? 'mt-3' : 'mt-0.5'}`}>
-                        <div className={`wa-balao ${lado} ${rabo ? 'rabo' : ''} max-w-[88%] px-2.5 pb-1.5 pt-1.5 text-[14.2px] leading-[19px] lg:max-w-[65%]`}>
+                        <div className={`wa-balao ${lado} ${rabo ? 'rabo' : ''} max-w-[88%] px-3 pb-1.5 pt-1.5 text-[15px] leading-[21px] lg:max-w-[65%]`}>
                           {!cliente && m.de !== 'loja' && <div className="wa-verde mb-0.5 text-[12.5px] font-medium">{AUTOR[m.de] || m.de}</div>}
                           <span className="whitespace-pre-wrap [overflow-wrap:anywhere]">{m.texto}</span>
                           <span className="wa-suave float-right ml-3 mt-1.5 translate-y-1 text-[11px] leading-none">

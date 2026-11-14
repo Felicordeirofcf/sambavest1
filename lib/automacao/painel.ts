@@ -30,9 +30,11 @@ export async function entrar(): Promise<void> {
   (await cookies()).set(COOKIE_PAINEL, assinatura()!, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    // lax: o login vale também ao abrir o painel por um link (alerta no WhatsApp/Telegram, e-mail).
+    // As ações do painel continuam protegidas (o Next confere a origem de cada envio de formulário).
+    sameSite: 'lax',
     path: '/atendimento',
-    maxAge: 30 * 86_400,
+    maxAge: 365 * 86_400, // fica logado por 1 ano (até sair ou trocar a senha)
   });
 }
 
