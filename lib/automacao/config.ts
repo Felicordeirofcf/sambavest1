@@ -144,6 +144,19 @@ export const config = {
       // Depois que a conversa vai para o humano, o robô fica quieto por estas horas
       silencioHoras: num('WHATSAPP_HUMANO_SILENCIO_HORAS', 12),
     },
+    // Atendente com IA (Claude). Sem WHATSAPP_IA=true ou sem a chave, segue o robô de regras.
+    ia: {
+      ativa: flag('WHATSAPP_IA', false),
+      chave: env('ANTHROPIC_API_KEY'),
+      // Haiku: rápido e barato para atendimento. Troque por um Sonnet se quiser respostas mais elaboradas.
+      modelo: env('WHATSAPP_IA_MODELO') || 'claude-haiku-5-5',
+      // Texto livre com o que a IA pode afirmar além do que as ferramentas trazem:
+      // medidas das camisas, formas de pagamento, horário de atendimento, promoções vigentes...
+      // Use \n para quebrar linha. Tudo que não estiver aqui nem nas ferramentas vai para uma pessoa.
+      conhecimento: env('WHATSAPP_IA_CONHECIMENTO'),
+      // Quantas mensagens anteriores da conversa a IA lê (contexto). Mais = mais caro.
+      historico: num('WHATSAPP_IA_HISTORICO', 12),
+    },
     idioma: env('WHATSAPP_TEMPLATE_IDIOMA') || 'pt_BR',
     templates: {
       recebido: env('WHATSAPP_TEMPLATE_RECEBIDO'),

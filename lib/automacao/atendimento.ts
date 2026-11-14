@@ -7,6 +7,7 @@
 //
 // Os textos das respostas vêm das variáveis WHATSAPP_RESPOSTA_* (aprovadas pelo dono).
 // Resposta sem texto configurado = a dúvida vai para o atendimento humano.
+import { responderComIA, iaDisponivel } from './agente';
 import { config, integracoes } from './config';
 import { alterarConversa, Conversa, janelaAberta, obterConversa, registrarSaida } from './conversas';
 import { enviarTextoEvolution } from './evolution';
@@ -270,14 +271,54 @@ export async function processarMensagem(m: MensagemMeta, nomeContato?: string): 
   const r = config.whatsapp.respostas;
   const comHumano = Boolean(conversa.humanoAte && conversa.humanoAte > agora);
 
-  if (!r.ativas || comHumano) {
+  const iaLigada = config.whatsapp.ia.ativa && iaDisponivel();
+  if ((!r.ativas && !iaLigada) || comHumano) {
     res.alertas = await alertarDono(conversa, trecho, comHumano ? 'Cliente respondeu' : 'Nova mensagem', false);
     return res;
   }
 
+  // Atendente com IA. Se a IA falhar (API fora, erro), cai no robô de regras logo abaixo.
+  if (iaLigada && ehTexto && janelaAberta(conversa)) {
+    try {
+      const ia = await responderComIA({ numeroCliente: numero, texto, conversa });
+      res.intencao = `ia (${ia.ferramentas.map((f) => f.nome).join(', ') || 'sem ferramentas'}; ${ia.tokens.entrada}+${ia.tokens.saida} tokens)`;
+      if (ia.texto) {
+        const id = await enviarTexto(numero, ia.texto);
+        conversa = await alterarConversa(numero, (c) => {
+          c.mensagens.push({ id, de: 'robo', texto: ia.texto!, em: Date.now() });
+          if (ia.pedidos) c.pedidos = ia.pedidos;
+          if (ia.humano) c.humanoAte = Date.now() + r.silencioHoras * 3_600_000;
+        });
+        res.respondeu = true;
+      }
+      if (ia.humano) {
+        res.humano = true;
+        if (!ia.texto) {
+          conversa = await alterarConversa(numero, (c) => {
+            c.humanoAte = Date.now() + r.silencioHoras * 3_600_000;
+          });
+          if (r.humano) {
+            const id = await enviarTexto(numero, preencher(r.humano, { site: config.siteUrl }));
+            conversa = await registrarSaida(numero, r.humano, 'robo', id);
+          }
+        }
+        res.alertas = await alertarDono(conversa, trecho, `Precisa de atendimento: ${ia.motivoHumano || ''}`.trim(), true);
+        return res;
+      }
+      if (res.respondeu) {
+        res.alertas = await alertarDono(conversa, trecho, 'Respondida pela IA', false);
+        return res;
+      }
+    } catch (e) {
+      res.erro = `IA: ${(e as Error).message}`;
+      console.error('[atendimento] IA falhou, usando o robô de regras:', res.erro);
+    }
+  }
+
   // Respostas automáticas (estamos dentro da janela de 24h: o cliente acabou de escrever).
-  const intencao: Intencao = ehTexto ? classificar(texto) : { tipo: 'outro' };
-  res.intencao = intencao.tipo;
+  // (sem WHATSAPP_RESPOSTAS_AUTOMATICAS, o robô de regras não responde: vai direto para uma pessoa)
+  const intencao: Intencao = ehTexto && r.ativas ? classificar(texto) : { tipo: 'outro' };
+  res.intencao = res.intencao ? `${res.intencao} → ${intencao.tipo}` : intencao.tipo;
   let resposta: Awaited<ReturnType<typeof montarResposta>> = null;
   try {
     resposta = await montarResposta(intencao, numero);
