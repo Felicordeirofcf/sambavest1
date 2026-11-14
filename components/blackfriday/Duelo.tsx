@@ -16,7 +16,7 @@ function lerVotoCookie(): Escola | null {
   return m && (m[1] === 'beija-flor' || m[1] === 'viradouro') ? m[1] : null;
 }
 
-export default function Duelo({ inicial }: { inicial: Placar }) {
+export default function Duelo({ inicial, comprar }: { inicial: Placar; comprar?: Record<Escola, string> }) {
   const [placar, setPlacar] = useState<Placar>(inicial);
   const [votoAgora, setVoto] = useState<Escola | null>(null);
   // Voto anterior (cookie). No servidor é sempre null, então a hidratação bate.
@@ -83,6 +83,17 @@ export default function Duelo({ inicial }: { inicial: Placar }) {
           <span className="text-red-300">Viradouro {pct('viradouro')}%</span>
         </div>
         {aviso && <p className="mt-2 text-center text-sm text-white/70">{aviso}</p>}
+        {voto && comprar && (
+          <a
+            href={comprar[voto]}
+            data-bf="pos-voto"
+            className={`mt-5 block rounded-2xl py-4 text-center text-base font-black uppercase tracking-wider text-white shadow-lg ${
+              voto === 'beija-flor' ? 'bg-sky-600 hover:bg-sky-500' : 'bg-red-600 hover:bg-red-500'
+            }`}
+          >
+            Garanta a camisa da {voto === 'beija-flor' ? 'Beija-Flor' : 'Viradouro'} →
+          </a>
+        )}
       </div>
     </div>
   );

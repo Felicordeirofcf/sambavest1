@@ -49,6 +49,9 @@ export default function MedirBF() {
       const rotulo = `${alvo.getAttribute('aria-label') || ''} ${alvo.textContent || ''}`.toLowerCase();
       let sinal: string;
       if (marcado) sinal = `toque-${marcado}`;
+      // Gaveta do menu (☰) e sacola lateral ficam fora do <header>: antes contavam como "outro"
+      else if (alvo.closest('[data-area="menu"]')) sinal = 'toque-menu';
+      else if (alvo.closest('[data-area="sacola"]')) sinal = 'toque-sacola';
       else if (/wa\.me|whatsapp/.test(href)) sinal = 'toque-zap';
       else if (/sacola|carrinho|cart/.test(rotulo) || /carrinho|sacola/.test(href)) sinal = 'toque-sacola';
       else if (href.includes('/produto/')) sinal = 'toque-camisa-link';
