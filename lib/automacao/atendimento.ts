@@ -11,6 +11,7 @@ import { responderComIA, iaDisponivel } from './agente';
 import { config, integracoes } from './config';
 import { alterarConversa, Conversa, janelaAberta, obterConversa, registrarSaida } from './conversas';
 import { enviarTextoEvolution } from './evolution';
+import { createHash } from 'node:crypto';
 import { adquirirTrava, kvGet, kvSet } from './kv';
 import { enviarEmail, escapar } from './notificacoes';
 import { chaveTelefone, enviarTemplate, enviarTexto, telefoneWhatsapp } from './whatsapp';
@@ -170,6 +171,32 @@ export async function montarResposta(
   }
 }
 
+// ---------- Canal de envio (API oficial ou Evolution) ----------
+
+const hashTexto = (t: string) => createHash('sha1').update(t.trim()).digest('hex').slice(0, 16);
+const chaveSaida = (numero: string, texto: string) => `wa:saida-robo:${chaveTelefone(numero)}:${hashTexto(texto)}`;
+
+/**
+ * Manda texto ao cliente pelo canal ligado. Na Evolution, a mensagem enviada volta pelo webhook
+ * como "fromMe" (igual a uma que você mandou pelo celular); a marca abaixo diz ao webhook que
+ * foi o robô, para a IA não se silenciar achando que uma pessoa assumiu a conversa.
+ */
+export async function enviarAoCliente(numero: string, texto: string): Promise<string | undefined> {
+  if (semJanela24h()) {
+    await kvSet(chaveSaida(numero, texto), 1, 300);
+    return enviarTextoEvolution(numero, texto);
+  }
+  return enviarTexto(numero, texto);
+}
+
+/** true se este texto "fromMe" foi o robô/IA que acabou de mandar (Evolution). */
+export async function ehSaidaDoRobo(numero: string, texto: string): Promise<boolean> {
+  return Boolean(await kvGet<number>(chaveSaida(numero, texto)));
+}
+
+/** Pode responder agora? API oficial: só na janela de 24h. Evolution: sempre. */
+const podeResponder = (c: Conversa) => semJanela24h() || janelaAberta(c);
+
 // ---------- Dono ----------
 
 const CHAVE_JANELA_DONO = 'wa:dono:ultima';
@@ -183,6 +210,10 @@ async function alertarDonoWhatsapp(c: Conversa, trecho: string, motivo: string):
   const para = telefoneWhatsapp(config.whatsapp.numeroDono || '');
   if (!para) return null;
   const nome = c.nome ? `${c.nome} (+${c.numero})` : `+${c.numero}`;
+  if (semJanela24h()) {
+    await enviarTextoEvolution(para, `📩 ${motivo}\nDe: ${nome}\n"${trecho}"\n\nPainel: ${config.siteUrl}/atendimento`);
+    return 'whatsapp (evolution)';
+  }
   const ultimaDono = await kvGet<number>(CHAVE_JANELA_DONO);
   if (ultimaDono && Date.now() - ultimaDono < 24 * 3_600_000 - 60_000) {
     await enviarTexto(
@@ -214,7 +245,9 @@ async function alertarDonoEmail(c: Conversa, trecho: string, motivo: string): Pr
 
 /** Avisa o dono. Sem `urgente`, no máximo um alerta por conversa a cada WHATSAPP_ALERTA_INTERVALO_MIN. */
 async function alertarDono(c: Conversa, trecho: string, motivo: string, urgente: boolean): Promise<string[]> {
-  const modo = config.whatsapp.alertas;
+  // Na Evolution o número da loja já está no seu celular: você vê cada mensagem. Por padrão,
+  // só avisa quando precisa de uma pessoa (WHATSAPP_ALERTAS muda isso).
+  const modo = !process.env.WHATSAPP_ALERTAS && semJanela24h() ? 'humano' : config.whatsapp.alertas;
   if (modo === 'nenhum' || (modo === 'humano' && !urgente)) return [];
   if (!urgente && !(await adquirirTrava(`wa:alerta:${chaveTelefone(c.numero)}`, config.whatsapp.alertaIntervaloMin * 60))) {
     return [];
@@ -243,7 +276,12 @@ export type ResultadoMensagem = {
   erro?: string;
 };
 
-export async function processarMensagem(m: MensagemMeta, nomeContato?: string): Promise<ResultadoMensagem> {
+export async function processarMensagem(
+  m: MensagemMeta,
+  nomeContato?: string,
+  /** Texto já extraído (Evolution manda num formato diferente do da Meta). */
+  extraido?: { texto: string; ehTexto: boolean }
+): Promise<ResultadoMensagem> {
   const numero = m.from;
   const res: ResultadoMensagem = { numero };
 
@@ -257,7 +295,7 @@ export async function processarMensagem(m: MensagemMeta, nomeContato?: string): 
     return { ...res, ignorada: 'mensagem do dono (janela de alertas aberta por 24h)' };
   }
 
-  const { texto, ehTexto } = textoDaMensagem(m);
+  const { texto, ehTexto } = extraido || textoDaMensagem(m);
   const agora = Date.now();
   let conversa = await alterarConversa(numero, (c) => {
     c.numero = numero;
@@ -278,12 +316,12 @@ export async function processarMensagem(m: MensagemMeta, nomeContato?: string): 
   }
 
   // Atendente com IA. Se a IA falhar (API fora, erro), cai no robô de regras logo abaixo.
-  if (iaLigada && ehTexto && janelaAberta(conversa)) {
+  if (iaLigada && ehTexto && podeResponder(conversa)) {
     try {
       const ia = await responderComIA({ numeroCliente: numero, texto, conversa });
       res.intencao = `ia (${ia.ferramentas.map((f) => f.nome).join(', ') || 'sem ferramentas'}; ${ia.tokens.entrada}+${ia.tokens.saida} tokens)`;
       if (ia.texto) {
-        const id = await enviarTexto(numero, ia.texto);
+        const id = await enviarAoCliente(numero, ia.texto);
         conversa = await alterarConversa(numero, (c) => {
           c.mensagens.push({ id, de: 'robo', texto: ia.texto!, em: Date.now() });
           if (ia.pedidos) c.pedidos = ia.pedidos;
@@ -298,7 +336,7 @@ export async function processarMensagem(m: MensagemMeta, nomeContato?: string): 
             c.humanoAte = Date.now() + r.silencioHoras * 3_600_000;
           });
           if (r.humano) {
-            const id = await enviarTexto(numero, preencher(r.humano, { site: config.siteUrl }));
+            const id = await enviarAoCliente(numero, preencher(r.humano, { site: config.siteUrl }));
             conversa = await registrarSaida(numero, r.humano, 'robo', id);
           }
         }
@@ -326,9 +364,9 @@ export async function processarMensagem(m: MensagemMeta, nomeContato?: string): 
     res.erro = (e as Error).message;
   }
 
-  if (resposta && janelaAberta(conversa)) {
+  if (resposta && podeResponder(conversa)) {
     try {
-      const id = await enviarTexto(numero, resposta.texto);
+      const id = await enviarAoCliente(numero, resposta.texto);
       conversa = await alterarConversa(numero, (c) => {
         c.mensagens.push({ id, de: 'robo', texto: resposta!.texto, em: Date.now() });
         if (resposta!.pedidos) c.pedidos = resposta!.pedidos;
@@ -348,7 +386,7 @@ export async function processarMensagem(m: MensagemMeta, nomeContato?: string): 
   });
   if (r.humano) {
     try {
-      const id = await enviarTexto(numero, preencher(r.humano, { site: config.siteUrl }));
+      const id = await enviarAoCliente(numero, preencher(r.humano, { site: config.siteUrl }));
       conversa = await registrarSaida(numero, r.humano, 'robo', id);
     } catch (e) {
       res.erro = (e as Error).message;
