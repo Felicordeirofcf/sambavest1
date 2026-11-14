@@ -8,6 +8,7 @@
 //   GET /api/cron/automacao?tarefa=saude    → só a checagem de saúde (loja, WooCommerce, frete, banco)
 //   GET /api/cron/automacao?tarefa=abandono → só os e-mails de carrinho abandonado
 //   GET /api/cron/automacao?tarefa=diagnostico → confere a configuração do Bling (só leitura)
+//   GET /api/cron/automacao?tarefa=analise-anuncios → análise dos anúncios com IA (a cada 8 h)
 //   GET /api/cron/automacao?modo=fundo     → responde na hora e roda em segundo plano
 //                                            (para o cron-job.org, que espera no máximo 30 s)
 //
@@ -67,6 +68,12 @@ export async function GET(request: Request) {
     if (tarefa === 'diagnostico') await rodar('diagnostico', () => diagnosticoBling());
     if (tarefa === 'diagnostico-rastreio') await rodar('rastreioBling', async () => (await import('../../../../lib/automacao/diagnosticoBlingRastreio')).diagnosticoBlingRastreio());
     if (tarefa === 'diagnostico-me') await rodar('diagnosticoME', async () => (await import('../../../../lib/automacao/diagnosticoME')).diagnosticoMelhorEnvio());
+    // Análise dos anúncios com IA (a cada 8 h; ?forcar=1 roda na hora). Fora de "todas" porque pode levar ~40 s.
+    if (tarefa === 'analise-anuncios') {
+      await rodar('analiseAnuncios', async () =>
+        (await import('../../../../lib/automacao/agenteAnuncios')).rotinaAnaliseAnuncios(params.get('forcar') === '1')
+      );
+    }
     if (tarefa === 'auditoria') await rodar('auditoria', async () => (await import('../../../../lib/automacao/auditoria')).auditoria());
     const falhas = Object.entries(resultado).filter(([, v]) => v && typeof v === 'object' && 'erro' in (v as object));
     await registrarExecucao('cron', falhas.length === 0, falhas.map(([k, v]) => `${k}: ${(v as { erro: string }).erro}`).join(' | ') || tarefa);

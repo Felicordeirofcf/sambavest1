@@ -4,6 +4,8 @@ import { Colunas, Diagnostico, Funil, LinhaServico } from '../../../components/p
 import { listarAbandonos } from '../../../lib/automacao/abandono';
 import { falhasNosDias } from '../../../lib/automacao/monitor';
 import { lerMelhorias } from '../../../lib/automacao/melhorias';
+import { iaAnunciosDisponivel, lerAnaliseAnuncios, lerDecisoes } from '../../../lib/automacao/agenteAnuncios';
+import { AnaliseIA } from '../../../components/painel/AnaliseIA';
 import { rotinaMelhorias } from '../../../lib/automacao/alertas';
 import { diagnosticar } from '../../../lib/painel/diagnostico';
 import { Aviso, Cartao, Kpi, brl, dataHora, pct } from '../../../components/painel/ui';
@@ -40,10 +42,11 @@ function periodo(chave: ChavePeriodo, agora: number): { p: Periodo; dias: string
   return { p: { desde: dias[0], ate: hoje }, dias };
 }
 
-export default async function AnunciosPage({ searchParams }: { searchParams: Promise<{ periodo?: string }> }) {
+export default async function AnunciosPage({ searchParams }: { searchParams: Promise<{ periodo?: string; erroIA?: string }> }) {
   await exigirLogin();
   const agora = agoraMs();
-  const pedido = (await searchParams).periodo as ChavePeriodo | undefined;
+  const sp = await searchParams;
+  const pedido = sp.periodo as ChavePeriodo | undefined;
   const chave: ChavePeriodo = pedido && pedido in PERIODOS ? pedido : 'black';
   const { p, dias } = periodo(chave, agora);
 
@@ -90,6 +93,9 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
     await rotinaMelhorias(false).catch(() => 0);
     melhorias = await lerMelhorias();
   }
+
+  // ---------- Análise da IA (guardada; roda a cada 8 h ou no botão) ----------
+  const [analiseIA, decisoesIA] = integracoes.kv() ? await Promise.all([lerAnaliseAnuncios(), lerDecisoes().catch(() => ({}))]) : [null, {}];
 
   // ---------- Diagnóstico: por que não estão comprando ----------
   const [falhas, abandonos] = await Promise.all([falhasNosDias(dias), listarAbandonos(dias.length * 24).catch(() => [])]);
@@ -167,6 +173,8 @@ export default async function AnunciosPage({ searchParams }: { searchParams: Pro
         </Aviso>
       )}
       {erroSite && <Aviso tipo="erro">Não consegui ler os pedidos do WooCommerce: {erroSite}</Aviso>}
+
+      {integracoes.metaAds() && <AnaliseIA analise={analiseIA} decisoes={decisoesIA} disponivel={iaAnunciosDisponivel()} erro={sp.erroIA} />}
 
       {melhorias && (
         <Cartao
