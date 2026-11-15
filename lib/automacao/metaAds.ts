@@ -114,6 +114,8 @@ export type ContaAnuncios = {
   gastoTotal: number;
   limite: number | null;
   saldo?: string; // texto da Meta, ex.: "Saldo disponível (R$ 170,01 BRL)"
+  /** Conta pré-paga (abastecida por Pix/boleto): o teto é o próprio saldo. */
+  prePaga?: boolean;
 };
 
 export async function contaAnuncios(): Promise<ContaAnuncios> {
@@ -125,9 +127,11 @@ export async function contaAnuncios(): Promise<ContaAnuncios> {
       amount_spent?: string;
       spend_cap?: string;
       funding_source_details?: { display_string?: string };
-    }>(conta(), { fields: 'name,account_status,disable_reason,amount_spent,spend_cap,funding_source_details' }).catch((e) =>
-      // O saldo (funding_source_details) pode exigir mais que "só leitura": tenta sem ele
-      semPermissao(e) ? graph<{ name: string; account_status: number; disable_reason?: number; amount_spent?: string; spend_cap?: string; funding_source_details?: { display_string?: string } }>(conta(), { fields: 'name,account_status,disable_reason,amount_spent,spend_cap' }) : Promise.reject(e)
+      is_prepay_account?: boolean;
+    }>(conta(), { fields: 'name,account_status,disable_reason,amount_spent,spend_cap,funding_source_details,is_prepay_account' }).catch((e) =>
+      // O saldo (funding_source_details) e o tipo da conta (is_prepay_account) podem exigir mais que
+      // "só leitura" ou não existir nesta versão da API: tenta só com os campos básicos
+      e ? graph<{ name: string; account_status: number; disable_reason?: number; amount_spent?: string; spend_cap?: string; funding_source_details?: { display_string?: string } }>(conta(), { fields: 'name,account_status,disable_reason,amount_spent,spend_cap' }) : Promise.reject(e)
     );
     return {
       nome: r.name,
@@ -136,6 +140,7 @@ export async function contaAnuncios(): Promise<ContaAnuncios> {
       gastoTotal: n(r.amount_spent) / 100,
       limite: r.spend_cap && r.spend_cap !== '0' ? n(r.spend_cap) / 100 : null,
       saldo: r.funding_source_details?.display_string,
+      prePaga: (r as { is_prepay_account?: boolean }).is_prepay_account,
     };
   });
 }
@@ -261,6 +266,10 @@ export type EntregaAnuncios = {
   orcamentoDia: number | null;
   /** Limite de gastos da conta (spend_cap): quanto falta em R$ (null = conta sem limite). Ao bater, a Meta para TUDO. */
   limiteRestante: number | null;
+  /** Conta pré-paga: o saldo é o teto (recarga por Pix). */
+  prePaga: boolean;
+  /** Quanto a conta gasta por dia: o maior entre o orçamento e a média real dos últimos 3 dias. */
+  gastoDia: number | null;
   /** Situação para o dono: ok | atencao | parado */
   situacao: 'ok' | 'atencao' | 'parado';
   motivos: string[];
@@ -274,6 +283,9 @@ type ConjuntoApi = {
   learning_stage_info?: { status?: string };
   issues_info?: { error_summary?: string; error_message?: string }[];
 };
+
+/** Dia AAAA-MM-DD `n` dias antes de `dia`. */
+const diaAntes = (dia: string, n: number) => new Date(Date.parse(dia + 'T12:00:00Z') - n * 86_400_000).toISOString().slice(0, 10);
 
 /** Lê o saldo do texto da Meta, ex.: "Saldo disponível (R$ 134,01 BRL)" → 134.01 */
 export function saldoDoTexto(t?: string): number | null {
@@ -351,7 +363,7 @@ export async function entregaAnuncios(hoje: string, horaAgora: number, ontem?: s
     }
   }
   const orcamentoDia = orcamento || null;
-  const saldo = saldoDoTexto(contaInfo?.saldo);
+  let saldo = saldoDoTexto(contaInfo?.saldo);
 
   const motivos: string[] = [];
   let situacao: EntregaAnuncios['situacao'] = 'ok';
@@ -380,24 +392,34 @@ export async function entregaAnuncios(hoje: string, horaAgora: number, ontem?: s
       `entrega despencou: ${ultimas3h.hoje} exibições nas últimas 3 h contra ${ultimas3h.ontem} ontem no mesmo horário (-${Math.round(ultimas3h.queda * 100)}%)`
     );
   }
-  // Limite de gastos da conta: ao ser atingido, a Meta pausa todos os anúncios até alguém aumentar
-  const limiteRestante = contaInfo?.limite ? Math.max(0, contaInfo.limite - contaInfo.gastoTotal) : null;
-  if (limiteRestante !== null) {
-    const dia = orcamentoDia || 30;
-    if (limiteRestante < dia) {
+  // Quanto falta até a Meta parar tudo. Conta pré-paga (Pix): o teto é o SALDO. Na Meta ele também
+  // aparece como spend_cap − gasto, então, sem o texto do saldo, usa essa diferença.
+  const restante = contaInfo?.limite ? Math.max(0, contaInfo.limite - contaInfo.gastoTotal) : null;
+  const prePaga = Boolean(contaInfo?.prePaga);
+  if (prePaga && saldo === null && restante !== null) saldo = restante;
+  const limiteRestante = prePaga ? null : restante;
+  // Gasto por dia: o orçamento pode estar abaixo do que a conta gasta de fato (ex.: orçamento na campanha)
+  const ultimos = await porDia({ desde: diaAntes(hoje, 3), ate: diaAntes(hoje, 1) }).catch(() => []);
+  const media = ultimos.length ? ultimos.reduce((s, d) => s + d.gasto, 0) / ultimos.length : 0;
+  const gastoDia = Math.max(orcamentoDia || 0, media) || null;
+  const dias = (v: number) => Math.max(0, Math.floor(v / (gastoDia || 30)));
+  if (saldo !== null) {
+    if (saldo < (gastoDia || 30)) {
       situacao = 'parado';
-      motivos.push('limite de gastos da conta praticamente atingido: a Meta vai parar todos os anúncios');
-    } else if (limiteRestante < dia * 3) {
+      motivos.push('saldo pré-pago acaba em menos de 1 dia: recarregue por Pix ou os anúncios param');
+    } else if (saldo < (gastoDia || 30) * 3) {
       atencao();
-      motivos.push(`limite de gastos da conta acaba em ~${Math.max(1, Math.floor(limiteRestante / dia))} dia(s)`);
+      motivos.push(`saldo pré-pago acaba em ~${dias(saldo)} dia(s): recarregue por Pix`);
     }
   }
-  if (saldo !== null && orcamentoDia && saldo < orcamentoDia) {
-    situacao = 'parado';
-    motivos.push('saldo pré-pago menor que 1 dia de orçamento');
-  } else if (saldo !== null && orcamentoDia && saldo < orcamentoDia * 2) {
-    atencao();
-    motivos.push('saldo pré-pago para menos de 2 dias');
+  if (limiteRestante !== null) {
+    if (limiteRestante < (gastoDia || 30)) {
+      situacao = 'parado';
+      motivos.push('limite de gastos da conta praticamente atingido: a Meta vai parar todos os anúncios');
+    } else if (limiteRestante < (gastoDia || 30) * 3) {
+      atencao();
+      motivos.push(`limite de gastos da conta acaba em ~${dias(limiteRestante)} dia(s)`);
+    }
   }
   const conjuntos = conjuntosApi.data.map((c) => ({
     nome: c.name,
@@ -415,7 +437,7 @@ export async function entregaAnuncios(hoje: string, horaAgora: number, ontem?: s
       motivos.push(`conjunto "${c.nome}" com aprendizado limitado`);
     }
   }
-  return { conjuntos, porHora, horasSemEntrega, ultimas3h, saldo, orcamentoDia, limiteRestante, situacao, motivos };
+  return { conjuntos, porHora, horasSemEntrega, ultimas3h, saldo, orcamentoDia, limiteRestante, prePaga, gastoDia, situacao, motivos };
 }
 
 // ---------- Para qual WhatsApp os anúncios mandam o cliente ----------
@@ -453,10 +475,11 @@ export async function destinosWhatsapp(numeroDaLoja: string): Promise<{ anuncios
   const anuncios: DestinoWhatsapp[] = [];
   let paginaId: string | undefined;
   for (const a of r.data) {
-    const json = JSON.stringify({ adset: a.adset, creative: a.creative });
-    const ehWhats = /WHATSAPP/i.test(a.creative?.call_to_action_type || '') || /WHATSAPP/i.test(a.adset?.destination_type || '') || /whatsapp/i.test(json);
-    if (!ehWhats) continue;
+    // Só conta como WhatsApp o que a Meta declara como destino: o botão do anúncio, o destino do conjunto
+    // ou um número em campo de WhatsApp. Uma simples menção à palavra (texto, opções do criativo) não basta.
     const numero = telefonesWhatsapp({ adset: a.adset, creative: a.creative })[0];
+    const ehWhats = /WHATSAPP/i.test(a.creative?.call_to_action_type || '') || /WHATSAPP/i.test(a.adset?.destination_type || '') || Boolean(numero);
+    if (!ehWhats) continue;
     anuncios.push({ anuncio: a.name, status: a.effective_status, final: numero ? `…${numero.slice(-4)}` : null, daLoja: numero ? mesmo(numero) : null });
     paginaId ||= String(a.adset?.promoted_object?.page_id || (a.creative?.object_story_spec as { page_id?: string } | undefined)?.page_id || '') || undefined;
   }
