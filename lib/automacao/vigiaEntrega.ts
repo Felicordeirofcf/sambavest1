@@ -6,6 +6,24 @@ import { alertarCelular, alertasLigados } from './alertas';
 import { integracoes } from './config';
 import { diaLocal } from '../painel/metricas';
 
+/** WhatsApp da loja (o mesmo dos botões do site e da IA). */
+const NUMERO_LOJA = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '5521996959903';
+
+/** Anúncios que mandam o cliente para um WhatsApp que NÃO é o da loja (ex.: número particular). */
+export async function whatsappDosAnuncios() {
+  const { destinosWhatsapp } = await import('./metaAds');
+  const d = await destinosWhatsapp(NUMERO_LOJA);
+  const foraDaLoja = d.anuncios.filter((a) => a.daLoja === false);
+  const paginaFora = d.pagina?.daLoja === false;
+  return {
+    situacao: foraDaLoja.length || paginaFora ? 'atencao' : 'ok',
+    anunciosComWhatsapp: d.anuncios,
+    whatsappDaPagina: d.pagina ?? 'nenhum anúncio de WhatsApp ativo',
+    lojaTerminaEm: `…${NUMERO_LOJA.slice(-4)}`,
+    foraDaLoja: foraDaLoja.map((a) => `${a.anuncio} (${a.final})`).concat(paginaFora ? [`WhatsApp da Página (${d.pagina!.final})`] : []),
+  };
+}
+
 const horaLocal = () => Number(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hour12: false })) % 24;
 
 export async function resumoEntrega() {
@@ -50,6 +68,15 @@ export async function rotinaVigiaEntrega(): Promise<Record<string, unknown>> {
     // Um aviso por situação a cada 6 h (não fica repetindo a cada 30 min)
     if (!alertasLigados()) r.alerta = 'nenhum canal de alerta configurado (ALERTA_WHATSAPP_NUMERO ou Telegram)';
     else r.alerta = await alertarCelular(texto, { chave: `entrega:${e.situacao}:${e.motivos.map((m) => m.split(' ')[0]).join('|')}`, ttlS: 6 * 3600 });
+  }
+  // Anúncio mandando cliente para outro WhatsApp (não chega à IA nem ao painel): 1 aviso por dia
+  const w = await whatsappDosAnuncios().catch((err) => ({ erro: (err as Error).message.slice(0, 160) }) as const);
+  r.whatsappDosAnuncios = w;
+  if ('situacao' in w && w.situacao === 'atencao' && alertasLigados()) {
+    await alertarCelular(
+      `⚠️ Anúncio mandando cliente para outro WhatsApp\n- ${w.foraDaLoja.join('\n- ')}\n\nO WhatsApp da loja termina em ${w.lojaTerminaEm}. Essas conversas não chegam à IA nem ao painel. Troque o destino no Gerenciador de Anúncios e o WhatsApp conectado à Página (Meta Business Suite → Configurações → Contas do WhatsApp).`,
+      { chave: `whatsapp-anuncio:${w.foraDaLoja.join('|')}`, ttlS: 86_400 }
+    );
   }
   return r;
 }

@@ -1,6 +1,7 @@
 // Relatórios dos anúncios da Meta (Marketing API, somente leitura).
 // Precisa de META_ADS_TOKEN: token de um usuário do sistema do portfólio com permissão "ads_read"
 // na conta de anúncios (META_AD_ACCOUNT_ID, padrão 315563831612360).
+import { chaveTelefone } from './whatsapp';
 import { config } from './config';
 import { kvGet, kvSet } from './kv';
 
@@ -415,4 +416,56 @@ export async function entregaAnuncios(hoje: string, horaAgora: number, ontem?: s
     }
   }
   return { conjuntos, porHora, horasSemEntrega, ultimas3h, saldo, orcamentoDia, limiteRestante, situacao, motivos };
+}
+
+// ---------- Para qual WhatsApp os anúncios mandam o cliente ----------
+// Anúncio com botão "Enviar mensagem pelo WhatsApp" (ou conjunto com destino WhatsApp, ou post
+// impulsionado pelo Instagram) usa o número escolhido na Meta, não o do site. Se for o número
+// particular, a conversa não chega à IA nem ao painel. Só lê; mostra o final do número.
+
+export type DestinoWhatsapp = { anuncio: string; status: string; final: string | null; daLoja: boolean | null };
+
+/** Telefones que aparecem em campos com "whatsapp" no nome (o formato varia por tipo de anúncio). */
+function telefonesWhatsapp(v: unknown, chavePai = '', achados: string[] = []): string[] {
+  if (v && typeof v === 'object') {
+    for (const [k, filho] of Object.entries(v as Record<string, unknown>)) telefonesWhatsapp(filho, /whats/i.test(k) ? k : chavePai, achados);
+  } else if ((typeof v === 'string' || typeof v === 'number') && chavePai) {
+    const d = String(v).replace(/\D/g, '');
+    if (d.length >= 10 && d.length <= 13) achados.push(d);
+  }
+  return achados;
+}
+
+export async function destinosWhatsapp(numeroDaLoja: string): Promise<{ anuncios: DestinoWhatsapp[]; pagina: { final: string | null; daLoja: boolean | null } | null }> {
+  const loja = chaveTelefone(numeroDaLoja);
+  const mesmo = (n: string) => (loja ? chaveTelefone(n) === loja : null);
+  type Ad = {
+    name: string;
+    effective_status: string;
+    adset?: { destination_type?: string; promoted_object?: Record<string, unknown> };
+    creative?: { call_to_action_type?: string; object_story_spec?: Record<string, unknown>; asset_feed_spec?: Record<string, unknown> };
+  };
+  const r = await graph<{ data: Ad[] }>(`${conta()}/ads`, {
+    fields: 'name,effective_status,adset{destination_type,promoted_object},creative{call_to_action_type,object_story_spec,asset_feed_spec}',
+    effective_status: JSON.stringify(['ACTIVE', 'PENDING_REVIEW', 'WITH_ISSUES', 'IN_PROCESS', 'PREAPPROVED']),
+    limit: '100',
+  });
+  const anuncios: DestinoWhatsapp[] = [];
+  let paginaId: string | undefined;
+  for (const a of r.data) {
+    const json = JSON.stringify({ adset: a.adset, creative: a.creative });
+    const ehWhats = /WHATSAPP/i.test(a.creative?.call_to_action_type || '') || /WHATSAPP/i.test(a.adset?.destination_type || '') || /whatsapp/i.test(json);
+    if (!ehWhats) continue;
+    const numero = telefonesWhatsapp({ adset: a.adset, creative: a.creative })[0];
+    anuncios.push({ anuncio: a.name, status: a.effective_status, final: numero ? `…${numero.slice(-4)}` : null, daLoja: numero ? mesmo(numero) : null });
+    paginaId ||= String(a.adset?.promoted_object?.page_id || (a.creative?.object_story_spec as { page_id?: string } | undefined)?.page_id || '') || undefined;
+  }
+  // Sem número no anúncio, vale o WhatsApp conectado à Página (o mesmo do botão do perfil)
+  let pagina: { final: string | null; daLoja: boolean | null } | null = null;
+  if (paginaId) {
+    const p = await graph<{ whatsapp_number?: string }>(paginaId, { fields: 'whatsapp_number' }).catch(() => null);
+    const n = (p?.whatsapp_number || '').replace(/\D/g, '');
+    pagina = { final: n ? `…${n.slice(-4)}` : null, daLoja: n ? mesmo(n) : null };
+  }
+  return { anuncios, pagina };
 }

@@ -48,6 +48,7 @@ export async function auditoria(): Promise<Record<string, unknown>> {
     (async () => {
       if (!integracoes.metaAds()) return;
       r.entregaAnuncios = (await (await import('./vigiaEntrega')).resumoEntrega()).resumo;
+      r.whatsappDosAnuncios = await (await import('./vigiaEntrega')).whatsappDosAnuncios().catch((e) => ({ erro: (e as Error).message.slice(0, 160) }));
     })(),
 
     // 3) Funil do site (contadores anônimos)
