@@ -35,18 +35,13 @@ export async function resumoEntrega() {
     horasSemEntrega: e.horasSemEntrega,
     exibicoesPorHoraHoje: Object.fromEntries(e.porHora.map((x) => [`${x.hora}h`, x.impressoes])),
     ultimas3h: e.ultimas3h,
+    conta: e.prePaga ? 'pré-paga (Pix): o teto é o saldo' : 'pós-paga (cartão/cobrança)',
     saldo:
       e.saldo === null
-        ? 'sem saldo pré-pago (conta paga no cartão?)'
-        : !e.orcamentoDia
-          ? 'saldo lido, mas não achei o orçamento diário (orçamento total?)'
-          : e.saldo < e.orcamentoDia
-            ? 'baixo: menos de 1 dia de orçamento'
-            : e.saldo < e.orcamentoDia * 2
-              ? 'atenção: menos de 2 dias de orçamento'
-              : 'ok',
+        ? 'não informado pela Meta'
+        : `cobre ~${Math.floor(e.saldo / (e.gastoDia || 30))} dia(s) de gasto`,
     limiteDeGastosDaConta:
-      e.limiteRestante === null ? 'sem limite' : e.orcamentoDia ? `cobre ~${Math.floor(e.limiteRestante / e.orcamentoDia)} dia(s) de orçamento` : 'definido',
+      e.prePaga ? 'não se aplica (conta pré-paga)' : e.limiteRestante === null ? 'sem limite' : `cobre ~${Math.floor(e.limiteRestante / (e.gastoDia || 30))} dia(s) de gasto`,
     orcamentoDiario: e.orcamentoDia ? 'encontrado' : 'não encontrado (orçamento total ou sem permissão)',
     conjuntos: e.conjuntos.map((c) => ({ nome: c.nome, status: c.status, aprendizado: c.aprendizado, problemas: c.problemas?.length ? c.problemas : undefined })),
   };
@@ -58,13 +53,15 @@ export async function rotinaVigiaEntrega(): Promise<Record<string, unknown>> {
   const { resumo: r, detalhe: e } = await resumoEntrega();
   if (e.situacao !== 'ok') {
     // O alerta vai só para o celular do dono (pode ter valores); o log fica sem eles
-    const limite = e.limiteRestante !== null ? `\nLimite de gastos da conta: faltam R$ ${e.limiteRestante.toFixed(2).replace('.', ',')} (Gerenciador → Cobrança → Limite de gastos da conta)` : '';
+    const rs = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
+    const gasto = e.gastoDia ? ` · gasto/dia: ~${rs(e.gastoDia)}` : '';
+    const limite = e.limiteRestante !== null ? `\nLimite de gastos da conta: faltam ${rs(e.limiteRestante)}${gasto} (Cobrança e pagamentos → Limite de gastos da conta)` : '';
     const saldo =
-      e.saldo !== null && e.orcamentoDia
-        ? `\nSaldo: R$ ${e.saldo.toFixed(2).replace('.', ',')} · orçamento/dia: R$ ${e.orcamentoDia.toFixed(2).replace('.', ',')}`
+      e.saldo !== null
+        ? `\nSaldo pré-pago: ${rs(e.saldo)}${gasto}${e.prePaga ? '\nRecarregue por Pix: Cobrança e pagamentos → Adicionar fundos' : ''}`
         : '';
     const titulo = e.situacao === 'parado' ? '🚨 Anúncio parado ou para parar' : '⚠️ Anúncio pede atenção';
-    const texto = `${titulo}\n- ${e.motivos.join('\n- ')}${saldo}${limite}\n\nConfira no Gerenciador de Anúncios (saldo, cobrança e status do conjunto).`;
+    const texto = `${titulo}\n- ${e.motivos.join('\n- ')}${saldo}${limite}\n\nConfira no Gerenciador de Anúncios (saldo, cobrança e status dos conjuntos).`;
     // Um aviso por situação a cada 6 h (não fica repetindo a cada 30 min)
     if (!alertasLigados()) r.alerta = 'nenhum canal de alerta configurado (ALERTA_WHATSAPP_NUMERO ou Telegram)';
     else r.alerta = await alertarCelular(texto, { chave: `entrega:${e.situacao}:${e.motivos.map((m) => m.split(' ')[0]).join('|')}`, ttlS: 6 * 3600 });
