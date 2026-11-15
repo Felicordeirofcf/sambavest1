@@ -9,7 +9,6 @@ import { marcarEtapa } from '../../../components/analytics/Etapa';
 import Image from 'next/image';
 import { podeOtimizar } from '../../../lib/imagem';
 import { WHATSAPP_NUMBER } from '../../../lib/whatsapp';
-import { chaveTamanho, MEDIDAS, tipoDoModelo } from '../../../lib/medidas';
 
 // ViewContent uma vez por produto por carregamento (a página pode remontar ao ler o ?modelo=)
 const jaRastreados = new Set<number>();
@@ -208,25 +207,6 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     matchedUrlModel || modeloEmPromocao || (availableModels[0] || '')
   );
   const [selectedSize, setSelectedSize] = useState<string>('');
-  // Barra fixa de compra no celular: aparece quando o botão principal sai da tela
-  // (ref por callback: o botão pode aparecer depois da primeira renderização)
-  const [botaoEl, setBotaoEl] = useState<HTMLButtonElement | null>(null);
-  const [barraFixa, setBarraFixa] = useState(false);
-  useEffect(() => {
-    if (!botaoEl) return;
-    let quadro = 0;
-    const conferir = () => {
-      cancelAnimationFrame(quadro);
-      quadro = requestAnimationFrame(() => setBarraFixa(botaoEl.getBoundingClientRect().bottom < 0));
-    };
-    window.addEventListener('scroll', conferir, { passive: true });
-    window.addEventListener('resize', conferir);
-    return () => {
-      cancelAnimationFrame(quadro);
-      window.removeEventListener('scroll', conferir);
-      window.removeEventListener('resize', conferir);
-    };
-  }, [botaoEl]);
   const [activeImage, setActiveImage] = useState(0);
   const toqueX = useRef(0);
   const [avisoTamanho, setAvisoTamanho] = useState(false);
@@ -242,55 +222,10 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     return v ? imagemDaVariante(v) : '';
   };
 
-  // Galeria do modelo escolhido: primeiro as fotos desse modelo, depois as gerais; sem as fotos dos
-  // OUTROS modelos (vestido não aparece na unissex), sem repetidas e no máximo 10.
-  const chaveFoto = (u: string) =>
-    (u || '')
-      .split('?')[0]
-      .replace(/-\d+x\d+(?=\.\w+$)/, '') // miniatura do WordPress (-300x300)
-      .replace(/-scaled(?=\.\w+$)/, '')
-      .replace(/-\d{1,2}(?=\.\w+$)/, '') // mesma foto enviada de novo (foto-1.jpg, foto-2.jpg)
-      .toLowerCase();
-  const PALAVRAS_MODELO: Record<string, RegExp> = {
-    regata: /regata/,
-    baby: /baby|babylook/,
-    vestido: /vestido/,
-  };
-  const grupoDoModelo = (m: string) => Object.keys(PALAVRAS_MODELO).find((k) => PALAVRAS_MODELO[k].test(m.toLowerCase())) || 'comum';
-  const galeriaVisivel = useMemo(() => {
-    const modelo = selectedModel || '';
-    const grupo = grupoDoModelo(modelo);
-    const doModelo: string[] = [];
-    const deOutros = new Set<string>();
-    for (const v of variantsList) {
-      const img = imagemDaVariante(v);
-      if (!img) continue;
-      const m = extractModelFromVariant(v);
-      if (modelo && m.toLowerCase() === modelo.toLowerCase()) doModelo.push(img);
-      else if (modelo && grupoDoModelo(m) !== grupo) deOutros.add(chaveFoto(img));
-    }
-    // Fotos gerais com o nome de outro modelo no arquivo (ex.: "...-vestido.jpg") também saem
-    const ehDeOutroModelo = (img: string) => {
-      if (deOutros.has(chaveFoto(img))) return true;
-      const g = Object.keys(PALAVRAS_MODELO).find((k) => PALAVRAS_MODELO[k].test(chaveFoto(img)));
-      return Boolean(modelo && g && g !== grupo);
-    };
-    const doNome = gallery.filter((img: string) => grupo !== 'comum' && PALAVRAS_MODELO[grupo]?.test(chaveFoto(img)));
-    const lista: string[] = [];
-    const vistas = new Set<string>();
-    for (const img of [...doModelo, ...doNome, ...gallery.filter((g: string) => !ehDeOutroModelo(g))]) {
-      const k = chaveFoto(img);
-      if (!img || vistas.has(k)) continue;
-      vistas.add(k);
-      lista.push(img);
-    }
-    return (lista.length ? lista : gallery).slice(0, 10);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gallery, variantsList, selectedModel]);
-
-  // Trocou o modelo: volta para a 1ª foto (que já é a desse modelo)
-  const mostrarFotoDoModelo = (_modelo: string) => {
-    setActiveImage(0);
+  const mostrarFotoDoModelo = (modelo: string) => {
+    const img = imagemDoModelo(modelo);
+    const idx = img ? gallery.indexOf(img) : -1;
+    if (idx >= 0) setActiveImage(idx);
   };
 
   // Veio da vitrine com ?modelo=Regata: já abre na foto desse modelo
@@ -417,7 +352,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     openCart();
   };
 
-  const displayedImage = galeriaVisivel[activeImage] || galeriaVisivel[0] || '';
+  const displayedImage = gallery[activeImage] || '';
   
   const whatsappMessage = encodeURIComponent(`Olá! Tenho dúvida sobre o produto: ${product?.name} (${selectedModel ? selectedModel : 'Modelo padrão'})`);
   const whatsappTamanhoUrl = `https://api.whatsapp.com/send/?phone=${WHATSAPP_NUMBER}&text=${encodeURIComponent(
@@ -427,27 +362,6 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
 
   return (
     <div className={`w-full min-h-screen ${T.pagina} ${T.fundo}`}>
-      {barraFixa && (
-        <div className={`fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t px-3 py-2.5 pl-24 shadow-[0_-8px_24px_rgba(0,0,0,0.18)] md:hidden ${
-          bk ? 'border-white/10 bg-[#0B1B34]/95 text-white backdrop-blur' : 'border-gray-200 bg-white/95 text-[#0B1B34] backdrop-blur'
-        }`}>
-          <span className="min-w-0 flex-1 leading-tight">
-            <span className="block text-lg font-black">R$ {Number(currentPrice || 0).toFixed(2).replace('.', ',')}</span>
-            <span className={`block truncate text-[11px] ${bk ? 'text-white/60' : 'text-gray-500'}`}>
-              {selectedSize ? `${selectedModel ? `${selectedModel} · ` : ''}${selectedSize}` : 'Escolha o tamanho'}
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            className={`shrink-0 rounded-xl px-4 py-3 text-xs font-extrabold uppercase tracking-wider ${
-              bk ? (azul ? 'bg-sky-600 text-white' : 'bg-red-600 text-white') : 'bg-[#C9A227] text-[#0B1B34]'
-            }`}
-          >
-            {matchedVariant ? '🛒 Adicionar' : 'Escolher tamanho'}
-          </button>
-        </div>
-      )}
       {guiaAberto && (
         <div
           role="dialog"
@@ -494,7 +408,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
               onTouchStart={(e) => (toqueX.current = e.touches[0].clientX)}
               onTouchEnd={(e) => {
                 const dx = e.changedTouches[0].clientX - toqueX.current;
-                if (Math.abs(dx) > 40 && galeriaVisivel.length > 1) setActiveImage((i) => (i + (dx < 0 ? 1 : -1) + galeriaVisivel.length) % galeriaVisivel.length);
+                if (Math.abs(dx) > 40 && gallery.length > 1) setActiveImage((i) => (i + (dx < 0 ? 1 : -1) + gallery.length) % gallery.length);
               }}
             >
               {product?.badge && (
@@ -513,12 +427,12 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                   className={`h-full w-full transition-all duration-300 ease-in-out ${T.foto}`}
                 />
               )}
-              {galeriaVisivel.length > 1 && (
+              {gallery.length > 1 && (
                 <>
                   <button
                     type="button"
                     aria-label="Foto anterior"
-                    onClick={() => setActiveImage((i) => (i - 1 + galeriaVisivel.length) % galeriaVisivel.length)}
+                    onClick={() => setActiveImage((i) => (i - 1 + gallery.length) % gallery.length)}
                     className="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-xl text-white opacity-90 backdrop-blur transition hover:bg-black/75 md:opacity-0 md:group-hover/foto:opacity-100"
                   >
                     ‹
@@ -526,21 +440,23 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                   <button
                     type="button"
                     aria-label="Próxima foto"
-                    onClick={() => setActiveImage((i) => (i + 1) % galeriaVisivel.length)}
+                    onClick={() => setActiveImage((i) => (i + 1) % gallery.length)}
                     className="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-xl text-white opacity-90 backdrop-blur transition hover:bg-black/75 md:opacity-0 md:group-hover/foto:opacity-100"
                   >
                     ›
                   </button>
-                  <span className="absolute bottom-3 right-3 z-10 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
-                    {Math.min(activeImage, galeriaVisivel.length - 1) + 1} / {galeriaVisivel.length}
-                  </span>
+                  <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-1.5">
+                    {gallery.map((_: string, i: number) => (
+                      <span key={i} className={`h-1.5 rounded-full transition-all ${activeImage === i ? 'w-5 bg-black/70' : 'w-1.5 bg-black/25'}`} />
+                    ))}
+                  </div>
                 </>
               )}
             </div>
 
-            {galeriaVisivel.length > 1 && (
+            {gallery.length > 1 && (
               <div className="mt-4 flex gap-3 overflow-x-auto px-1 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:overflow-visible">
-                {galeriaVisivel.map((img: string, i: number) => (
+                {gallery.map((img: string, i: number) => (
                   <button
                     key={`${img}-${i}`}
                     type="button"
@@ -697,50 +613,6 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                   </p>
                 )}
 
-                {(() => {
-                  // Medidas em texto (sem precisar abrir imagem): a dúvida de tamanho é o que mais trava a compra
-                  const tabela = MEDIDAS[tipoDoModelo(selectedModel, product?.name || '')];
-                  const tams = Object.keys(tabela.tamanhos).filter((t) => availableSizes.some((a: string) => chaveTamanho(a) === t));
-                  if (!tams.length) return null;
-                  const sel = chaveTamanho(selectedSize || '');
-                  const m = tabela.tamanhos[sel];
-                  return (
-                    <div className={`mt-3 rounded-xl border p-3 text-xs ${bk ? 'border-white/15 bg-white/[0.06]' : 'border-gray-200 bg-white'}`}>
-                      <p className={`mb-2 font-bold ${bk ? 'text-white' : 'text-[#0B1B34]'}`}>
-                        📏{' '}
-                        {m
-                          ? `${sel}: ${tabela.colunas.map((c, i) => `${c.toLowerCase()} ${m[i]} cm`).join(' · ')}`
-                          : `Medidas da ${tabela.nome.toLowerCase()} (cm)`}
-                      </p>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-center tabular-nums">
-                          <thead>
-                            <tr className={bk ? 'text-white/60' : 'text-gray-500'}>
-                              <th className="py-1 pr-2 text-left font-semibold"> </th>
-                              {tams.map((t) => (
-                                <th key={t} className={`px-1.5 py-1 font-bold ${t === sel ? (azul ? 'text-sky-400' : bk ? 'text-red-400' : 'text-[#0B1B34]') : ''}`}>{t}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {tabela.colunas.map((c, i) => (
-                              <tr key={c} className={bk ? 'text-white/85' : 'text-gray-700'}>
-                                <td className={`py-0.5 pr-2 text-left ${bk ? 'text-white/60' : 'text-gray-500'}`}>{c}</td>
-                                {tams.map((t) => (
-                                  <td key={t} className={`px-1.5 py-0.5 ${t === sel ? 'font-black' : ''}`}>{tabela.tamanhos[t][i]}</td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <p className={`mt-2 ${bk ? 'text-white/55' : 'text-gray-500'}`}>
-                        Dica: meça uma camisa sua que veste bem, deitada, de axila a axila, e compare com a largura. Entre dois tamanhos, escolha o maior.
-                      </p>
-                    </div>
-                  );
-                })()}
-
                 <p className={`mt-2.5 text-xs ${bk ? 'text-white/70' : 'text-gray-600'}`}>
                   🔄 Não serviu? Fazemos a troca de tamanho.{' '}
                   <a href={whatsappTamanhoUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2">
@@ -751,7 +623,6 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
             )}
 
             <button
-              ref={setBotaoEl}
               onClick={handleAddToCart}
               className={`w-full py-4 uppercase tracking-widest text-sm font-extrabold rounded-xl transition-colors shadow-md ${
                 matchedVariant

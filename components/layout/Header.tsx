@@ -39,8 +39,6 @@ export default function Header() {
   }, [pathname]);
 
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
-  // Na página da Black o menu sai: a pessoa veio do anúncio para comprar a camisa (logo e sacola ficam)
-  const naBlack = pathname.startsWith('/black-friday');
 
   return (
     <>
@@ -49,7 +47,6 @@ export default function Header() {
         <div className="relative flex items-center justify-between xl:hidden min-h-[68px]">
           {/* Menu */}
           <div className="w-[40px] flex justify-start shrink-0">
-            {!naBlack && (
             <button
               onClick={openMenu}
               className="group flex flex-col justify-center items-center w-9 h-9 space-y-1.5 focus:outline-none transition-transform active:scale-95"
@@ -59,7 +56,6 @@ export default function Header() {
               <span className="block w-6 h-0.5 bg-[#C9A227] transition-all group-hover:w-5 group-hover:bg-[#F0DFA8]"></span>
               <span className="block w-6 h-0.5 bg-[#C9A227] transition-all group-hover:w-7 group-hover:bg-[#F0DFA8]"></span>
             </button>
-            )}
           </div>
 
           {/* Logo mobile centralizada com brilho suave */}
@@ -110,7 +106,6 @@ export default function Header() {
         {/* DESKTOP */}
         <div className="hidden xl:flex justify-between items-center max-w-[1600px] mx-auto">
           <div className="flex-1 flex items-center justify-start">
-            {!naBlack && (
             <nav className="flex gap-8 text-[12px] uppercase tracking-wider font-bold">
               {/* 🚀 BOTÕES FIXOS E LIMPOS: Apenas Início e Coleção */}
               <NavLink href="/" active={pathname === '/'}>
@@ -123,7 +118,6 @@ export default function Header() {
                 <span className="text-[#C9A227]">BLACK FRIDAY</span>
               </NavLink>
             </nav>
-            )}
           </div>
 
           <div className="flex-1 flex justify-center">
@@ -202,7 +196,6 @@ export default function Header() {
 
       {/* Menu mobile */}
       <div
-        data-area="menu"
         className={`fixed top-0 left-0 h-full w-[85%] max-w-[350px] bg-[#0B1B34] z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col xl:hidden border-r border-[#C9A227]/30 ${
           isMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
