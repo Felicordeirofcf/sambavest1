@@ -210,7 +210,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const gratis = freteGratis(cotacao, subtotalProdutos);
+    const pecas = [...quantidades.values()].reduce((s, q) => s + q, 0);
+    const gratis = freteGratis(cotacao, subtotalProdutos, pecas);
     const valorFrete = gratis ? 0 : centavos(cotacao.price);
 
     // 🛍️ PEDIDO CRIADO COMO CONVIDADO (Garante acesso direto à chave de pagamento sem login)

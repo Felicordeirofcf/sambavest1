@@ -6,7 +6,6 @@ import BarraCompra from '../../components/blackfriday/BarraCompra';
 import Duelo from '../../components/blackfriday/Duelo';
 import MedirBF from '../../components/blackfriday/MedirBF';
 import { BF, brl, faseBF, placarDuelo, produtosBF, ProdutoBF } from '../../lib/blackfriday';
-import { FRETE_GRATIS_A_PARTIR_DE } from '../../lib/frete';
 
 export const revalidate = 60;
 
@@ -268,7 +267,7 @@ export default async function BlackFridayPage() {
         <div className="mx-auto grid max-w-6xl gap-6 px-4 py-12 sm:grid-cols-3">
           {[
             ['💳', 'Pix ou cartão', 'Pague no Pix (aprovação na hora) ou no cartão de crédito. Preço da Black já com desconto.'],
-            ['🚚', 'Frete para todo o Brasil', `Calculado no carrinho. Acima de ${brl(FRETE_GRATIS_A_PARTIR_DE)} em camisas, o frete mais barato é grátis.`],
+            ['🚚', 'Frete para todo o Brasil', 'Levando 2 camisas ou mais, o frete mais barato é GRÁTIS. Com 1 camisa, o frete é calculado no carrinho.'],
             ['📏', 'Do P ao EXG', 'Confira a tabela de medidas na página de cada camisa antes de escolher.'],
           ].map(([icone, titulo, texto]) => (
             <div key={titulo} className="rounded-2xl border border-white/10 p-5">

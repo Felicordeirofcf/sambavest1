@@ -8,7 +8,7 @@ import { config } from './automacao/config';
 import { kvGet, kvSet } from './automacao/kv';
 import { me, pacote } from './automacao/melhorenvio';
 
-import { FREE_SHIPPING_THRESHOLD } from './shipping';
+import { FREE_SHIPPING_THRESHOLD, ganhaFreteGratis } from './shipping';
 
 // Mesmo valor mostrado no site (lib/shipping.ts).
 export const FRETE_GRATIS_A_PARTIR_DE = FREE_SHIPPING_THRESHOLD;
@@ -86,9 +86,9 @@ export async function cotarFreteDetalhado(
 }
 
 /**
- * Mesma regra da calculadora: a opção de frete MAIS BARATA sai grátis quando os produtos somam
- * R$ 300 ou mais. (Antes era "o PAC", mas o Melhor Envio nem sempre oferece PAC para o trecho.)
+ * Mesma regra da calculadora: a opção de frete MAIS BARATA sai grátis com 2 camisas ou mais, ou
+ * quando os produtos somam R$ 300 ou mais (ganhaFreteGratis em lib/shipping.ts).
  */
-export function freteGratis(cotacao: CotacaoFrete, subtotalProdutos: number): boolean {
-  return subtotalProdutos >= FRETE_GRATIS_A_PARTIR_DE && Boolean(cotacao.maisBarato);
+export function freteGratis(cotacao: CotacaoFrete, subtotalProdutos: number, pecas: number): boolean {
+  return ganhaFreteGratis(subtotalProdutos, pecas) && Boolean(cotacao.maisBarato);
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useCartStore } from '../../store/cartStore';
-import { FREE_SHIPPING_THRESHOLD, type ShippingQuote } from '../../lib/shipping';
+import { FRETE_GRATIS_PECAS, ganhaFreteGratis, type ShippingQuote } from '../../lib/shipping';
 
 export type { ShippingQuote };
 
@@ -33,6 +33,9 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext, 
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | number | null>(null);
 
   const cepCotado = useRef('');
+  // Camisas consideradas: as da sacola; com a sacola vazia (página do produto), 1 camisa
+  const pecas = items.length > 0 ? items.reduce((s, i) => s + i.quantity, 0) : 1;
+  const gratis = ganhaFreteGratis(subtotal, pecas);
 
   const handleCalculate = async (cepInformado?: string) => {
     const cepLimpo = (cepInformado ?? cep).replace(/\D/g, '');
@@ -103,7 +106,7 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext, 
       cep: cepCotado.current,
     };
 
-    if (subtotal >= FREE_SHIPPING_THRESHOLD && quote.maisBarato) {
+    if (gratis && quote.maisBarato) {
       finalQuote.price = 0;
       finalQuote.name = `${quote.name} (FRETE GRÁTIS)`;
     }
@@ -170,13 +173,18 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext, 
                 </div>
               </div>
               <div className="text-sm font-extrabold text-[#0B1B34]">
-                {subtotal >= FREE_SHIPPING_THRESHOLD && quote.maisBarato 
+                {gratis && quote.maisBarato 
                   ? <span className="text-green-600">GRÁTIS</span>
                   : `R$ ${quote.price.toFixed(2).replace('.', ',')}`
                 }
               </div>
             </label>
           ))}
+          {!gratis && (
+            <p className="mt-1 text-xs font-semibold text-emerald-700">
+              🎁 Levando {FRETE_GRATIS_PECAS} camisas ou mais, a opção mais barata sai GRÁTIS.
+            </p>
+          )}
         </div>
       )}
     </div>

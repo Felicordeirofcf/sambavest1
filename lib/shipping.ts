@@ -1,6 +1,13 @@
 // Configuração de Tipagem e Integração de Frete (Melhor Envio / Sistema)
 
 export const FREE_SHIPPING_THRESHOLD = 300; // Ajuste o valor do frete grátis conforme sua preferência
+/** Frete grátis a partir desta quantidade de camisas na sacola (a opção mais barata sai grátis). */
+export const FRETE_GRATIS_PECAS = 2;
+
+/** Regra única do frete grátis (site, checkout e servidor): 2+ camisas OU R$ 300+ em produtos. */
+export function ganhaFreteGratis(subtotal: number, pecas: number): boolean {
+  return pecas >= FRETE_GRATIS_PECAS || subtotal >= FREE_SHIPPING_THRESHOLD;
+}
 
 export type ShippingQuote = {
   id: number | string;
