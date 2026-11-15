@@ -120,7 +120,7 @@ export type ContaAnuncios = {
 
 export async function contaAnuncios(): Promise<ContaAnuncios> {
   return comCache('conta', async () => {
-    const r = await graph<{
+    type Conta = {
       name: string;
       account_status: number;
       disable_reason?: number;
@@ -128,11 +128,18 @@ export async function contaAnuncios(): Promise<ContaAnuncios> {
       spend_cap?: string;
       funding_source_details?: { display_string?: string };
       is_prepay_account?: boolean;
-    }>(conta(), { fields: 'name,account_status,disable_reason,amount_spent,spend_cap,funding_source_details,is_prepay_account' }).catch((e) =>
-      // O saldo (funding_source_details) e o tipo da conta (is_prepay_account) podem exigir mais que
-      // "só leitura" ou não existir nesta versão da API: tenta só com os campos básicos
-      e ? graph<{ name: string; account_status: number; disable_reason?: number; amount_spent?: string; spend_cap?: string; funding_source_details?: { display_string?: string } }>(conta(), { fields: 'name,account_status,disable_reason,amount_spent,spend_cap' }) : Promise.reject(e)
-    );
+    };
+    // O saldo (funding_source_details) costuma exigir mais que "só leitura". Tenta em etapas, para que a
+    // falta dele não leve junto o tipo da conta (is_prepay_account): tudo → sem o saldo → só o básico.
+    const base = 'name,account_status,disable_reason,amount_spent,spend_cap';
+    let r: Conta | null = null;
+    for (const extra of [',funding_source_details,is_prepay_account', ',is_prepay_account', '']) {
+      r = await graph<Conta>(conta(), { fields: base + extra }).catch(() => null);
+      if (r) break;
+    }
+    if (!r) r = await graph<Conta>(conta(), { fields: base }); // mostra o erro real
+    // META_CONTA_PRE_PAGA=true|false na Vercel força o tipo, se a Meta não informar
+    const forcada = (process.env.META_CONTA_PRE_PAGA || '').trim().toLowerCase();
     return {
       nome: r.name,
       status: r.account_status,
@@ -140,7 +147,7 @@ export async function contaAnuncios(): Promise<ContaAnuncios> {
       gastoTotal: n(r.amount_spent) / 100,
       limite: r.spend_cap && r.spend_cap !== '0' ? n(r.spend_cap) / 100 : null,
       saldo: r.funding_source_details?.display_string,
-      prePaga: (r as { is_prepay_account?: boolean }).is_prepay_account,
+      prePaga: forcada === 'true' ? true : forcada === 'false' ? false : r.is_prepay_account,
     };
   });
 }
