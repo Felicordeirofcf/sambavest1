@@ -27,6 +27,8 @@ export async function resumoEntrega() {
             : e.saldo < e.orcamentoDia * 2
               ? 'atenção: menos de 2 dias de orçamento'
               : 'ok',
+    limiteDeGastosDaConta:
+      e.limiteRestante === null ? 'sem limite' : e.orcamentoDia ? `cobre ~${Math.floor(e.limiteRestante / e.orcamentoDia)} dia(s) de orçamento` : 'definido',
     orcamentoDiario: e.orcamentoDia ? 'encontrado' : 'não encontrado (orçamento total ou sem permissão)',
     conjuntos: e.conjuntos.map((c) => ({ nome: c.nome, status: c.status, aprendizado: c.aprendizado, problemas: c.problemas?.length ? c.problemas : undefined })),
   };
@@ -38,12 +40,13 @@ export async function rotinaVigiaEntrega(): Promise<Record<string, unknown>> {
   const { resumo: r, detalhe: e } = await resumoEntrega();
   if (e.situacao !== 'ok') {
     // O alerta vai só para o celular do dono (pode ter valores); o log fica sem eles
+    const limite = e.limiteRestante !== null ? `\nLimite de gastos da conta: faltam R$ ${e.limiteRestante.toFixed(2).replace('.', ',')} (Gerenciador → Cobrança → Limite de gastos da conta)` : '';
     const saldo =
       e.saldo !== null && e.orcamentoDia
         ? `\nSaldo: R$ ${e.saldo.toFixed(2).replace('.', ',')} · orçamento/dia: R$ ${e.orcamentoDia.toFixed(2).replace('.', ',')}`
         : '';
     const titulo = e.situacao === 'parado' ? '🚨 Anúncio parado ou para parar' : '⚠️ Anúncio pede atenção';
-    const texto = `${titulo}\n- ${e.motivos.join('\n- ')}${saldo}\n\nConfira no Gerenciador de Anúncios (saldo, cobrança e status do conjunto).`;
+    const texto = `${titulo}\n- ${e.motivos.join('\n- ')}${saldo}${limite}\n\nConfira no Gerenciador de Anúncios (saldo, cobrança e status do conjunto).`;
     // Um aviso por situação a cada 6 h (não fica repetindo a cada 30 min)
     if (!alertasLigados()) r.alerta = 'nenhum canal de alerta configurado (ALERTA_WHATSAPP_NUMERO ou Telegram)';
     else r.alerta = await alertarCelular(texto, { chave: `entrega:${e.situacao}:${e.motivos.map((m) => m.split(' ')[0]).join('|')}`, ttlS: 6 * 3600 });

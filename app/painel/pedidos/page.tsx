@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Aviso, MarcasPedido, StatusPedido, brl, dataHora } from '../../../components/painel/ui';
+import { Aviso, MarcasPedido, StatusPedido, avisado, brl, dataHora } from '../../../components/painel/ui';
 import { exigirLogin } from '../../../lib/painel/auth';
 import { pedidosRecentes, STATUS_NOME } from '../../../lib/painel/dados';
 import { norm } from '../../../lib/painel/metricas';
@@ -32,6 +32,7 @@ export default async function Pedidos({
     if (status !== 'todos' && p.status !== status) return false;
     if (sp.so === 'sem-rastreio' && (p.status !== 'processing' || p.marcas.rastreio)) return false;
     if (sp.so === 'erro' && !p.marcas.erro) return false;
+    if (sp.so === 'sem-aviso' && (!p.marcas.rastreio || avisado(p))) return false;
     if (!q) return true;
     return (
       String(p.id) === q.replace('#', '') ||
@@ -73,6 +74,7 @@ export default async function Pedidos({
         <select name="so" defaultValue={sp.so || ''} className="border border-slate-300 rounded-lg px-2 py-2 text-sm">
           <option value="">Sem filtro extra</option>
           <option value="sem-rastreio">Pagos sem rastreio</option>
+          <option value="sem-aviso">Enviados sem aviso ao cliente</option>
           <option value="erro">Com erro na automação</option>
         </select>
         <button className="bg-[#0B1B34] text-white rounded-lg px-4 py-2 text-sm">Filtrar</button>

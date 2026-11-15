@@ -190,7 +190,7 @@ export default async function Pedido({
               </li>
               <li className="flex gap-2 items-center">
                 <Chip ok={Boolean(p.marcas.avisoEnviado)}>Aviso de envio</Chip>
-                <span className="text-slate-500">{p.marcas.avisoEnviado || 'não enviado'}</span>
+                <span className="text-slate-500">{p.marcas.avisoEnviado === 'nenhum canal' ? 'e-mail do WooCommerce (nota do pedido)' : p.marcas.avisoEnviado?.replace(/,/g, ', ') || 'não enviado'}</span>
               </li>
             </ul>
           )}

@@ -76,6 +76,10 @@ export function Chip({ ok, children, titulo }: { ok: boolean | 'erro'; children:
   );
 }
 
+/** O cliente recebeu o aviso de envio (rastreio). "nenhum canal" = foi pela nota do pedido (e-mail do WooCommerce). */
+export const avisado = (p: PedidoResumo) => Boolean(p.marcas.avisoEnviado);
+const canaisAviso = (a: string) => (a === 'nenhum canal' ? 'e-mail do WooCommerce (nota do pedido)' : a.replace(/,/g, ', '));
+
 /** Situação das automações de um pedido, em chips. */
 export function MarcasPedido({ p }: { p: PedidoResumo }) {
   const pagoOuConcluido = p.status === 'processing' || p.status === 'completed';
@@ -86,6 +90,11 @@ export function MarcasPedido({ p }: { p: PedidoResumo }) {
       <Chip ok={Boolean(p.marcas.nfe)} titulo="NF-e">NF-e</Chip>
       <Chip ok={Boolean(p.marcas.envio || p.marcas.rastreio)} titulo="Envio no Melhor Envio">Envio</Chip>
       <Chip ok={Boolean(p.marcas.rastreio)} titulo={p.marcas.rastreio ? `Rastreio ${p.marcas.rastreio}` : 'Sem rastreio'}>Rastreio</Chip>
+      {p.marcas.rastreio && (
+        <Chip ok={avisado(p)} titulo={avisado(p) ? `Cliente avisado do envio por: ${canaisAviso(p.marcas.avisoEnviado!)}` : 'Cliente ainda não avisado do envio'}>
+          {avisado(p) && p.marcas.avisoEnviado!.includes('whatsapp') ? 'Avisado 📱' : 'Avisado'}
+        </Chip>
+      )}
       {p.marcas.erro && <Chip ok="erro" titulo={p.marcas.erro}>erro</Chip>}
     </span>
   );

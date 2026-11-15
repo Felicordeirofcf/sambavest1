@@ -258,6 +258,8 @@ export type EntregaAnuncios = {
    *  (do conjunto, ou da campanha quando o orçamento fica na campanha, como no Advantage+). */
   saldo: number | null;
   orcamentoDia: number | null;
+  /** Limite de gastos da conta (spend_cap): quanto falta em R$ (null = conta sem limite). Ao bater, a Meta para TUDO. */
+  limiteRestante: number | null;
   /** Situação para o dono: ok | atencao | parado */
   situacao: 'ok' | 'atencao' | 'parado';
   motivos: string[];
@@ -377,6 +379,18 @@ export async function entregaAnuncios(hoje: string, horaAgora: number, ontem?: s
       `entrega despencou: ${ultimas3h.hoje} exibições nas últimas 3 h contra ${ultimas3h.ontem} ontem no mesmo horário (-${Math.round(ultimas3h.queda * 100)}%)`
     );
   }
+  // Limite de gastos da conta: ao ser atingido, a Meta pausa todos os anúncios até alguém aumentar
+  const limiteRestante = contaInfo?.limite ? Math.max(0, contaInfo.limite - contaInfo.gastoTotal) : null;
+  if (limiteRestante !== null) {
+    const dia = orcamentoDia || 30;
+    if (limiteRestante < dia) {
+      situacao = 'parado';
+      motivos.push('limite de gastos da conta praticamente atingido: a Meta vai parar todos os anúncios');
+    } else if (limiteRestante < dia * 3) {
+      atencao();
+      motivos.push(`limite de gastos da conta acaba em ~${Math.max(1, Math.floor(limiteRestante / dia))} dia(s)`);
+    }
+  }
   if (saldo !== null && orcamentoDia && saldo < orcamentoDia) {
     situacao = 'parado';
     motivos.push('saldo pré-pago menor que 1 dia de orçamento');
@@ -400,5 +414,5 @@ export async function entregaAnuncios(hoje: string, horaAgora: number, ontem?: s
       motivos.push(`conjunto "${c.nome}" com aprendizado limitado`);
     }
   }
-  return { conjuntos, porHora, horasSemEntrega, ultimas3h, saldo, orcamentoDia, situacao, motivos };
+  return { conjuntos, porHora, horasSemEntrega, ultimas3h, saldo, orcamentoDia, limiteRestante, situacao, motivos };
 }
