@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import ShippingCalculator from '../../components/product/ShippingCalculator';
-import { FREE_SHIPPING_THRESHOLD, type ShippingQuote } from '../../lib/shipping';
+import { ganhaFreteGratis, type ShippingQuote } from '../../lib/shipping';
 import Link from 'next/link';
 import Image from 'next/image';
 import { podeOtimizar } from '../../lib/imagem';
@@ -256,7 +256,7 @@ export default function CheckoutPage() {
   const freteGratisAgora = Boolean(
     shippingQuote &&
       shippingQuote.maisBarato &&
-      subtotalComDesconto >= FREE_SHIPPING_THRESHOLD
+      ganhaFreteGratis(subtotalComDesconto, activeItems.reduce((acc: number, item: any) => acc + item.quantity, 0))
   );
   const frete = shippingQuote ? (freteGratisAgora ? 0 : shippingQuote.originalPrice ?? shippingQuote.price) : 0;
   const total = subtotalComDesconto + frete;

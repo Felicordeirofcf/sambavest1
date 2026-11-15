@@ -6,11 +6,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { podeOtimizar } from '../../lib/imagem';
 import { rastrear, dadosItens } from '../../lib/pixel';
+import { FRETE_GRATIS_PECAS, ganhaFreteGratis } from '../../lib/shipping';
 
 export default function Minicart() {
   const { items, isOpen, closeCart, removeItem } = useCartStore();
 
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const pecas = items.reduce((acc, item) => acc + item.quantity, 0);
 
   // Ao abrir a sacola, confere o preço atual de cada item (promoção que começou ou acabou)
   useEffect(() => {
@@ -80,6 +82,15 @@ export default function Minicart() {
                 <span>Subtotal</span>
                 <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
               </div>
+              {ganhaFreteGratis(subtotal, pecas) ? (
+                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200">
+                  ✅ Você ganhou FRETE GRÁTIS (a opção mais barata, no checkout)
+                </p>
+              ) : (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 ring-1 ring-amber-200">
+                  🎁 Falta {FRETE_GRATIS_PECAS - pecas} camisa para ganhar FRETE GRÁTIS
+                </p>
+              )}
 
               {/* Botão que direciona para a página completa de checkout/endereço */}
               <Link

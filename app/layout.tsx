@@ -7,7 +7,6 @@ import Header from '../components/layout/Header';
 import Minicart from '../components/layout/Minicart';
 import Footer from '../components/layout/Footer';
 import WhatsAppButton from '../components/layout/WhatsAppButton';
-import { FREE_SHIPPING_THRESHOLD } from '../lib/shipping';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const poppins = Poppins({
@@ -32,7 +31,7 @@ export const metadata: Metadata = {
     default: 'Samba Vest | Camisas Oficiais de Enredo',
     template: '%s | Samba Vest',
   },
-  description: `Samba Vest — camisas oficiais de enredo das escolas campeãs e Lançamentos Carnaval 2027. Estampas exclusivas, tecido leve e de secagem rápida, do P ao EXG. Frete Grátis acima de R$${FREE_SHIPPING_THRESHOLD}.`,
+  description: `Samba Vest — camisas oficiais de enredo das escolas campeãs e Lançamentos Carnaval 2027. Estampas exclusivas, tecido leve e de secagem rápida, do P ao EXG. Frete grátis levando 2 camisas.`,
   
   keywords: [
     'camisa de enredo',

@@ -9,7 +9,6 @@ import { marcarEtapa } from '../../../components/analytics/Etapa';
 import Image from 'next/image';
 import { podeOtimizar } from '../../../lib/imagem';
 import { WHATSAPP_NUMBER } from '../../../lib/whatsapp';
-import { FREE_SHIPPING_THRESHOLD } from '../../../lib/shipping';
 import { chaveTamanho, MEDIDAS, tipoDoModelo } from '../../../lib/medidas';
 
 // ViewContent uma vez por produto por carregamento (a página pode remontar ao ler o ?modelo=)
@@ -612,7 +611,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                 <span className="flex-1 leading-tight">
                   <span className={`block text-sm font-extrabold ${bk ? 'text-emerald-300' : 'text-emerald-800'}`}>Enviamos para todo o Brasil</span>
                   <span className={`block text-xs ${bk ? 'text-white/70' : 'text-emerald-900/80'}`}>
-                    <u className="underline-offset-2">Calcule o frete com seu CEP</u> · grátis acima de R$ {FREE_SHIPPING_THRESHOLD}
+                    <u className="underline-offset-2">Calcule o frete com seu CEP</u> · <b>frete grátis levando 2 camisas</b>
                   </span>
                 </span>
               </button>
