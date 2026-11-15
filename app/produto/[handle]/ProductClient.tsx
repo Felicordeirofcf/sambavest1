@@ -30,7 +30,8 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
         coluna: 'rounded-3xl border border-white/10 bg-white/[0.06] p-5 sm:p-8 backdrop-blur-sm shadow-[0_20px_60px_-30px_rgba(0,0,0,0.8)]',
         descricao: 'mx-auto max-w-3xl rounded-3xl bg-white p-6 sm:p-10 text-[#0B1B34] shadow-xl',
         palco: 'rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_50%_35%,#ffffff_0%,#eceef3_55%,#d9dce4_100%)] shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)]',
-        foto: 'object-contain p-5 sm:p-8 drop-shadow-[0_18px_30px_rgba(0,0,0,0.25)]',
+        // mix-blend-multiply: o fundo branco da foto some no fundo de estúdio (sem o "retângulo branco")
+        foto: 'object-contain p-2 sm:p-4 mix-blend-multiply',
         miniatura: 'bg-white border-white/20 opacity-80 hover:opacity-100',
         miniaturaAtiva: azul ? 'border-sky-400 ring-2 ring-sky-400/60' : 'border-red-400 ring-2 ring-red-400/60',
         titulo: 'text-white',
@@ -445,11 +446,18 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                   >
                     ›
                   </button>
-                  <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-1.5">
-                    {gallery.map((_: string, i: number) => (
-                      <span key={i} className={`h-1.5 rounded-full transition-all ${activeImage === i ? 'w-5 bg-black/70' : 'w-1.5 bg-black/25'}`} />
-                    ))}
-                  </div>
+                  {gallery.length > 8 ? (
+                    // Muitas fotos: contador no lugar de uma fileira enorme de bolinhas
+                    <span className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+                      {activeImage + 1} / {gallery.length}
+                    </span>
+                  ) : (
+                    <div className="absolute inset-x-0 bottom-3 z-10 flex justify-center gap-1.5">
+                      {gallery.map((_: string, i: number) => (
+                        <span key={i} className={`h-1.5 rounded-full transition-all ${activeImage === i ? 'w-5 bg-black/70' : 'w-1.5 bg-black/25'}`} />
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -466,7 +474,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                     }`}
                     aria-label={`Ver imagem ${i + 1}`}
                   >
-                    <Image src={img} alt="" fill sizes="64px" unoptimized={!podeOtimizar(img)} className="h-full w-full object-contain p-1" />
+                    <Image src={img} alt="" fill sizes="64px" unoptimized={!podeOtimizar(img)} className="h-full w-full object-contain p-1 mix-blend-multiply" />
                   </button>
                 ))}
               </div>
