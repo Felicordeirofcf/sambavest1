@@ -475,10 +475,11 @@ export async function destinosWhatsapp(numeroDaLoja: string): Promise<{ anuncios
   const anuncios: DestinoWhatsapp[] = [];
   let paginaId: string | undefined;
   for (const a of r.data) {
-    const json = JSON.stringify({ adset: a.adset, creative: a.creative });
-    const ehWhats = /WHATSAPP/i.test(a.creative?.call_to_action_type || '') || /WHATSAPP/i.test(a.adset?.destination_type || '') || /whatsapp/i.test(json);
-    if (!ehWhats) continue;
+    // Só conta como WhatsApp o que a Meta declara como destino: o botão do anúncio, o destino do conjunto
+    // ou um número em campo de WhatsApp. Uma simples menção à palavra (texto, opções do criativo) não basta.
     const numero = telefonesWhatsapp({ adset: a.adset, creative: a.creative })[0];
+    const ehWhats = /WHATSAPP/i.test(a.creative?.call_to_action_type || '') || /WHATSAPP/i.test(a.adset?.destination_type || '') || Boolean(numero);
+    if (!ehWhats) continue;
     anuncios.push({ anuncio: a.name, status: a.effective_status, final: numero ? `…${numero.slice(-4)}` : null, daLoja: numero ? mesmo(numero) : null });
     paginaId ||= String(a.adset?.promoted_object?.page_id || (a.creative?.object_story_spec as { page_id?: string } | undefined)?.page_id || '') || undefined;
   }
