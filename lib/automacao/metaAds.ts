@@ -285,8 +285,10 @@ export type EntregaAnuncios = {
 type ConjuntoApi = {
   name: string;
   effective_status: string;
+  /** Chave do próprio conjunto (ACTIVE/PAUSED), independente de problemas de veiculação. */
+  status?: string;
   daily_budget?: string;
-  campaign?: { id: string; daily_budget?: string };
+  campaign?: { id: string; daily_budget?: string; status?: string };
   learning_stage_info?: { status?: string };
   issues_info?: { error_summary?: string; error_message?: string }[];
 };
@@ -327,7 +329,7 @@ export async function entregaAnuncios(hoje: string, horaAgora: number, ontem?: s
           .sort((a, b) => a.hora - b.hora)
       )
       .catch(() => null);
-  const BASICO = 'name,effective_status,daily_budget,campaign{id,daily_budget}';
+  const BASICO = 'name,status,effective_status,daily_budget,campaign{id,daily_budget,status}';
   const [conjuntosApi, porHoraHoje, porHoraOntem, contaInfo] = await Promise.all([
     // learning_stage_info / issues_info podem exigir mais permissão: tenta sem eles
     pedirConjuntos(`${BASICO},learning_stage_info,issues_info`).catch((e) =>
@@ -337,6 +339,11 @@ export async function entregaAnuncios(hoje: string, horaAgora: number, ontem?: s
     ontem ? porHoraDo(ontem) : Promise.resolve(null),
     contaAnuncios().catch(() => null),
   ]);
+  // Conjunto com a chave desligada (ou campanha desligada) não conta: a Meta ainda marca alguns
+  // antigos como "com problema", mas eles não veiculam nem gastam. Isso gerava alarme falso.
+  conjuntosApi.data = conjuntosApi.data.filter(
+    (c) => (c.status ?? 'ACTIVE') === 'ACTIVE' && (c.campaign?.status ?? 'ACTIVE') === 'ACTIVE'
+  );
   const porHora = porHoraHoje || [];
   const naHora = (lista: { hora: number; impressoes: number }[] | null, h: number) => lista?.find((x) => x.hora === h)?.impressoes || 0;
 
