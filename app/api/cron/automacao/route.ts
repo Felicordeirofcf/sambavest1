@@ -56,6 +56,19 @@ export async function GET(request: Request) {
   };
 
   const executar = async () => {
+    // O WordPress fica "escondido" atrás do site da Vercel e quase não recebe visitas, então o WP-Cron
+    // (que só roda quando alguém abre uma página dele) quase nunca dispara. Sem ele, a AppMax não confere
+    // pagamentos em segundo plano e o WooCommerce não cancela pedidos vencidos. Aqui damos o "toque".
+    if (tarefa === 'todas' || tarefa === 'pix' || tarefa === 'pedidos' || tarefa === 'wp-cron') {
+      await rodar('wpCron', async () => {
+        const inicio = Date.now();
+        const res = await fetch(`${process.env.WP_BACKEND_URL || config.woo.url}/wp-cron.php?doing_wp_cron`, {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(15_000),
+        }).catch((e) => ({ status: 0, erro: (e as Error).name }) as const);
+        return { http: res.status, ms: Date.now() - inicio };
+      });
+    }
     if (tarefa === 'todas' || tarefa === 'pedidos') await rodar('pedidos', () => rotinaPedidos(prazo));
     if (tarefa === 'todas' || tarefa === 'pix') await rodar('pix', () => rotinaPix(prazo));
     if ((tarefa === 'todas' || tarefa === 'estoque') && integracoes.bling() && config.bling.sincronizarEstoque) {
