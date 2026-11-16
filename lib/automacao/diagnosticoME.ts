@@ -2,7 +2,7 @@
 // situação dos envios dos pedidos pagos. Sai no log público do GitHub Actions, então só mostra
 // e-mail mascarado, IDs e status (sem nomes, endereços ou valores).
 import { config } from './config';
-import { consultarEnvio, me } from './melhorenvio';
+import { consultarEnvio, me, pacote } from './melhorenvio';
 import { listarPedidos, meta } from './woocommerce';
 
 const mascarar = (email?: string) => {
@@ -26,6 +26,32 @@ export async function diagnosticoMelhorEnvio(): Promise<Record<string, unknown>>
   } catch (e) {
     r.carrinho = { erro: (e as Error).message };
   }
+  // Cotação com TODAS as transportadoras da conta (2 camisas), para escolher quais mostrar no site.
+  // Sem R$ no log público: só a posição, a diferença em % para a mais barata e o prazo.
+  r.servicosNoSite = config.melhorEnvio.servicos.length ? config.melhorEnvio.servicos : 'todos';
+  r.agenciasConfiguradasPara = Object.keys(config.melhorEnvio.agencias);
+  const origem = (config.melhorEnvio.remetente.cep || '').replace(/\D/g, '');
+  const destinos: Record<string, string> = { 'RJ capital': '20040020', 'Serra RJ': '25600000', 'SP capital': '01310100', 'BH': '30130010', 'Salvador': '40020000' };
+  const cotacoes: Record<string, unknown> = {};
+  for (const [lugar, cep] of Object.entries(destinos)) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await me<any[]>('/me/shipment/calculate', {
+        method: 'POST',
+        body: { from: { postal_code: origem }, to: { postal_code: cep }, package: pacote(2), options: { insurance_value: 198, receipt: false, own_hand: false } },
+      });
+      const ok = data.filter((c) => !c.error && c.price).sort((x, y) => Number(x.price) - Number(y.price));
+      const base = ok.length ? Number(ok[0].price) : 0;
+      cotacoes[lugar] = {
+        disponiveis: ok.map((c, i) => `${i + 1}º id ${c.id} ${c.company?.name} ${c.name} · ${c.delivery_time} dia(s) · ${i ? `+${Math.round((Number(c.price) / base - 1) * 100)}%` : 'mais barato'}`),
+        indisponiveis: data.filter((c) => c.error || !c.price).map((c) => `id ${c.id} ${c.company?.name} ${c.name}: ${String(c.error || 'sem preço').slice(0, 80)}`),
+      };
+    } catch (e) {
+      cotacoes[lugar] = { erro: (e as Error).message.slice(0, 120) };
+    }
+  }
+  r.cotacaoTodasTransportadoras = cotacoes;
+
   const desde = new Date(Date.now() - 14 * 86_400_000);
   const pagos = await listarPedidos('processing', desde, 50).catch(() => []);
   r.pedidosPagos = await Promise.all(
