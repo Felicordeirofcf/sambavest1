@@ -201,8 +201,8 @@ Confira isto com o seu contador. Um erro aqui gera nota rejeitada ou imposto err
 `PESO_POR_PECA_KG` × peças + `PESO_CAIXA_KG`. Se o peso declarado for menor que o real, os Correios
 cobram a diferença depois.
 
-**Serviços na cotação:** `MELHOR_ENVIO_SERVICOS` (padrão `1,2,17,3,4`: PAC, SEDEX, Mini Envios, Jadlog
-.Package e .Com). Transportadoras que exigem agência de postagem (Jadlog, Azul, Latam...) precisam da
+**Serviços na cotação:** `MELHOR_ENVIO_SERVICOS` (padrão `1,2,17,3,4,31,27`: PAC, SEDEX, Mini Envios, Jadlog
+.Package e .Com, Loggi Express e Jadlog .Package Centralizado). Transportadoras que exigem agência de postagem (Jadlog, Azul, Latam...) precisam da
 agência em `MELHOR_ENVIO_AGENCIAS` (ex.: `3:12345,4:12345`). Sem ela, o envio não entra no carrinho e
 chega um alerta.
 
