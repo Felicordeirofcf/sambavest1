@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 
   const params = new URL(request.url).searchParams;
   const tarefa = params.get('tarefa') || 'todas';
-  const emFundo = params.get('modo') === 'fundo' && tarefa !== 'diagnostico' && tarefa !== 'auditoria' && tarefa !== 'diagnostico-me' && tarefa !== 'diagnostico-rastreio' && !tarefa.startsWith('precos-black');
+  const emFundo = params.get('modo') === 'fundo' && tarefa !== 'diagnostico' && tarefa !== 'auditoria' && tarefa !== 'diagnostico-me' && tarefa !== 'diagnostico-rastreio' && tarefa !== 'diagnostico-checkout' && !tarefa.startsWith('precos-black');
   // Em segundo plano o relógio começa na resposta; o limite da função continua sendo 60 s.
   const prazo = Date.now() + (emFundo ? 40_000 : 45_000);
   const resultado: Record<string, unknown> = {};
@@ -56,6 +56,19 @@ export async function GET(request: Request) {
   };
 
   const executar = async () => {
+    // O WordPress fica "escondido" atrás do site da Vercel e quase não recebe visitas, então o WP-Cron
+    // (que só roda quando alguém abre uma página dele) quase nunca dispara. Sem ele, a AppMax não confere
+    // pagamentos em segundo plano e o WooCommerce não cancela pedidos vencidos. Aqui damos o "toque".
+    if (tarefa === 'todas' || tarefa === 'pix' || tarefa === 'pedidos' || tarefa === 'wp-cron') {
+      await rodar('wpCron', async () => {
+        const inicio = Date.now();
+        const res = await fetch(`${process.env.WP_BACKEND_URL || config.woo.url}/wp-cron.php?doing_wp_cron`, {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(15_000),
+        }).catch((e) => ({ status: 0, erro: (e as Error).name }) as const);
+        return { http: res.status, ms: Date.now() - inicio };
+      });
+    }
     if (tarefa === 'todas' || tarefa === 'pedidos') await rodar('pedidos', () => rotinaPedidos(prazo));
     if (tarefa === 'todas' || tarefa === 'pix') await rodar('pix', () => rotinaPix(prazo));
     if ((tarefa === 'todas' || tarefa === 'estoque') && integracoes.bling() && config.bling.sincronizarEstoque) {
@@ -92,6 +105,7 @@ export async function GET(request: Request) {
     if (tarefa === 'precos-black' || tarefa === 'precos-black-aplicar') {
       await rodar('precosBlack', async () => (await import('../../../../lib/automacao/precosBlack')).precosBlack(tarefa === 'precos-black-aplicar'));
     }
+    if (tarefa === 'diagnostico-checkout') await rodar('checkout', async () => (await import('../../../../lib/automacao/diagnosticoCheckout')).diagnosticoCheckout());
     if (tarefa === 'auditoria') await rodar('auditoria', async () => (await import('../../../../lib/automacao/auditoria')).auditoria());
     const falhas = Object.entries(resultado).filter(([, v]) => v && typeof v === 'object' && 'erro' in (v as object));
     await registrarExecucao('cron', falhas.length === 0, falhas.map(([k, v]) => `${k}: ${(v as { erro: string }).erro}`).join(' | ') || tarefa);
