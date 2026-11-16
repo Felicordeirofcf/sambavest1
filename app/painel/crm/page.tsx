@@ -1,6 +1,7 @@
 // CRM do WhatsApp em quadro (kanban): uma coluna por etapa do funil. Arrastar muda a etapa;
 // clicar no cartão abre a conversa no atendimento.
 import Link from 'next/link';
+import AbasWhatsapp from '../../../components/painel/abasWhatsapp';
 import Quadro, { CartaoQuadro } from '../../../components/painel/quadro';
 import { Aviso } from '../../../components/painel/ui';
 import { semJanela24h } from '../../../lib/automacao/atendimento';
@@ -10,6 +11,7 @@ import { exigirLogin } from '../../../lib/painel/auth';
 import { ETAPAS, nomeDoContato } from '../../../lib/painel/crm';
 import { contatosCrm } from '../../../lib/painel/crmDados';
 import { norm } from '../../../lib/painel/metricas';
+import { STATUS_NOME } from '../../../lib/painel/dados';
 
 const agoraMs = () => Date.now();
 const PERIODOS = [
@@ -36,7 +38,8 @@ export default async function CrmQuadro({ searchParams }: { searchParams: Promis
   const digitos = q.replace(/\D/g, '');
   const cartoes: CartaoQuadro[] = contatos
     .filter((c) => agora - c.ultimaAtividade <= limite)
-    .filter((c) => (soConversas ? c.mensagensCliente > 0 : true))
+    // Quem tem pedido sempre aparece (gerado, pago ou enviado), mesmo sem ter mandado mensagem
+    .filter((c) => (soConversas ? c.mensagensCliente > 0 || c.pedidosWoo.length > 0 : true))
     .filter(
       (c) =>
         !q ||
@@ -59,6 +62,7 @@ export default async function CrmQuadro({ searchParams }: { searchParams: Promis
       gasto: c.gasto,
       pendentes: c.pendentes,
       etiquetas: c.etiquetas,
+      pedido: c.pedidosWoo[0] ? { id: c.pedidosWoo[0].id, status: STATUS_NOME[c.pedidosWoo[0].status] || c.pedidosWoo[0].status } : undefined,
     }));
   const esperando = cartoes.filter((c) => c.ultimaDe === 'cliente').length;
   const link = (extra: Record<string, string | undefined>) => {
@@ -73,10 +77,11 @@ export default async function CrmQuadro({ searchParams }: { searchParams: Promis
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
+          <div className="mb-2"><AbasWhatsapp atual="crm" /></div>
           <h1 className="text-2xl md:text-3xl">CRM · WhatsApp</h1>
           <p className="text-sm text-slate-500">
-            {cartoes.length} contato(s){esperando > 0 && <b className="text-rose-700"> · {esperando} esperando resposta</b>}. Clique no cartão para abrir a
-            conversa; arraste (ou use a seta no celular) para mudar a etapa.
+            {cartoes.length} contato(s){esperando > 0 && <b className="text-rose-700"> · {esperando} esperando resposta</b>}. Todo pedido entra sozinho e anda
+            de coluna quando é pago e enviado. Clique no cartão para abrir a conversa; arraste (ou use a seta no celular) para mudar a etapa.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">

@@ -13,8 +13,9 @@ import { chaveTelefone } from '../automacao/whatsapp';
 export const ETAPAS = [
   { id: 'novo', nome: 'Novo contato' },
   { id: 'atendimento', nome: 'Em atendimento' },
-  { id: 'pagamento', nome: 'Aguardando pagamento' },
-  { id: 'cliente', nome: 'Comprou' },
+  { id: 'pagamento', nome: 'Pedido gerado · não pago' },
+  { id: 'cliente', nome: 'Pago · a enviar' },
+  { id: 'enviado', nome: 'Enviado' },
   { id: 'pos-venda', nome: 'Pós-venda / troca' },
   { id: 'perdido', nome: 'Não fechou' },
 ] as const;
@@ -39,6 +40,8 @@ export type ContatoCrm = {
   naoLidas: number;
   mensagensCliente: number; // quantas mensagens o cliente já mandou (0 = só recebeu avisos)
   pedidos?: number[];
+  /** Último pedido que moveu o cartão sozinho ("<nº>:<etapa>"). Se o pedido não mudou, vale o que a loja arrastou. */
+  marcaPedido?: string;
 };
 
 const INDICE = 'crm:contatos';

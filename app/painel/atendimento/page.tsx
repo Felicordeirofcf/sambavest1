@@ -1,6 +1,7 @@
 // Atendimento do WhatsApp dentro do painel: lista de conversas, chat e dados do cliente.
 // Mostra também como está o canal (Evolution/API oficial) e se a IA está respondendo.
 import Link from 'next/link';
+import AbasWhatsapp from '../../../components/painel/abasWhatsapp';
 import { AutoAtualizar, CaixaResposta, RolarParaFim } from '../../../components/painel/atendimento/Cliente';
 import { Aviso, StatusPedido, brl } from '../../../components/painel/ui';
 import { iaDisponivel } from '../../../lib/automacao/agente';
@@ -167,6 +168,7 @@ export default async function AtendimentoPainel({
       {/* Topo compacto numa linha só: título, situação (canal, IA, última mensagem) e atalhos */}
       <div className={`flex-wrap items-center gap-x-4 gap-y-2 ${aberta ? 'hidden md:flex' : 'flex'}`}>
         <h1 className="text-2xl">Atendimento</h1>
+        <AbasWhatsapp atual="conversas" />
         {pendentes > 0 && <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-sm font-semibold text-rose-700">{pendentes} esperando você</span>}
         <div className="-mx-4 flex w-[calc(100%+2rem)] items-center gap-2 overflow-x-auto px-4 text-xs [scrollbar-width:none] sm:mx-0 sm:w-auto sm:flex-wrap sm:px-0 sm:text-sm">
           <Pilula ok={canal.ok} texto={`WhatsApp: ${canal.valor}`} ajuda={canal.ajuda} />
@@ -180,9 +182,6 @@ export default async function AtendimentoPainel({
         <div className="ml-auto flex flex-wrap gap-2 text-sm">
           <Link href="/atendimento/simulador" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">
             🧪 Testar a IA
-          </Link>
-          <Link href="/painel/crm" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">
-            Contatos (CRM)
           </Link>
           <Link href="/painel/whatsapp" className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 hover:bg-slate-50">
             Conexão

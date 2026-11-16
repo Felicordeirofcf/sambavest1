@@ -3,7 +3,7 @@ import { listarConversas } from '../automacao/conversas';
 import { integracoes } from '../automacao/config';
 import { kvGet, kvSet } from '../automacao/kv';
 import { chaveTelefone } from '../automacao/whatsapp';
-import { ContatoCrm, importarConversas, listarContatos } from './crm';
+import { ContatoCrm, Etapa, importarConversas, listarContatos, obterContato, salvarContato } from './crm';
 import { pedidosRecentes, PedidoResumo, STATUS_PAGO } from './dados';
 
 export type ContatoComPedidos = ContatoCrm & {
@@ -43,15 +43,73 @@ export function enriquecer(c: ContatoCrm, porTel: Map<string, PedidoResumo[]>): 
   };
 }
 
+/** Em que coluna do quadro o pedido coloca o cliente. */
+export function etapaDoPedido(p: PedidoResumo): Etapa | null {
+  if (p.status === 'completed' || p.marcas.rastreio || p.marcas.avisoEnviado) return 'enviado';
+  if (p.status === 'processing') return 'cliente';
+  if (p.status === 'pending' || p.status === 'on-hold') return 'pagamento';
+  if (p.status === 'cancelled' || p.status === 'failed') return 'perdido';
+  return null;
+}
+
+/** Telefone no formato do WhatsApp (55 + DDD + número). */
+function numeroWhatsapp(tel: string): string {
+  const d = tel.replace(/\D/g, '').replace(/^0+/, '');
+  return d.startsWith('55') && d.length >= 12 ? d : `55${d}`;
+}
+
+/** Quantos dias de pedidos entram sozinhos no quadro. */
+const DIAS_NO_QUADRO = 90;
+
+/**
+ * Todo pedido (gerado, pago, enviado) vira cartão no quadro, mesmo sem conversa no WhatsApp.
+ * O cartão anda sozinho quando o pedido muda de situação; se o pedido não mudou, fica onde a loja
+ * arrastou. Só grava no banco o que mudou.
+ */
+export async function sincronizarPedidosNoCrm(porTel: Map<string, PedidoResumo[]>, agora = Date.now()): Promise<number> {
+  let mudou = 0;
+  for (const [chave, ps] of porTel) {
+    const ultimo = [...ps].sort((a, b) => b.criado - a.criado)[0];
+    if (!ultimo || agora - ultimo.criado > DIAS_NO_QUADRO * 86_400_000) continue;
+    const etapa = etapaDoPedido(ultimo);
+    if (!etapa) continue;
+    const marca = `${ultimo.id}:${etapa}`;
+    const atividade = Math.max(ultimo.criado, ultimo.pago || 0);
+    const atual = await obterContato(chave);
+    if (atual?.marcaPedido === marca) continue;
+    const c: ContatoCrm = atual || {
+      chave,
+      numero: numeroWhatsapp(ultimo.cliente.telefone),
+      nome: ultimo.cliente.nome !== 'Sem nome' ? ultimo.cliente.nome : undefined,
+      etapa,
+      etiquetas: [],
+      notas: [],
+      criadoEm: ultimo.criado,
+      ultimaAtividade: atividade,
+      naoLidas: 0,
+      mensagensCliente: 0,
+    };
+    c.etapa = etapa;
+    c.marcaPedido = marca;
+    c.ultimaAtividade = Math.max(c.ultimaAtividade || 0, atividade);
+    if (!c.nome && ultimo.cliente.nome !== 'Sem nome') c.nome = ultimo.cliente.nome;
+    c.pedidos = [...new Set([...(c.pedidos || []), ...ps.map((p) => p.id)])].slice(-20);
+    await salvarContato(c);
+    mudou++;
+  }
+  return mudou;
+}
+
 export async function contatosCrm(): Promise<{ contatos: ContatoComPedidos[]; erroPedidos: string }> {
   await importarSePreciso().catch(() => undefined);
-  const lista = await listarContatos(1000);
   let erroPedidos = '';
   let porTel = new Map<string, PedidoResumo[]>();
   try {
     porTel = pedidosPorTelefone(await pedidosRecentes(365));
+    await sincronizarPedidosNoCrm(porTel).catch(() => undefined);
   } catch (e) {
     erroPedidos = (e as Error).message;
   }
+  const lista = await listarContatos(1000);
   return { contatos: lista.map((c) => enriquecer(c, porTel)), erroPedidos };
 }
