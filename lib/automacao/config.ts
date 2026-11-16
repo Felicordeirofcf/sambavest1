@@ -73,8 +73,9 @@ export const config = {
     // Client secret do aplicativo do Melhor Envio (Área Dev). Valida a assinatura dos webhooks.
     webhookSecret: env('MELHOR_ENVIO_WEBHOOK_SECRET') || env('MELHOR_ENVIO_CLIENT_SECRET'),
     // Serviços oferecidos na cotação (IDs do Melhor Envio). Padrão: Correios PAC, SEDEX e Mini Envios,
-    // Jadlog .Package e .Com. Vazio ("todos") mostra tudo o que o Melhor Envio devolver.
-    servicos: lista('MELHOR_ENVIO_SERVICOS', '1,2,17,3,4'),
+    // Jadlog .Package e .Com, Loggi Express e Jadlog .Package Centralizado.
+    // Vazio ("todos") mostra tudo o que o Melhor Envio devolver.
+    servicos: lista('MELHOR_ENVIO_SERVICOS', '1,2,17,3,4,31,27'),
     // Agência de postagem por serviço, quando a transportadora exige (Jadlog, Azul, Latam...).
     // Formato: "3:123,4:123" (serviço:agência).
     agencias: Object.fromEntries(

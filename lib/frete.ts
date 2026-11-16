@@ -44,7 +44,7 @@ export async function cotarFreteDetalhado(
 
   // Cache de 10 min por CEP + peças + faixa de valor (seguro): o mesmo cliente cota na página do
   // produto, no carrinho e no checkout, e o checkout recota no servidor. Poupa o Melhor Envio no pico.
-  const chaveCache = `frete:v2:${cepDestino}:${totalItens}:${Math.ceil(valorTotal / 50)}`;
+  const chaveCache = `frete:v3:${cepDestino}:${totalItens}:${Math.ceil(valorTotal / 50)}`;
   const emCache = await kvGet<CotacaoFrete[]>(chaveCache).catch(() => null);
   if (emCache) return { cotacoes: emCache, indisponiveis: [] };
 
