@@ -39,7 +39,7 @@ export default async function Crm({ searchParams }: { searchParams: Promise<{ f?
 
   const { contatos: todos, erroPedidos } = await contatosCrm();
   const agora = agoraMs();
-  const base = todos.filter((c) => (soConversas ? c.mensagensCliente > 0 : true));
+  const base = todos.filter((c) => (soConversas ? c.mensagensCliente > 0 || c.pedidosWoo.length > 0 : true));
   const dia = 86_400_000;
   const kpis = {
     total: base.length,

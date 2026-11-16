@@ -20,6 +20,8 @@ export type CartaoQuadro = {
   gasto: number;
   pendentes: number;
   etiquetas: string[];
+  /** Pedido mais recente do cliente, se houver. */
+  pedido?: { id: number; status: string };
 };
 
 type Coluna = { id: string; nome: string };
@@ -30,6 +32,7 @@ const COR_COLUNA: Record<string, string> = {
   atendimento: '#f59e0b',
   pagamento: '#f97316',
   cliente: '#10b981',
+  enviado: '#0d9488',
   'pos-venda': '#8b5cf6',
   perdido: '#94a3b8',
 };
@@ -126,8 +129,14 @@ export default function Quadro({ colunas, cartoes, agora }: { colunas: Coluna[];
                             <span className={`shrink-0 text-[11px] ${c.naoLidas ? 'font-semibold text-emerald-700' : 'text-slate-500'}`}>{haQuanto(c.ultimaAtividade, agora)}</span>
                           </span>
                           <span className="block truncate text-xs text-slate-600">
-                            {c.ultimaDe === 'cliente' ? '' : c.ultimaDe === 'aviso' ? '🔔 ' : c.ultimaDe === 'robo' ? '🤖 ' : 'Você: '}
-                            {c.ultimaMensagem || '—'}
+                            {c.ultimaMensagem ? (
+                              <>
+                                {c.ultimaDe === 'cliente' ? '' : c.ultimaDe === 'aviso' ? '🔔 ' : c.ultimaDe === 'robo' ? '🤖 ' : 'Você: '}
+                                {c.ultimaMensagem}
+                              </>
+                            ) : (
+                              <span className="italic text-slate-400">sem conversa no WhatsApp ainda</span>
+                            )}
                           </span>
                         </span>
                       </div>
@@ -142,7 +151,7 @@ export default function Quadro({ colunas, cartoes, agora }: { colunas: Coluna[];
                         {c.pagos > 0 ? (
                           <span className="rounded bg-emerald-50 px-1.5 text-emerald-800">✓ {c.pagos} compra(s) · {brl(c.gasto)}</span>
                         ) : null}
-                        {c.pendentes > 0 && <span className="rounded bg-orange-50 px-1.5 text-orange-800">● pedido não pago</span>}
+                        {c.pedido && <span className="rounded bg-sky-50 px-1.5 text-sky-800">📦 #{c.pedido.id} · {c.pedido.status}</span>}
                         {c.etiquetas.slice(0, 3).map((t) => (
                           <span key={t} className="rounded bg-slate-100 px-1 text-slate-600">
                             #{t}
