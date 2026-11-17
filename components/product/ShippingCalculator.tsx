@@ -73,7 +73,7 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext, 
         setQuotes(data.quotes);
         handleSelectQuote(data.quotes[0]);
       } else {
-        alert('Não foi possível calcular o frete para este CEP no momento.');
+        alert(data.error || 'Não foi possível calcular o frete para este CEP no momento.');
       }
     } catch (error) {
       console.error(error);

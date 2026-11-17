@@ -26,6 +26,10 @@ export async function POST(request: Request) {
     // "indisponiveis" ajuda a entender por que um serviço (ex.: PAC) não apareceu
     return NextResponse.json({ success: true, quotes: cotacoes, indisponiveis });
   } catch (error) {
+    // CEP digitado errado (8 números, mas não existe): é engano do cliente, não falha da loja
+    if (/cep_destino|cep.*inv[aá]lid/i.test((error as Error)?.message || '')) {
+      return NextResponse.json({ success: false, error: 'CEP não encontrado. Confira os números e tente de novo.' }, { status: 400 });
+    }
     console.error('Erro no cálculo de frete:', error);
     await registrarFalha('frete-erro', (error as Error)?.message || String(error));
     return NextResponse.json({ success: false, error: 'Erro ao calcular frete' }, { status: 500 });
