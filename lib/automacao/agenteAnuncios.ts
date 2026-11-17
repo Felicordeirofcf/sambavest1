@@ -185,7 +185,7 @@ export async function coletarDadosAnuncios(agora = Date.now()) {
             .filter(([k]) => /^toque-(topo|card|barra)-/.test(k))
             .reduce((s, [, v]) => s + (Number(v) || 0), 0),
           legenda:
-            'toque-topo-*, toque-card-* e toque-barra-* SÃO toques nos botões Comprar (levam à página da camisa). toque-sacola = ícone da sacola no topo. toque-menu = menu ☰. toque-outro = outros botões. Cada sinal conta 1 vez por pessoa por dia.',
+            'toque-topo-*, toque-card-* e toque-barra-* SÃO toques nos botões Comprar (levam à página da camisa). toque-sacola = ícone da sacola no topo. toque-menu = abriu/fechou o menu ☰; toque-menu-ir = tocou num link do menu e foi para outra parte da loja (ex.: todas as camisas). toque-outro = outros botões. Cada sinal conta 1 vez por pessoa por dia.',
         }
       : null,
     whatsapp: { hoje: whatsapp([hoje]), ultimos_3_dias: whatsapp(dias3), desde_inicio: whatsapp(diasCampanha) },
