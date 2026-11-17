@@ -38,6 +38,7 @@ function CamisaTopo({ p, fase }: { p: ProdutoBF; fase: ReturnType<typeof faseBF>
   const href = linkCompra(p);
   const zap = `https://wa.me/${BF.whatsapp}?text=${encodeURIComponent(`Quero a ${p.titulo} da Black Friday!`)}`;
   const destino = fase === 'durante' ? href || zap : href || '#duelo';
+  const preco = fase === 'durante' && p.precoAtual ? p.precoAtual : p.precoBlack;
   return (
     <a
       href={destino}
@@ -67,7 +68,7 @@ function CamisaTopo({ p, fase }: { p: ProdutoBF; fase: ReturnType<typeof faseBF>
             azul ? 'bg-sky-600 group-hover:bg-sky-500' : 'bg-red-600 group-hover:bg-red-500'
           }`}
         >
-          {fase === 'durante' ? 'Comprar' : 'Ver camisa'}
+          {fase === 'durante' ? `Comprar · ${Number.isInteger(preco) ? `R$ ${preco}` : brl(preco)}` : 'Ver camisa'}
         </span>
       </span>
     </a>
@@ -138,7 +139,7 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
               Economize {brl(de - preco)}
             </p>
           )}
-          <p className="mt-1 text-xs text-white/40">+ frete · {p.modelos?.length ? `${p.modelos.join(' e ')}, ` : ''}{tamanhos}</p>
+          <p className="mt-1 text-xs text-white/50"><b className="text-emerald-300">Frete grátis levando 2</b> · {p.modelos?.length ? `${p.modelos.join(' e ')}, ` : ''}{tamanhos}</p>
         </div>
 
         {fase === 'durante' && !href ? (
@@ -212,7 +213,9 @@ export default async function BlackFridayPage() {
             <CamisaTopo p={beija} fase={fase} />
             <CamisaTopo p={viradouro} fase={fase} />
           </div>
-          <p className="mt-3 text-xs text-white/70 sm:text-sm">🚚 Envio para todo o Brasil · 💳 Pix ou cartão · 📏 P ao EXG</p>
+          <p className="mt-3 text-xs text-white/80 sm:text-sm">
+            <b className="text-emerald-300">🚚 Frete GRÁTIS levando 2</b> · 💳 Pix ou cartão · 📏 P ao EXG
+          </p>
           <div className="mt-4">
             {fase === 'antes' && <Contagem alvo={BF.inicio.toISOString()} rotulo="A avenida abre em" />}
             {fase === 'durante' && <Contagem alvo={BF.fim.toISOString()} rotulo="A Black termina em" />}

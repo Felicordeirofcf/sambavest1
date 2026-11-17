@@ -50,7 +50,8 @@ export default function MedirBF() {
       let sinal: string;
       if (marcado) sinal = `toque-${marcado}`;
       // Gaveta do menu (☰) e sacola lateral ficam fora do <header>: antes contavam como "outro"
-      else if (alvo.closest('[data-area="menu"]')) sinal = 'toque-menu';
+      // Link dentro do menu aberto = a pessoa saiu da página Black para outra parte da loja
+      else if (alvo.closest('[data-area="menu"]')) sinal = href && href !== '#' ? 'toque-menu-ir' : 'toque-menu';
       else if (alvo.closest('[data-area="sacola"]')) sinal = 'toque-sacola';
       else if (/wa\.me|whatsapp/.test(href)) sinal = 'toque-zap';
       else if (/sacola|carrinho|cart/.test(rotulo) || /carrinho|sacola/.test(href)) sinal = 'toque-sacola';

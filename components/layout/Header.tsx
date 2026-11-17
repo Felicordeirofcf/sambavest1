@@ -194,8 +194,9 @@ export default function Header() {
         />
       )}
 
-      {/* Menu mobile */}
+      {/* Menu mobile (data-area: a medição da página Black separa os toques no menu) */}
       <div
+        data-area="menu"
         className={`fixed top-0 left-0 h-full w-[85%] max-w-[350px] bg-[#0B1B34] z-50 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col xl:hidden border-r border-[#C9A227]/30 ${
           isMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
