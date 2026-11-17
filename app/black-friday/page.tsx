@@ -93,7 +93,12 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
         azul ? 'border-sky-500/40 shadow-[0_0_40px_-10px_rgba(14,165,233,0.5)]' : 'border-red-500/40 shadow-[0_0_40px_-10px_rgba(239,68,68,0.5)]'
       } ${destaque ? '' : 'md:flex-row'}`}
     >
-      <div className={`relative ${destaque ? 'aspect-square' : 'aspect-square md:w-1/2'} ${azul ? 'bg-sky-950/40' : 'bg-red-950/40'}`}>
+      {/* A foto também leva à camisa: muita gente toca na foto esperando abrir o produto */}
+      <a
+        href={fase !== 'depois' && href ? href : undefined}
+        aria-label={`Ver ${p.titulo}`}
+        className={`relative block ${destaque ? 'aspect-square' : 'aspect-square md:w-1/2'} ${azul ? 'bg-sky-950/40' : 'bg-red-950/40'}`}
+      >
         <Image
           src={p.fotoVestida || p.imagem}
           alt={p.titulo}
@@ -111,7 +116,7 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
         >
           {azul ? 'Beija-Flor' : 'Viradouro'}
         </span>
-      </div>
+      </a>
 
       <div className={`flex flex-1 flex-col gap-3 p-5 sm:p-6 ${destaque ? '' : 'md:justify-center'}`}>
         <p className={`text-xs font-bold uppercase tracking-[0.2em] ${azul ? 'text-sky-300' : 'text-red-300'}`}>Enredo: {p.enredo}</p>

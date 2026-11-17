@@ -175,7 +175,19 @@ export async function coletarDadosAnuncios(agora = Date.now()) {
       ultimos_3_dias: funil3 ? { ...funil3, ...vendas(dias3) } : null,
       desde_inicio: funilCampanha ? { ...funilCampanha, ...vendas(diasCampanha) } : null,
     },
-    pagina_black_vindos_do_anuncio: bf,
+    pagina_black_vindos_do_anuncio: bf
+      ? {
+          ...bf,
+          // Os botões de compra da página têm nome próprio: topo-* (camisas do topo, botão "Comprar"),
+          // card-* (botão "Garantir a minha" nos cartões) e barra-* (barra fixa "Comprar" no celular).
+          // "toque-camisa-link" só conta links soltos para /produto/, por isso costuma ser 0.
+          toques_em_botoes_comprar_total: Object.entries(bf as Record<string, number>)
+            .filter(([k]) => /^toque-(topo|card|barra)-/.test(k))
+            .reduce((s, [, v]) => s + (Number(v) || 0), 0),
+          legenda:
+            'toque-topo-*, toque-card-* e toque-barra-* SÃO toques nos botões Comprar (levam à página da camisa). toque-sacola = ícone da sacola no topo. toque-menu = menu ☰. toque-outro = outros botões. Cada sinal conta 1 vez por pessoa por dia.',
+        }
+      : null,
     whatsapp: { hoje: whatsapp([hoje]), ultimos_3_dias: whatsapp(dias3), desde_inicio: whatsapp(diasCampanha) },
     loja_toda: { hoje: lojaToda([hoje]), ultimos_3_dias: lojaToda(dias3) },
     regras: (regras?.lista || []).map((m) => ({ nivel: m.nivel, titulo: m.titulo, acao: m.acao })),
