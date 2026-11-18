@@ -170,3 +170,37 @@ export async function diagnosticoCheckout(horas = 72): Promise<Record<string, un
 
   return r;
 }
+
+/**
+ * Sonda (só leitura) o formulário da página de pagamento do pedido pendente mais recente, para saber
+ * se dá para gerar o Pix por trás do site. Não envia nada. Só nomes de campos e IDs de método: nunca
+ * valores (a chave do pedido e o nonce não saem).
+ */
+export async function sondarFormularioPix(): Promise<Record<string, unknown>> {
+  const pedidos = await wc<WcPedido[]>('/orders?status=pending&per_page=20&orderby=date&order=desc');
+  const alvo = pedidos.find((p) => /pix/i.test(p.payment_method));
+  if (!alvo) return { erro: 'nenhum pedido Pix pendente para sondar' };
+  const base = process.env.WP_BACKEND_URL || config.woo.url;
+  const url = `${base}/finalizar-compra/order-pay/${alvo.id}/?pay_for_order=true&key=${alvo.order_key}`;
+  const res = await fetch(url, { redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(20_000), headers: { 'User-Agent': 'Mozilla/5.0 (diagnostico-pix)' } });
+  const html = await res.text();
+  const cookies = (res.headers.getSetCookie?.() || []).map((c) => c.split('=')[0]);
+  const forma = html.match(/<form[^>]*id=["']order_review["'][^>]*>/i)?.[0] || '';
+  const campos = [...html.matchAll(/<input\b[^>]*>/gi)].map((m) => m[0]);
+  const attr = (tag: string, nome: string) => tag.match(new RegExp(`${nome}=["']([^"']*)["']`, 'i'))?.[1] || '';
+  const resumoCampos = campos.map((t) => ({ nome: attr(t, 'name'), tipo: attr(t, 'type') || 'text', marcado: /\bchecked\b/i.test(t) })).filter((c) => c.nome);
+  const scriptsAppmax = [...html.matchAll(/<script\b[^>]*src=["']([^"']+)["']/gi)].map((m) => m[1]).filter((s) => /appmax|pagamentos_para/i.test(s)).map((s) => s.replace(/^https?:\/\/[^/]+/, '').split('?')[0]);
+  return {
+    http: res.status,
+    redirecionou: res.status >= 300 && res.status < 400 ? (res.headers.get('location') || '').replace(/key=[^&]+/, 'key=***') : null,
+    cookiesDefinidos: cookies,
+    formulario: { metodo: attr(forma, 'method') || null, temAction: Boolean(attr(forma, 'action')), id: attr(forma, 'id') || null },
+    campos: resumoCampos,
+    metodosDePagamento: resumoCampos.filter((c) => c.nome === 'payment_method').length,
+    temNonce: /woocommerce-pay-nonce|_wpnonce/i.test(html),
+    temBotaoPagar: /id=["']place_order["']/i.test(html),
+    scriptsDoPlugin: scriptsAppmax.slice(0, 8),
+    jaTemPixGerado: /payment_code|qr[-_ ]?code|copia e cola/i.test(html),
+    tamanhoKb: Math.round(html.length / 1024),
+  };
+}
