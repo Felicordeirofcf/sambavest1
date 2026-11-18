@@ -314,6 +314,12 @@ export async function POST(request: Request) {
       paymentUrl = paymentUrl.replace('https://sambavest.com', wcUrl);
     }
 
+    // Pix dentro do site (chave PIX_NO_SITE=true na Vercel): o cliente fica no sambavest.com e o Pix é gerado
+    // por trás. Se algo falhar, a própria tela abre a página de pagamento do WordPress.
+    if (metodoEscolhido === 'appmax_pix' && process.env.PIX_NO_SITE === 'true' && wcData.order_key) {
+      paymentUrl = `/pagamento/pix/${wcData.id}?k=${encodeURIComponent(wcData.order_key)}`;
+    }
+
     // Quem finalizou deixa de receber lembrete de carrinho abandonado
     await marcarConvertido(String(clienteFinal.email || ''), Number(wcData.id));
 

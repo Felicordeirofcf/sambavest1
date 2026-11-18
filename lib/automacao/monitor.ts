@@ -28,6 +28,7 @@ export const TIPOS_FALHA = {
   'frete-vazio': 'Nenhuma opção de frete para o CEP',
   'checkout-recusado': 'Checkout recusou o pedido (produto indisponível, frete não escolhido...)',
   'checkout-erro': 'Erro ao criar o pedido (WooCommerce/servidor)',
+  'pix-erro': 'Falha ao gerar o Pix na tela do site (o cliente foi para a página de pagamento antiga)',
 } as const;
 export type TipoFalha = keyof typeof TIPOS_FALHA;
 
