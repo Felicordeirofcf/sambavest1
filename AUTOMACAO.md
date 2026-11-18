@@ -584,3 +584,18 @@ primeira não existir). O mesmo login libera o atendimento do WhatsApp (`/atendi
 
 Os números vêm direto do WooCommerce (a AppMax entra pelo plugin de pagamento) e ficam em cache por 2
 minutos. O botão "Atualizar" busca de novo na hora.
+
+## Pix dentro do site (tela própria)
+
+Com `PIX_NO_SITE=true` na Vercel, quem escolhe **Pix** no checkout não vai para a página de pagamento do
+WordPress: fica em `/pagamento/pix/<pedido>?k=<chave do pedido>` no sambavest.com.
+
+- `POST /api/pix` abre a página de pagamento do pedido no WordPress, pega o código de segurança e envia a
+  escolha do Pix (o mesmo que o clique em "Pagar pedido"). O plugin da AppMax gera o Pix e grava
+  `_pagamentos_para_woocommerce_com_appmax_payment_code` (copia e cola) e `..._media` (QR Code) no pedido.
+- Uma geração por pedido (trava no KV): recarregar a página ou abrir duas abas não cria dois Pix na AppMax.
+- `GET /api/pix` só consulta; a tela chama a cada 4 s e muda para "Pagamento confirmado" quando o pedido fica
+  pago (a confirmação continua vindo do webhook da AppMax no WooCommerce).
+- Qualquer falha cai na página de pagamento do WordPress (plano B) e conta em "Falha ao gerar o Pix na tela
+  do site" no monitoramento. Sem `PIX_NO_SITE`, nada muda.
+- A chave do pedido vai na URL: a página tem `noindex` e `Referrer-Policy: no-referrer`.
