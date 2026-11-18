@@ -167,18 +167,23 @@ export async function carregarFinanceiro(forcar = false): Promise<Financeiro> {
       ids.add(k);
       return true;
     });
+  // O Bling só aceita filtro de data de até 366 dias: lê em janelas de 1 ano, até 4 anos para trás.
+  const janelas: [string, string][] = [];
+  for (let i = 0; i < 4; i++) janelas.push([somarDias(-91 - 365 * (i + 1) + 1), somarDias(-91 - 365 * i)]);
   try {
-    receber.push(
-      ...novas(
-        (await paginar<ItemReceber>(`/contas/receber?situacoes[]=1&situacoes[]=3&tipoFiltroData=V&dataInicial=2015-01-01&dataFinal=${antesDe}`, 20)).map(deReceber)
-      )
-    );
-    for (const situacao of ABERTA) {
-      pagar.push(
+    for (const [ini, fim] of janelas) {
+      receber.push(
         ...novas(
-          (await paginar<ItemPagar>(`/contas/pagar?situacao=${situacao}&dataVencimentoInicial=2015-01-01&dataVencimentoFinal=${antesDe}`, 10)).map(dePagar)
+          (await paginar<ItemReceber>(`/contas/receber?situacoes[]=1&situacoes[]=3&tipoFiltroData=V&dataInicial=${ini}&dataFinal=${fim}`, 20)).map(deReceber)
         )
       );
+      for (const situacao of ABERTA) {
+        pagar.push(
+          ...novas(
+            (await paginar<ItemPagar>(`/contas/pagar?situacao=${situacao}&dataVencimentoInicial=${ini}&dataVencimentoFinal=${fim}`, 10)).map(dePagar)
+          )
+        );
+      }
     }
   } catch (e) {
     avisos.push(`Não consegui ler as contas vencidas há mais de 90 dias: ${(e as Error).message}`);
