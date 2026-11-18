@@ -26,7 +26,11 @@ body.woocommerce-order-pay .shop_table .product-name{overflow-wrap:break-word}
 body.woocommerce-order-pay .shop_table tfoot td{white-space:normal}
 body.woocommerce-order-pay .shop_table tfoot tr:last-child td{white-space:nowrap}
 body.woocommerce-order-pay .shop_table .product-quantity{width:40px;text-align:center}
-body.woocommerce-order-pay .shop_table .product-total{width:118px}
+body.woocommerce-order-pay .shop_table .product-total{width:104px}
+body.woocommerce-order-pay .shop_table .product-name{font-size:12.5px}
+body.woocommerce-order-pay .shop_table .wc-item-meta{margin:4px 0 0!important;padding:0!important;list-style:none!important;font-size:12px}
+body.woocommerce-order-pay .shop_table .wc-item-meta li{margin:0!important;padding:0!important}
+body.woocommerce-order-pay .shop_table .wc-item-meta p{display:inline;margin:0}
 }
 
 /* Pix e Cartão como abas */
