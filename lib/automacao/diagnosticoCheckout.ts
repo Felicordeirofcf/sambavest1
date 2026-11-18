@@ -200,7 +200,49 @@ export async function sondarFormularioPix(): Promise<Record<string, unknown>> {
     temNonce: /woocommerce-pay-nonce|_wpnonce/i.test(html),
     temBotaoPagar: /id=["']place_order["']/i.test(html),
     scriptsDoPlugin: scriptsAppmax.slice(0, 8),
-    jaTemPixGerado: /payment_code|qr[-_ ]?code|copia e cola/i.test(html),
+    // Pelo cadastro do pedido (o texto da página também fala de "QR Code" mesmo sem Pix gerado)
+    jaTemPixGerado: (alvo.meta_data || []).some((m) => /appmax_payment_code/.test(m.key) && Boolean(m.value)),
+    estrutura: estruturaDaPagina(html),
     tamanhoKb: Math.round(html.length / 1024),
+  };
+}
+
+/**
+ * Esqueleto visual da página (só nomes de classes e IDs, sem textos nem valores), para escrever o CSS
+ * que deixa a página de pagamento com a cara da loja.
+ */
+function estruturaDaPagina(html: string): Record<string, unknown> {
+  const tags = [...html.matchAll(/<(\w+)\b([^>]*)>/g)];
+  const contagem = new Map<string, number>();
+  const ids = new Set<string>();
+  for (const [, , attrs] of tags) {
+    const id = attrs.match(/\bid=["']([^"']+)["']/i)?.[1];
+    if (id && /(order|pay|place|payment|checkout|content|primary|main|woocommerce|elementor|appmax|cr_|wc)/i.test(id)) ids.add(id);
+    const cls = attrs.match(/\bclass=["']([^"']+)["']/i)?.[1];
+    if (!cls) continue;
+    for (const c of cls.split(/\s+/)) {
+      if (/(woocommerce|payment|order|pay|place|appmax|cr-|wc-|entry|elementor-(widget|section)|form-row|shop_table|button)/i.test(c)) contagem.set(c, (contagem.get(c) || 0) + 1);
+    }
+  }
+  const body = html.match(/<body[^>]*class=["']([^"']+)["']/i)?.[1]?.split(/\s+/).slice(0, 25) || [];
+  const css = [...html.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]*href=["']([^"']+)["']/gi)]
+    .map((m) => m[1].replace(/^https?:\/\/[^/]+/, '').split('?')[0])
+    .filter((u) => /themes|appmax|pagamentos|woocommerce|elementor/i.test(u))
+    .slice(0, 12);
+  const tema = html.match(/\/wp-content\/themes\/([^/]+)\//)?.[1] || null;
+  const botao = html.match(/<button[^>]*id=["']place_order["'][^>]*>/i)?.[0].replace(/value=["'][^"']*["']/gi, '') || null;
+  const metodos = [...html.matchAll(/<li[^>]*class=["']([^"']*wc_payment_method[^"']*)["']/gi)].map((m) => m[1]);
+  const caixas = [...html.matchAll(/<div[^>]*class=["']([^"']*payment_box[^"']*)["']/gi)].map((m) => m[1]);
+  return {
+    tema,
+    elementor: /elementor/i.test(html),
+    classesDoBody: body,
+    folhasDeEstilo: css,
+    ids: [...ids].slice(0, 40),
+    classesMaisUsadas: [...contagem.entries()].sort((a, b) => b[1] - a[1]).slice(0, 60).map(([c, n]) => `${c}×${n}`),
+    botaoPagar: botao,
+    itensDeMetodo: metodos,
+    caixasDeMetodo: caixas,
+    temAvisoDeErro: /woocommerce-error|woocommerce-notice/i.test(html),
   };
 }
