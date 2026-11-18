@@ -22,7 +22,7 @@ body.woocommerce-order-pay .shop_table tfoot tr:last-child th,body.woocommerce-o
 @media (max-width:560px){
 body.woocommerce-order-pay .shop_table{table-layout:fixed}
 body.woocommerce-order-pay .shop_table th,body.woocommerce-order-pay .shop_table td{padding:10px 8px}
-body.woocommerce-order-pay .shop_table .product-name{overflow-wrap:anywhere}
+body.woocommerce-order-pay .shop_table .product-name{overflow-wrap:break-word}
 body.woocommerce-order-pay .shop_table tfoot td{white-space:normal}
 body.woocommerce-order-pay .shop_table tfoot tr:last-child td{white-space:nowrap}
 body.woocommerce-order-pay .shop_table .product-quantity{width:40px;text-align:center}
@@ -52,7 +52,7 @@ body.woocommerce-order-pay .wc-credit-card-form input:focus,body.woocommerce-ord
 /* Botão Pagar */
 body.woocommerce-order-pay #place_order{display:block;width:100%;margin-top:14px;padding:16px;border:0;border-radius:12px;background:#C9A227!important;color:#0B1B34!important;font-size:15px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
 body.woocommerce-order-pay #place_order:hover{filter:brightness(1.05)}
-body.woocommerce-order-pay #payment .form-row:last-of-type::after{content:'🔒 Pagamento seguro · ⚡ Pix aprova na hora';display:block;margin-top:12px;text-align:center;font-size:11.5px;font-weight:700;color:#777}
+body.woocommerce-order-pay #payment>.form-row::after{content:'🔒 Pagamento seguro · ⚡ Pix aprova na hora';display:block;margin-top:12px;text-align:center;font-size:11.5px;font-weight:700;color:#777}
 
 /* Aviso quando o banco recusa */
 body.woocommerce-order-pay ul.woocommerce-error{margin:0 0 12px!important;padding:12px 14px 12px 32px!important;border:1px solid #f3c6c6!important;border-radius:12px;background:#fff4f4!important;color:#8a1f1f;font-size:13px}
