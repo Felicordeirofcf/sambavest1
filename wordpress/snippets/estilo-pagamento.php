@@ -60,7 +60,11 @@ add_action('wp_footer', function () {
     echo '<script id="sv-pagamento-js">' . <<<'JS'
 document.addEventListener('DOMContentLoaded', function () {
   // Banco recusou: avisa que não houve cobrança e oferece o Pix com um toque
-  var erro = document.querySelector('ul.woocommerce-error');
+  // ignora o aviso "pedido de terceiros" (só aparece para admin logado)
+  var erro = null;
+  document.querySelectorAll('ul.woocommerce-error').forEach(function (u) {
+    if (!erro && !/terceiros/i.test(u.textContent)) erro = u;
+  });
   var pix = document.querySelector('li.payment_method_pagamentos_para_woocommerce_com_appmax_pix input.input-radio');
   if (!erro || !pix || pix.checked) return;
   var caixa = document.createElement('div');
