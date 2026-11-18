@@ -19,6 +19,16 @@ body.woocommerce-order-pay .shop_table thead th{font-size:11px;letter-spacing:.0
 body.woocommerce-order-pay .shop_table tfoot td{white-space:nowrap}
 body.woocommerce-order-pay .shop_table tfoot tr:last-child th,body.woocommerce-order-pay .shop_table tfoot tr:last-child td{border-bottom:0!important;font-size:17px;font-weight:900;color:#0B1B34}
 
+@media (max-width:560px){
+body.woocommerce-order-pay .shop_table{table-layout:fixed}
+body.woocommerce-order-pay .shop_table th,body.woocommerce-order-pay .shop_table td{padding:10px 8px}
+body.woocommerce-order-pay .shop_table .product-name{overflow-wrap:anywhere}
+body.woocommerce-order-pay .shop_table tfoot td{white-space:normal}
+body.woocommerce-order-pay .shop_table tfoot tr:last-child td{white-space:nowrap}
+body.woocommerce-order-pay .shop_table .product-quantity{width:40px;text-align:center}
+body.woocommerce-order-pay .shop_table .product-total{width:118px}
+}
+
 /* Pix e Cartão como abas */
 body.woocommerce-order-pay #payment{background:transparent!important;border-radius:0}
 body.woocommerce-order-pay ul.wc_payment_methods{display:grid;grid-template-columns:1fr 1fr;gap:8px;list-style:none;margin:0 0 12px!important;padding:0!important;border:0!important}
