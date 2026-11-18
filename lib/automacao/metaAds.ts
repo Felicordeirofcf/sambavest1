@@ -172,6 +172,20 @@ export async function porDia(p: Periodo): Promise<(Numeros & { dia: string })[]>
   });
 }
 
+/** Números dos anúncios por estado (breakdown "region" da Meta). A Meta devolve o nome do estado, não a sigla. */
+export async function porRegiao(p: Periodo): Promise<(Numeros & { regiao: string })[]> {
+  return comCache(`regiao:${p.desde}:${p.ate}`, async () => {
+    const r = await graph<{ data: (LinhaInsight & { region?: string })[] }>(`${conta()}/insights`, {
+      level: 'account',
+      fields: CAMPOS,
+      time_range: intervalo(p),
+      breakdowns: 'region',
+      limit: '100',
+    });
+    return r.data.map((l) => ({ regiao: l.region || '', ...numeros(l) }));
+  });
+}
+
 export type Anuncio = Numeros & {
   id: string;
   nome: string;
