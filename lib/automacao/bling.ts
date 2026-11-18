@@ -118,7 +118,7 @@ async function tokenAtual(forcarRenovacao = false): Promise<string> {
 
 export async function bling<T = unknown>(caminho: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   let ultimoStatus = 0;
-  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+  for (let tentativa = 1; tentativa <= 4; tentativa++) {
     const token = await tokenAtual(ultimoStatus === 401);
     const res = await fetch(`${API}${caminho}`, {
       method: init.method || 'GET',
@@ -129,7 +129,7 @@ export async function bling<T = unknown>(caminho: string, init: { method?: strin
     ultimoStatus = res.status;
     if (res.status === 401 || res.status === 429) {
       // 401: token expirou → renova; 429: limite de 3 req/s → espera
-      await new Promise((r) => setTimeout(r, res.status === 429 ? 1200 : 0));
+      await new Promise((r) => setTimeout(r, res.status === 429 ? 1200 * tentativa : 0));
       continue;
     }
     const texto = await res.text();
@@ -145,7 +145,7 @@ export async function bling<T = unknown>(caminho: string, init: { method?: strin
     }
     return json as T;
   }
-  throw new Error(`Bling: falha repetida em ${caminho}`);
+  throw new Error(`Bling: falha repetida (${ultimoStatus === 429 ? 'limite de requisições, 429' : `status ${ultimoStatus}`}) em ${caminho}`);
 }
 
 // ---------------- Utilitários ----------------
