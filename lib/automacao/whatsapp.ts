@@ -22,6 +22,24 @@ export function telefoneWhatsapp(telefone: string): string | null {
 }
 
 /**
+ * Telefone brasileiro que parece digitado errado (para avisar no painel). Devolve o motivo ou null.
+ * Caso comum: o cliente digita o 55 do país e o checkout antigo cortava o fim do número.
+ */
+export function telefoneSuspeito(telefone: string): string | null {
+  const bruto = (telefone || '').trim();
+  if (!bruto) return 'sem telefone';
+  const d = bruto.replace(/\D/g, '');
+  if (bruto.startsWith('+') && !d.startsWith('55')) return null; // outro país
+  const local = d.length >= 12 && d.startsWith('55') ? d.slice(2) : d.replace(/^0/, '');
+  if (local.length < 10) return 'número curto demais';
+  if (!/^[1-9][1-9]/.test(local)) return 'DDD inválido';
+  if (local.length === 11 && local[2] !== '9')
+    return 'celular deve ter 9 depois do DDD: o número pode ter sido cortado (cliente digitou o 55 do país) ou ser de outro país';
+  if (local.length > 11) return 'número comprido demais';
+  return null;
+}
+
+/**
  * Chave para comparar telefones brasileiros: DDD + últimos 8 dígitos.
  * O WhatsApp às vezes informa o celular sem o 9 extra (5521xxxxxxxx), e o cliente
  * digita com o 9 no checkout. Assim os dois formatos batem.

@@ -140,7 +140,14 @@ export default function CheckoutPage() {
       return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
     },
     telefone: (v) => {
-      const d = soNumeros(v).slice(0, 11);
+      // Outro país: começa com + e não é +55 → mantém livre (+598 99 280 967)
+      let d = soNumeros(v).slice(0, 15);
+      if (/^\s*\+/.test(v) && !(d.startsWith('55') && d.length > 2)) return '+' + v.replace(/[^\d ]/g, '').replace(/^\s+/, '').slice(0, 18);
+      if (/^\s*\+/.test(v)) d = d.slice(2); // +55 do Brasil: fica só DDD + número
+      d = d.slice(0, 13);
+      // Digitou o 55 do Brasil na frente (12-13 números): tira o 55 em vez de cortar o fim do número
+      if (d.length >= 12 && d.startsWith('55')) d = d.slice(2);
+      d = d.slice(0, 11);
       if (d.length <= 2) return d.length ? `(${d}` : '';
       if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
       if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
@@ -275,7 +282,11 @@ export default function CheckoutPage() {
     const faltando: string[] = [];
     if (formData.nome.trim().split(/\s+/).length < 2) faltando.push('Nome completo (nome e sobrenome)');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) faltando.push('E-mail válido');
-    if (telLimpo.length < 10) faltando.push('Telefone / WhatsApp com DDD');
+    const telEstrangeiro = formData.telefone.trim().startsWith('+');
+    const telOk = telEstrangeiro
+      ? telLimpo.length >= 8 && telLimpo.length <= 15
+      : (telLimpo.length === 10 || (telLimpo.length === 11 && telLimpo[2] === '9')) && /^[1-9][1-9]/.test(telLimpo);
+    if (!telOk) faltando.push('Telefone / WhatsApp com DDD (celular: DDD + 9 + 8 números)');
     if (![11, 14].includes(docLimpo.length)) faltando.push('CPF (11 números) ou CNPJ (14 números)');
     if (cepLimpo.length !== 8) faltando.push('CEP com 8 números');
     if (formData.uf.length !== 2) faltando.push('Estado (UF)');
@@ -418,6 +429,7 @@ export default function CheckoutPage() {
                 <div>
                   <label htmlFor="checkout-telefone" className="block text-xs font-bold uppercase text-gray-600 mb-1">Telefone / WhatsApp *</label>
                   <input id="checkout-telefone" type="tel" name="telefone" autoComplete="tel" inputMode="tel" placeholder="(21) 99999-9999" value={formData.telefone} onChange={handleInputChange} onBlur={salvarSacola} required className="w-full border p-2 text-sm rounded bg-gray-50 focus:outline-none focus:border-[#C9A227] focus:ring-1 focus:ring-[#C9A227]" />
+                  <p className="mt-1 text-[11px] text-gray-500">Com DDD. Se o número for de outro país, comece com + (ex.: +598).</p>
                 </div>
 
                 <div className="md:col-span-2">
