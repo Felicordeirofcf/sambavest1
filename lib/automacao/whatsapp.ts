@@ -5,10 +5,17 @@
 // - Texto livre só pode ir para quem mandou mensagem à loja nas últimas 24 horas ("janela de 24h").
 import { config, integracoes } from './config';
 
-/** Normaliza para o formato internacional só com dígitos (55 + DDD + número). */
+/**
+ * Normaliza para o formato internacional só com dígitos (55 + DDD + número).
+ * Número escrito com "+" (ou 00) de outro país, ex.: +598 99 280 967 (Uruguai), fica como está:
+ * sem isso, um número estrangeiro de 10-11 dígitos ganharia um "55" na frente e viraria outro número.
+ */
 export function telefoneWhatsapp(telefone: string): string | null {
-  let d = (telefone || '').replace(/\D/g, '');
+  const bruto = (telefone || '').trim();
+  let d = bruto.replace(/\D/g, '');
+  const internacional = bruto.startsWith('+') || d.startsWith('00');
   if (d.startsWith('00')) d = d.slice(2);
+  if (internacional && !d.startsWith('55')) return d.length >= 8 && d.length <= 15 ? d : null;
   if ((d.length === 11 || d.length === 12) && d.startsWith('0')) d = d.slice(1); // 021...
   if (d.length === 10 || d.length === 11) d = '55' + d;
   return d.length >= 12 ? d : null;

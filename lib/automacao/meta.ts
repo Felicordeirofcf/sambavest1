@@ -3,6 +3,7 @@
 // Envia o evento "Purchase" direto do servidor quando o pagamento é aprovado.
 // O Pixel do navegador não vê a compra: o pagamento acontece na página da AppMax.
 // Dados pessoais vão com hash SHA-256, como a Meta exige.
+import { telefoneWhatsapp } from './whatsapp';
 import crypto from 'node:crypto';
 import { config } from './config';
 import { documentoCliente, meta, WcPedido } from './woocommerce';
@@ -49,9 +50,7 @@ export function metaDadosRastreio(request: Request, eventId?: string): { key: st
 }
 
 function telefoneE164(t: string | undefined): string | undefined {
-  let d = (t || '').replace(/\D/g, '');
-  if (d.length === 10 || d.length === 11) d = '55' + d;
-  return d || undefined;
+  return telefoneWhatsapp(t || '') || undefined;
 }
 
 /** Envia a compra para a API de Conversões. Retorna o event_id usado. */

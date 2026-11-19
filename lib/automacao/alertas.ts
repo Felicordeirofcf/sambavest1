@@ -6,6 +6,7 @@
 //   • WhatsApp pessoal: ALERTA_WHATSAPP_NUMERO, enviado pela Evolution (só 1 mensagem para você,
 //     nunca para clientes)
 // O e-mail da loja (EMAIL_ADMIN) continua recebendo os alertas de sempre (notificacoes.alertarLoja).
+import { telefoneWhatsapp } from './whatsapp';
 import { config, integracoes } from './config';
 import { enviarTextoEvolution } from './evolution';
 import { adquirirTrava, kvGet, kvSet } from './kv';
@@ -203,9 +204,8 @@ export async function alertaErroPedido(id: number, erros: string[]): Promise<voi
 }
 
 function telefoneLink(p: WcPedido, mensagem: string): string {
-  const tel = (p.billing?.phone || '').replace(/\D/g, '');
-  if (tel.length < 10) return '';
-  const numero = tel.startsWith('55') && tel.length >= 12 ? tel : `55${tel}`;
+  const numero = telefoneWhatsapp(p.billing?.phone || '');
+  if (!numero) return '';
   return `\nChamar no WhatsApp: https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`;
 }
 
