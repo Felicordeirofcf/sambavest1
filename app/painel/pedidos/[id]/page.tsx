@@ -5,7 +5,7 @@ import { obterConversa } from '../../../../lib/automacao/conversas';
 import { integracoes } from '../../../../lib/automacao/config';
 import { linkRastreio } from '../../../../lib/automacao/melhorenvio';
 import { enderecoEntrega, linkPagamento, obterPedido, wc, WcPedido } from '../../../../lib/automacao/woocommerce';
-import { telefoneWhatsapp } from '../../../../lib/automacao/whatsapp';
+import { telefoneSuspeito, telefoneWhatsapp } from '../../../../lib/automacao/whatsapp';
 import { linkWhats, mensagensDoPedido } from '../../../../lib/painel/mensagensWhats';
 import { exigirLogin } from '../../../../lib/painel/auth';
 import { resumir } from '../../../../lib/painel/dados';
@@ -39,6 +39,7 @@ export default async function Pedido({
   const end = enderecoEntrega(bruto);
   const notas = await wc<Nota[]>(`/orders/${id}/notes`).catch(() => [] as Nota[]);
   const whats = telefoneWhatsapp(p.cliente.telefone);
+  const telAviso = telefoneSuspeito(p.cliente.telefone);
   const conversa = whats && integracoes.kv() ? await obterConversa(whats).catch(() => null) : null;
   const pago = p.status === 'processing' || p.status === 'completed';
   const aqui = `/painel/pedidos/${id}`;
@@ -116,6 +117,11 @@ export default async function Pedido({
           </p>
           <p className="text-sm text-slate-600 break-all">{p.cliente.email}</p>
           <p className="text-sm text-slate-600">{p.cliente.telefone}</p>
+          {telAviso && (
+            <p className="mt-1 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-800">
+              ⚠️ Telefone suspeito: {telAviso}. Confirme com o cliente (e-mail) antes de usar o WhatsApp. Número de outro país: salve com + (ex.: +598).
+            </p>
+          )}
           <p className="text-sm text-slate-600">CPF/CNPJ {p.cliente.documento || '—'}</p>
           <p className="text-sm text-slate-600 mt-3">
             {end.rua}, {end.numero}

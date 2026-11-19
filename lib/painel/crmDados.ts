@@ -1,4 +1,5 @@
 // Junta o CRM do WhatsApp com os pedidos do WooCommerce (pelo telefone).
+import { telefoneWhatsapp } from '../automacao/whatsapp';
 import { listarConversas } from '../automacao/conversas';
 import { integracoes } from '../automacao/config';
 import { kvGet, kvSet } from '../automacao/kv';
@@ -54,8 +55,10 @@ export function etapaDoPedido(p: PedidoResumo): Etapa | null {
 
 /** Telefone no formato do WhatsApp (55 + DDD + número). */
 function numeroWhatsapp(tel: string): string {
-  const d = tel.replace(/\D/g, '').replace(/^0+/, '');
-  return d.startsWith('55') && d.length >= 12 ? d : `55${d}`;
+  const d = telefoneWhatsapp(tel);
+  if (d) return d;
+  const so = tel.replace(/\D/g, '').replace(/^0+/, '');
+  return so.startsWith('55') && so.length >= 12 ? so : `55${so}`;
 }
 
 /** Quantos dias de pedidos entram sozinhos no quadro. */

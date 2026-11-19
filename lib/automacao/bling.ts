@@ -7,6 +7,7 @@ import { config } from './config';
 import crypto from 'node:crypto';
 import { adquirirTrava, kvDel, kvGet, kvSet, liberarTrava } from './kv';
 import { documentoCliente, enderecoEntrega, WcPedido } from './woocommerce';
+import { municipioOficial } from './municipio';
 
 const API = 'https://api.bling.com.br/Api/v3';
 const CHAVE_TOKENS = 'bling:tokens';
@@ -191,6 +192,7 @@ type ContatoBling = {
 async function obterOuCriarContato(pedido: WcPedido, avisos: string[]): Promise<number> {
   const doc = documentoCliente(pedido);
   const end = enderecoEntrega(pedido);
+  end.cidade = await municipioOficial(end.cep, end.cidade, end.uf);
   const b = pedido.billing;
   const geral: EnderecoBling = {
     endereco: end.rua,
@@ -238,7 +240,12 @@ async function atualizarEnderecoContato(id: number, geral: EnderecoBling): Promi
   const { data } = await bling<{ data: ContatoBling }>(`/contatos/${id}`);
   const atual = data.endereco?.geral || {};
   const so = (v?: string) => String(v || '').replace(/\D/g, '');
-  if (so(atual.cep) === geral.cep && String(atual.numero || '').trim() === geral.numero) return;
+  if (
+    so(atual.cep) === geral.cep &&
+    String(atual.numero || '').trim() === geral.numero &&
+    String(atual.municipio || '').trim() === geral.municipio
+  )
+    return;
   // PUT substitui o cadastro inteiro: reenvia o que já existe e troca só o endereço principal.
   await bling(`/contatos/${id}`, {
     method: 'PUT',
@@ -335,6 +342,7 @@ export async function criarPedidoVenda(pedido: WcPedido): Promise<ResultadoPedid
 
   const contatoId = await obterOuCriarContato(pedido, avisos);
   const end = enderecoEntrega(pedido);
+  end.cidade = await municipioOficial(end.cep, end.cidade, end.uf);
   const data = dataBrasil(pedido.date_created_gmt);
 
   const itens = pedido.line_items.map((item) => {

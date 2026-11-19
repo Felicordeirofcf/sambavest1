@@ -178,18 +178,31 @@ export function enderecoEntrega(pedido: WcPedido) {
   let numero = meta(pedido, '_billing_number') || meta(pedido, '_shipping_number') || '';
   let bairro = meta(pedido, '_billing_neighborhood') || meta(pedido, '_shipping_neighborhood') || '';
 
+  // Formato "Rua X, 123 - Bairro". Só aceita como número um trecho com algarismo (ou S/N):
+  // às vezes o cliente repete o nome da rua depois da vírgula, e isso travava a NF-e.
+  let extra = '';
+  const ehNumero = (v: string) => /\d/.test(v) || /^s\.?\/?n\.?$/i.test(v.trim());
   const m = rua.match(/^(.*?),\s*([^,-]+?)\s*-\s*(.+)$/);
-  if (m) {
+  if (m && ehNumero(m[2])) {
     rua = m[1].trim();
     numero = numero || m[2].trim();
     bairro = bairro || m[3].trim();
+  } else if (m) {
+    rua = m[1].trim();
+    extra = m[2].trim();
+    bairro = bairro || m[3].trim();
+  }
+  // Texto no campo "número" (ex.: nome da rua repetido) vira complemento e o número fica S/N.
+  if (numero && !ehNumero(numero)) {
+    extra = [extra, numero.trim()].filter(Boolean).join(' ');
+    numero = '';
   }
 
   return {
     nome: `${end.first_name || ''} ${end.last_name || ''}`.trim(),
     rua,
     numero: numero || 'S/N',
-    complemento: end.address_2 || '',
+    complemento: [extra, end.address_2 || ''].filter(Boolean).join(' - '),
     bairro,
     cidade: end.city || '',
     uf: (end.state || '').toUpperCase(),

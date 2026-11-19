@@ -5,13 +5,38 @@
 // - Texto livre só pode ir para quem mandou mensagem à loja nas últimas 24 horas ("janela de 24h").
 import { config, integracoes } from './config';
 
-/** Normaliza para o formato internacional só com dígitos (55 + DDD + número). */
+/**
+ * Normaliza para o formato internacional só com dígitos (55 + DDD + número).
+ * Número escrito com "+" (ou 00) de outro país, ex.: +598 99 280 967 (Uruguai), fica como está:
+ * sem isso, um número estrangeiro de 10-11 dígitos ganharia um "55" na frente e viraria outro número.
+ */
 export function telefoneWhatsapp(telefone: string): string | null {
-  let d = (telefone || '').replace(/\D/g, '');
+  const bruto = (telefone || '').trim();
+  let d = bruto.replace(/\D/g, '');
+  const internacional = bruto.startsWith('+') || d.startsWith('00');
   if (d.startsWith('00')) d = d.slice(2);
+  if (internacional && !d.startsWith('55')) return d.length >= 8 && d.length <= 15 ? d : null;
   if ((d.length === 11 || d.length === 12) && d.startsWith('0')) d = d.slice(1); // 021...
   if (d.length === 10 || d.length === 11) d = '55' + d;
   return d.length >= 12 ? d : null;
+}
+
+/**
+ * Telefone brasileiro que parece digitado errado (para avisar no painel). Devolve o motivo ou null.
+ * Caso comum: o cliente digita o 55 do país e o checkout antigo cortava o fim do número.
+ */
+export function telefoneSuspeito(telefone: string): string | null {
+  const bruto = (telefone || '').trim();
+  if (!bruto) return 'sem telefone';
+  const d = bruto.replace(/\D/g, '');
+  if (bruto.startsWith('+') && !d.startsWith('55')) return null; // outro país
+  const local = d.length >= 12 && d.startsWith('55') ? d.slice(2) : d.replace(/^0/, '');
+  if (local.length < 10) return 'número curto demais';
+  if (!/^[1-9][1-9]/.test(local)) return 'DDD inválido';
+  if (local.length === 11 && local[2] !== '9')
+    return 'celular deve ter 9 depois do DDD: o número pode ter sido cortado (cliente digitou o 55 do país) ou ser de outro país';
+  if (local.length > 11) return 'número comprido demais';
+  return null;
 }
 
 /**
