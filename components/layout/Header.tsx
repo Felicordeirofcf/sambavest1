@@ -30,6 +30,7 @@ function NavLink({ href, active, children }: { href: string; active: boolean; ch
 export default function Header() {
   const { openCart, items, isMenuOpen, openMenu, closeMenu } = useCartStore();
   const pathname = usePathname();
+  const focoBlack = pathname.startsWith('/black-friday');
 
   // Funil (anônimo): conta a visita à loja uma vez por dia; o painel não conta
   useEffect(() => {
@@ -47,6 +48,8 @@ export default function Header() {
         <div className="relative flex items-center justify-between xl:hidden min-h-[68px]">
           {/* Menu */}
           <div className="w-[40px] flex justify-start shrink-0">
+            {/* Na página Black o menu some: é a oferta, e o menu tirava gente dela */}
+            {!focoBlack && (
             <button
               onClick={openMenu}
               className="group flex flex-col justify-center items-center w-9 h-9 space-y-1.5 focus:outline-none transition-transform active:scale-95"
@@ -56,6 +59,7 @@ export default function Header() {
               <span className="block w-6 h-0.5 bg-[#C9A227] transition-all group-hover:w-5 group-hover:bg-[#F0DFA8]"></span>
               <span className="block w-6 h-0.5 bg-[#C9A227] transition-all group-hover:w-7 group-hover:bg-[#F0DFA8]"></span>
             </button>
+            )}
           </div>
 
           {/* Logo mobile centralizada com brilho suave */}
@@ -106,7 +110,7 @@ export default function Header() {
         {/* DESKTOP */}
         <div className="hidden xl:flex justify-between items-center max-w-[1600px] mx-auto">
           <div className="flex-1 flex items-center justify-start">
-            <nav className="flex gap-8 text-[12px] uppercase tracking-wider font-bold">
+            <nav className={`flex gap-8 text-[12px] uppercase tracking-wider font-bold ${focoBlack ? 'invisible' : ''}`}>
               {/* 🚀 BOTÕES FIXOS E LIMPOS: Apenas Início e Coleção */}
               <NavLink href="/" active={pathname === '/'}>
                 Início

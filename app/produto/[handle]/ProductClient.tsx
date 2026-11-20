@@ -302,7 +302,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
   // Preço "de" (riscado): o da variação escolhida; antes da escolha, o do produto
   const precoCheio = Number(matchedVariant?.regular_price || varianteDoModelo?.regular_price || product?.regular_price || 0);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (irParaPagamento = false) => {
     if (matchedVariant && !(currentPrice > 0)) {
       alert('Este item está sem preço no momento. Fale com a gente pelo WhatsApp.');
       return;
@@ -350,7 +350,9 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
       content_name: product.name,
     });
 
-    openCart();
+    // "Comprar agora": vai direto para o pagamento (no celular, a sacola lateral era um passo a mais)
+    if (irParaPagamento) window.location.href = '/checkout';
+    else openCart();
   };
 
   const displayedImage = gallery[activeImage] || '';
@@ -631,7 +633,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
             )}
 
             <button
-              onClick={handleAddToCart}
+              onClick={() => handleAddToCart(true)}
               className={`w-full py-4 uppercase tracking-widest text-sm font-extrabold rounded-xl transition-colors shadow-md ${
                 matchedVariant
                   ? bk
@@ -644,8 +646,20 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                     : 'bg-gray-200 text-gray-400'
               } flex items-center justify-center gap-2 mb-3 cursor-pointer`}
             >
-              <span>🛒</span> {matchedVariant ? 'Adicionar à Sacola' : 'Selecione as Opções'}
+              <span>⚡</span> {matchedVariant ? 'Comprar agora' : 'Escolha o tamanho'}
             </button>
+
+            <button
+              onClick={() => handleAddToCart(false)}
+              className={`w-full py-3 uppercase tracking-widest text-xs font-bold rounded-xl border transition-colors flex items-center justify-center gap-2 mb-2 cursor-pointer ${
+                bk ? 'border-white/25 text-white/85 hover:bg-white/5' : 'border-[#0B1B34]/25 text-[#0B1B34] hover:bg-gray-50'
+              }`}
+            >
+              <span>🛒</span> Adicionar à sacola e escolher mais
+            </button>
+            <p className={`mb-4 text-center text-xs font-bold ${bk ? 'text-emerald-300' : 'text-emerald-700'}`}>
+              🚚 Frete grátis levando 2 camisas
+            </p>
 
             <a
               href={whatsappUrl}
