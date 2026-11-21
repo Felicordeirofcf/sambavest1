@@ -351,7 +351,9 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     });
 
     // "Comprar agora": vai direto para o pagamento (no celular, a sacola lateral era um passo a mais)
-    if (irParaPagamento) window.location.href = '/checkout';
+    // Espera um instante antes de sair da página: sem isso o evento "Adicionar ao carrinho" do pixel da
+    // Meta pode se perder na troca de página (a campanha original otimiza justamente esse evento).
+    if (irParaPagamento) setTimeout(() => window.location.assign('/checkout'), 450);
     else openCart();
   };
 
