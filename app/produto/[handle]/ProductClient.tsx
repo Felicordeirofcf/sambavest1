@@ -210,6 +210,16 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [activeImage, setActiveImage] = useState(0);
   const toqueX = useRef(0);
+  // Barra fixa "Comprar" no celular: aparece quando o botão principal sai da tela
+  const botaoRef = useRef<HTMLButtonElement | null>(null);
+  const [botaoVisivel, setBotaoVisivel] = useState(true);
+  useEffect(() => {
+    const el = botaoRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(([e]) => setBotaoVisivel(e.isIntersecting || e.boundingClientRect.top < 0));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
   const [avisoTamanho, setAvisoTamanho] = useState(false);
 
   const imagemDaVariante = (v: any): string =>
@@ -351,7 +361,9 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     });
 
     // "Comprar agora": vai direto para o pagamento (no celular, a sacola lateral era um passo a mais)
-    if (irParaPagamento) window.location.href = '/checkout';
+    // Espera um instante antes de sair da página: sem isso o evento "Adicionar ao carrinho" do pixel da
+    // Meta pode se perder na troca de página (a campanha original otimiza justamente esse evento).
+    if (irParaPagamento) setTimeout(() => window.location.assign('/checkout'), 450);
     else openCart();
   };
 
@@ -365,6 +377,21 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
 
   return (
     <div className={`w-full min-h-screen ${T.pagina} ${T.fundo}`}>
+      {!botaoVisivel && currentPrice > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white/95 px-3 py-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.12)] backdrop-blur md:hidden">
+          <button
+            type="button"
+            onClick={() => {
+              if (matchedVariant) handleAddToCart(true);
+              else document.getElementById('escolha-tamanho')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
+            className="flex w-full items-center justify-between rounded-xl bg-[#C9A227] px-4 py-3 text-sm font-extrabold uppercase tracking-wider text-[#0B1B34]"
+          >
+            <span>{matchedVariant ? '⚡ Comprar agora' : 'Escolher tamanho'}</span>
+            <span>{currentPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          </button>
+        </div>
+      )}
       {guiaAberto && (
         <div
           role="dialog"
@@ -633,6 +660,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
             )}
 
             <button
+              ref={botaoRef}
               onClick={() => handleAddToCart(true)}
               className={`w-full py-4 uppercase tracking-widest text-sm font-extrabold rounded-xl transition-colors shadow-md ${
                 matchedVariant
