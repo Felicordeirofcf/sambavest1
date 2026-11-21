@@ -44,11 +44,18 @@ export function enriquecer(c: ContatoCrm, porTel: Map<string, PedidoResumo[]>): 
   };
 }
 
+/** Dias depois do pagamento em que o enviado vira pós-venda (o pedido já deve ter chegado). */
+const DIAS_PARA_POS_VENDA = 12;
+/** Dias sem pagar em que o pedido gerado vira "não fechou". */
+const DIAS_SEM_PAGAR = 3;
+
 /** Em que coluna do quadro o pedido coloca o cliente. */
-export function etapaDoPedido(p: PedidoResumo): Etapa | null {
-  if (p.status === 'completed' || p.marcas.rastreio || p.marcas.avisoEnviado) return 'enviado';
+export function etapaDoPedido(p: PedidoResumo, agora = Date.now()): Etapa | null {
+  const dias = (ms: number) => (agora - ms) / 86_400_000;
+  if (p.status === 'completed' || p.marcas.rastreio || p.marcas.avisoEnviado)
+    return dias(p.pago || p.criado) > DIAS_PARA_POS_VENDA ? 'pos-venda' : 'enviado';
   if (p.status === 'processing') return 'cliente';
-  if (p.status === 'pending' || p.status === 'on-hold') return 'pagamento';
+  if (p.status === 'pending' || p.status === 'on-hold') return dias(p.criado) > DIAS_SEM_PAGAR ? 'perdido' : 'pagamento';
   if (p.status === 'cancelled' || p.status === 'failed') return 'perdido';
   return null;
 }
@@ -74,7 +81,7 @@ export async function sincronizarPedidosNoCrm(porTel: Map<string, PedidoResumo[]
   for (const [chave, ps] of porTel) {
     const ultimo = [...ps].sort((a, b) => b.criado - a.criado)[0];
     if (!ultimo || agora - ultimo.criado > DIAS_NO_QUADRO * 86_400_000) continue;
-    const etapa = etapaDoPedido(ultimo);
+    const etapa = etapaDoPedido(ultimo, agora);
     if (!etapa) continue;
     const marca = `${ultimo.id}:${etapa}`;
     const atividade = Math.max(ultimo.criado, ultimo.pago || 0);
