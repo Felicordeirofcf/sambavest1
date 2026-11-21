@@ -95,6 +95,42 @@ async function candidatos(): Promise<Candidato[]> {
   return lista.sort((a, b) => a.criadoEm - b.criadoEm);
 }
 
+// ---------- Prévia (só leitura, para a conferência de saúde) ----------
+
+/** Quem receberia lembrete agora e por que os outros ficariam de fora. Não envia nem trava nada. */
+export async function previaLembretes() {
+  const porTipo: Record<string, { candidatos: number; jaAvisados: number; semTelefone: number; pediuSair: number; conversando: number; prontos: number }> = {};
+  for (const c of await candidatos()) {
+    const t = (porTipo[c.tipo] ||= { candidatos: 0, jaAvisados: 0, semTelefone: 0, pediuSair: 0, conversando: 0, prontos: 0 });
+    t.candidatos++;
+    if (await kvGet(`trava:lembretes:feito:${c.chave}`).catch(() => null)) {
+      t.jaAvisados++;
+      continue;
+    }
+    const tel = telefoneWhatsapp(c.telefone || '');
+    if (!tel) {
+      t.semTelefone++;
+      continue;
+    }
+    if (await saiu(tel)) {
+      t.pediuSair++;
+      continue;
+    }
+    const conversa = await obterConversa(tel).catch(() => null);
+    if ((conversa?.humanoAte && conversa.humanoAte > Date.now()) || conversa?.mensagens.some((m) => Date.now() - m.em < 6 * 3_600_000)) {
+      t.conversando++;
+      continue;
+    }
+    t.prontos++;
+  }
+  const dias: Record<string, number> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * DIA_MS).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    dias[d] = (await kvGet<number>(`lembretes:dia:${d}`).catch(() => null)) || 0;
+  }
+  return { ligado: lembretesLigados(), limiteDia: limiteDia(), enviadosPorDia: dias, ultimas24h: porTipo };
+}
+
 // ---------- Rotina ----------
 
 export type ResultadoLembretes = { ligado: boolean; enviados: string[]; pulados: Record<string, number>; erro?: string };

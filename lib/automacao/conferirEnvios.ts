@@ -15,8 +15,10 @@ export async function conferirEnvios(janelaDias = 30) {
   for (const p of pagos) {
     const rastreio = Boolean(meta(p, M.rastreio) || meta(p, '_correios_tracking_code'));
     const enviado = rastreio || p.status === 'completed';
-    const avisoPago = Boolean(meta(p, M.avisoPago) || meta(p, M.avisoRecebido));
-    const avisoEnvio = Boolean(meta(p, M.avisoEnviado));
+    // "nenhum canal" = o sistema tentou e não conseguiu (ex.: número sem WhatsApp): não conta como avisado
+    const saiu = (v?: string) => Boolean(v && v !== 'nenhum canal');
+    const avisoPago = saiu(meta(p, M.avisoPago));
+    const avisoEnvio = saiu(meta(p, M.avisoEnviado));
     const nfe = Boolean(meta(p, M.nfeChave));
     const etiqueta = Boolean(meta(p, M.meEtiqueta) || meta(p, M.meEnvio));
     if (enviado) cont.enviados++;

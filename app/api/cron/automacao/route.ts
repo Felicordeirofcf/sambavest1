@@ -108,6 +108,7 @@ export async function GET(request: Request) {
     if (tarefa === 'diagnostico-checkout') await rodar('checkout', async () => (await import('../../../../lib/automacao/diagnosticoCheckout')).diagnosticoCheckout());
     if (tarefa === 'vendas-regiao') await rodar('vendasRegiao', async () => (await import('../../../../lib/automacao/vendasRegiao')).vendasPorRegiao());
     if (tarefa === 'diagnostico-pix') await rodar('pix', async () => (await import('../../../../lib/automacao/diagnosticoCheckout')).sondarFormularioPix());
+    if (tarefa === 'saude-whatsapp') await rodar('whatsapp', async () => (await import('../../../../lib/automacao/saudeWhatsapp')).saudeWhatsapp());
     if (tarefa === 'conferir-envios') await rodar('envios', async () => (await import('../../../../lib/automacao/conferirEnvios')).conferirEnvios());
     if (tarefa === 'auditoria') await rodar('auditoria', async () => (await import('../../../../lib/automacao/auditoria')).auditoria());
     const falhas = Object.entries(resultado).filter(([, v]) => v && typeof v === 'object' && 'erro' in (v as object));
