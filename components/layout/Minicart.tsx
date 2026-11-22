@@ -9,7 +9,7 @@ import { rastrear, dadosItens } from '../../lib/pixel';
 import { FRETE_GRATIS_PECAS, ganhaFreteGratis } from '../../lib/shipping';
 
 export default function Minicart() {
-  const { items, isOpen, closeCart, removeItem } = useCartStore();
+  const { items, isOpen, closeCart, removeItem, alterarQuantidade } = useCartStore();
 
   const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const pecas = items.reduce((acc, item) => acc + item.quantity, 0);
@@ -67,9 +67,31 @@ export default function Minicart() {
                         <h4 className="text-xs font-bold uppercase text-[#1E2233]">{item.name}</h4>
                         <button onClick={() => removeItem(item.id, item.size)} className="text-[10px] text-red-500 hover:underline">Remover</button>
                       </div>
-                      <p className="text-[11px] text-gray-500 mt-1">Tam: {item.size} | Qtd: {item.quantity}</p>
+                      <p className="text-[11px] text-gray-500 mt-1">Tam: {item.size}</p>
                     </div>
-                    <p className="text-xs font-bold text-[#1E2233]">R$ {item.price.toFixed(2).replace('.', ',')}</p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="flex items-center rounded-lg border border-gray-300">
+                        <button
+                          type="button"
+                          onClick={() => alterarQuantidade(item.id, item.size, -1)}
+                          aria-label={item.quantity === 1 ? 'Tirar da sacola' : 'Diminuir quantidade'}
+                          className="h-8 w-8 text-base font-bold text-[#0B1B34] hover:bg-gray-100"
+                        >
+                          −
+                        </button>
+                        <span className="min-w-[28px] text-center text-xs font-bold text-[#0B1B34]" aria-live="polite">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => alterarQuantidade(item.id, item.size, 1)}
+                          disabled={item.quantity >= 10}
+                          aria-label="Aumentar quantidade"
+                          className="h-8 w-8 text-base font-bold text-[#0B1B34] hover:bg-gray-100 disabled:opacity-30"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <p className="text-xs font-bold text-[#1E2233]">R$ {(item.price * item.quantity).toFixed(2).replace('.', ',')}</p>
+                    </div>
                   </div>
                 </div>
               ))
