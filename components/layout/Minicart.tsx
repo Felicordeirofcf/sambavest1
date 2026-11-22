@@ -108,7 +108,11 @@ export default function Minicart() {
               </Link>
 
               <button
-                onClick={closeCart}
+                onClick={() => {
+                  closeCart();
+                  // Na página de um produto, "continuar comprando" leva à vitrine para escolher outra camisa
+                  if (window.location.pathname.startsWith('/produto/')) window.location.assign('/categoria/todos');
+                }}
                 className="block w-full text-center text-[10px] text-gray-500 uppercase tracking-widest hover:text-[#0B1B34] underline"
               >
                 Continuar Comprando
