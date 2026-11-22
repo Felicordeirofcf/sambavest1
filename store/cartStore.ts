@@ -21,6 +21,8 @@ interface CartStore {
   addItem: (item: CartItem) => void;
   removeItem: (id: number | string, size?: string) => void; // Aceita size opcional para remoção precisa
   clearCart: () => void;
+  /** Soma (ou tira) unidades de um item; chegando a 0, o item sai da sacola. Máximo de 10 por item. */
+  alterarQuantidade: (id: number | string, size: string, delta: number) => void;
   /** Atualiza os preços com os valores atuais do WooCommerce (chave = id do item). */
   atualizarPrecos: (precos: Record<string, number>) => void;
 }
@@ -68,6 +70,15 @@ export const useCartStore = create<CartStore>()(
         })),
         
       clearCart: () => set({ items: [] }),
+
+      alterarQuantidade: (id, size, delta) =>
+        set((state) => ({
+          items: state.items
+            .map((item) =>
+              item.id === id && item.size === size ? { ...item, quantity: Math.min(10, item.quantity + delta) } : item
+            )
+            .filter((item) => item.quantity > 0),
+        })),
 
       atualizarPrecos: (precos) =>
         set((state) => ({
