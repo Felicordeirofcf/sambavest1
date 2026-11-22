@@ -78,7 +78,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
         frete: '',
       };
 
-  const { addItem, openCart } = useCartStore();
+  const { addItem } = useCartStore();
 
   // Tipagem explícita para o TypeScript do Vercel
   const fallbackAssets: string[] = [
@@ -363,8 +363,8 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
     // "Comprar agora": vai direto para o pagamento (no celular, a sacola lateral era um passo a mais)
     // Espera um instante antes de sair da página: sem isso o evento "Adicionar ao carrinho" do pixel da
     // Meta pode se perder na troca de página (a campanha original otimiza justamente esse evento).
-    if (irParaPagamento) setTimeout(() => window.location.assign('/checkout'), 450);
-    else openCart();
+    // "Escolher mais": volta para a vitrine (na Black, /categoria/todos leva para a página da Black)
+    setTimeout(() => window.location.assign(irParaPagamento ? '/checkout' : '/categoria/todos'), 450);
   };
 
   const displayedImage = gallery[activeImage] || '';
@@ -683,7 +683,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
                 bk ? 'border-white/25 text-white/85 hover:bg-white/5' : 'border-[#0B1B34]/25 text-[#0B1B34] hover:bg-gray-50'
               }`}
             >
-              <span>🛒</span> Adicionar à sacola e escolher mais
+              <span>🛒</span> Adicionar e escolher outra camisa
             </button>
             <p className={`mb-4 text-center text-xs font-bold ${bk ? 'text-emerald-300' : 'text-emerald-700'}`}>
               🚚 Frete grátis levando 2 camisas
