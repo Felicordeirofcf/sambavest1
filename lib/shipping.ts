@@ -4,9 +4,15 @@ export const FREE_SHIPPING_THRESHOLD = 300; // Ajuste o valor do frete grátis c
 /** Frete grátis a partir desta quantidade de camisas na sacola (a opção mais barata sai grátis). */
 export const FRETE_GRATIS_PECAS = 2;
 
-/** Regra única do frete grátis (site, checkout e servidor): 2+ camisas OU R$ 300+ em produtos. */
-export function ganhaFreteGratis(subtotal: number, pecas: number): boolean {
-  return pecas >= FRETE_GRATIS_PECAS || subtotal >= FREE_SHIPPING_THRESHOLD;
+/** Camisa Retrô: a margem aguenta o frete, então sai com frete grátis mesmo sozinha. */
+export const ehRetro = (nome?: string) => /retr[oô]/i.test(nome || '');
+
+/**
+ * Regra única do frete grátis (site, checkout e servidor): 2+ camisas, R$ 300+ em produtos,
+ * ou pelo menos uma camisa Retrô na sacola (nomes dos itens).
+ */
+export function ganhaFreteGratis(subtotal: number, pecas: number, nomes: string[] = []): boolean {
+  return pecas >= FRETE_GRATIS_PECAS || subtotal >= FREE_SHIPPING_THRESHOLD || nomes.some(ehRetro);
 }
 
 export type ShippingQuote = {

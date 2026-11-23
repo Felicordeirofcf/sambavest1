@@ -9,6 +9,7 @@ import { marcarEtapa } from '../../../components/analytics/Etapa';
 import Image from 'next/image';
 import { podeOtimizar } from '../../../lib/imagem';
 import { WHATSAPP_NUMBER } from '../../../lib/whatsapp';
+import { ehRetro } from '../../../lib/shipping';
 
 // ViewContent uma vez por produto por carregamento (a página pode remontar ao ler o ?modelo=)
 const jaRastreados = new Set<number>();
@@ -686,7 +687,7 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
               <span>🛒</span> Adicionar e escolher outra camisa
             </button>
             <p className={`mb-4 text-center text-xs font-bold ${bk ? 'text-emerald-300' : 'text-emerald-700'}`}>
-              🚚 Frete grátis levando 2 camisas
+              🚚 {ehRetro(product?.name) ? 'Frete grátis nesta camisa' : 'Frete grátis levando 2 camisas'}
             </p>
 
             <a

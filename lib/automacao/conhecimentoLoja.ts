@@ -34,7 +34,7 @@ export function regrasComerciais(agora = Date.now()): string {
     : `Pix (aprovação na hora, com ${Math.round(DESCONTO_PIX_PADRAO * 100)}% de desconto no site) ou cartão de crédito.`;
   return [
     `PAGAMENTO: ${pix} Cartão de crédito à vista pelo site (o parcelamento ainda não aparece na tela de pagamento do site; se o cliente quiser parcelar, use transferir_para_humano: a equipe manda um link de pagamento parcelado, com os juros do cartão). Nunca prometa parcelas sem juros. Não há boleto no site.`,
-    `FRETE: calculado no carrinho/checkout pelo CEP, para todo o Brasil. Levando 2 camisas ou mais (ou acima de ${brl(FRETE_GRATIS_A_PARTIR_DE)} em produtos), a opção de frete mais barata sai GRÁTIS: use isso para sugerir a segunda camisa. Não informe valor de frete: peça para calcular no site com o CEP.`,
+    `FRETE: calculado no carrinho/checkout pelo CEP, para todo o Brasil. Levando 2 camisas ou mais (ou acima de ${brl(FRETE_GRATIS_A_PARTIR_DE)} em produtos), a opção de frete mais barata sai GRÁTIS: use isso para sugerir a segunda camisa. A camisa Retrô (Viradouro Retrô 80 anos) tem frete grátis mesmo sozinha. Não informe valor de frete: peça para calcular no site com o CEP.`,
     black
       ? `BLACK FRIDAY (até ${data(PERIODO_BF.fim)}): camisas da Black com preço promocional, válido até ${data(PERIODO_BF.fim)} ou enquanto durar o estoque. Página: ${config.siteUrl}/black-friday . Use buscar_produtos para o preço de cada camisa.`
       : '',
