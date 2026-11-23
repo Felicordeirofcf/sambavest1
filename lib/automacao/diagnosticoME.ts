@@ -2,8 +2,8 @@
 // situação dos envios dos pedidos pagos. Sai no log público do GitHub Actions, então só mostra
 // e-mail mascarado, IDs e status (sem nomes, endereços ou valores).
 import { config } from './config';
-import { consultarEnvio, me, pacote } from './melhorenvio';
-import { listarPedidos, meta } from './woocommerce';
+import { consultarEnvio, me, pacote, rastreioPorDestinatario } from './melhorenvio';
+import { enderecoEntrega, listarPedidos, meta } from './woocommerce';
 
 const mascarar = (email?: string) => {
   if (!email || !email.includes('@')) return null;
@@ -52,8 +52,39 @@ export async function diagnosticoMelhorEnvio(): Promise<Record<string, unknown>>
   }
   r.cotacaoTodasTransportadoras = cotacoes;
 
+  // Envios postados/entregues (formato da resposta, sem dados de cliente) e se cada pedido pago acha o seu
+  const forma = (v: unknown) => (Array.isArray(v) ? `lista(${v.length})` : v && typeof v === 'object' ? `objeto{${Object.keys(v).slice(0, 15).join(',')}}` : typeof v);
+  const amostras: Record<string, unknown> = {};
+  for (const status of ['posted', 'delivered']) {
+    try {
+      const resp = await me<unknown>(`/me/orders?status=${status}&page=1`);
+      const lista = Array.isArray(resp) ? resp : ((resp as { data?: unknown[] })?.data ?? []);
+      const primeiro = (lista as Record<string, unknown>[])[0];
+      amostras[status] = {
+        resposta: forma(resp),
+        itens: Array.isArray(lista) ? lista.length : null,
+        camposDoEnvio: primeiro ? Object.keys(primeiro).slice(0, 30) : [],
+        camposDoDestino: primeiro && typeof primeiro.to === 'object' && primeiro.to ? Object.keys(primeiro.to as object).slice(0, 20) : [],
+        temCep: primeiro ? Boolean((primeiro.to as { postal_code?: string } | undefined)?.postal_code) : null,
+        temRastreio: primeiro ? Boolean(primeiro.tracking || primeiro.self_tracking) : null,
+      };
+    } catch (e) {
+      amostras[status] = { erro: (e as Error).message.slice(0, 160) };
+    }
+  }
+  r.enviosNaConta = amostras;
+
   const desde = new Date(Date.now() - 14 * 86_400_000);
   const pagos = await listarPedidos('processing', desde, 50).catch(() => []);
+  r.buscaPorDestinatario = await Promise.all(
+    pagos.map(async (p) => {
+      const end = enderecoEntrega(p);
+      const achou = await rastreioPorDestinatario({ cep: end.cep, nome: end.nome, criadoEm: new Date(`${p.date_created_gmt}Z`).getTime() }).catch(
+        (e) => `erro: ${(e as Error).message.slice(0, 80)}`
+      );
+      return { pedido: p.id, achou: typeof achou === 'string' && achou.startsWith('erro') ? achou : Boolean(achou) };
+    })
+  );
   r.pedidosPagos = await Promise.all(
     pagos.map(async (p) => {
       const idEnvio = meta(p, '_sv_melhorenvio_envio_id');
