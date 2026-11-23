@@ -10,7 +10,7 @@ import * as melhorEnvio from './melhorenvio';
 import { enviarCompra } from './meta';
 import { alertaErroPedido, alertaPagamentoRecusado, alertaVenda } from './alertas';
 import { alertarLoja, avisarCliente, enviarPelaEvolution, escapar } from './notificacoes';
-import { adicionarNota, linkPagamento, listarPedidos, meta, obterPedido, salvarNoPedido, WcPedido } from './woocommerce';
+import { adicionarNota, enderecoEntrega, linkPagamento, listarPedidos, meta, obterPedido, salvarNoPedido, WcPedido } from './woocommerce';
 
 export const M = {
   avisoRecebido: '_sv_aviso_recebido',
@@ -254,6 +254,14 @@ async function verificarRastreio(pedido: WcPedido, codigoInformado?: string): Pr
   if (!codigo && idBling && integracoes.bling()) {
     codigo = (await bling.rastreioDoPedidoVenda(idBling)) || undefined;
   }
+  // Etiqueta gerada direto no site do Melhor Envio: procura pelo CEP e pelo primeiro nome do destinatário
+  if (!codigo && integracoes.melhorEnvio()) {
+    const end = enderecoEntrega(pedido);
+    codigo =
+      (await melhorEnvio
+        .rastreioPorDestinatario({ cep: end.cep, nome: end.nome, criadoEm: new Date(`${pedido.date_created_gmt}Z`).getTime() })
+        .catch(() => null)) || undefined;
+  }
   if (!codigo) return;
   const link = melhorEnvio.linkRastreio(codigo);
 
@@ -307,7 +315,8 @@ export async function rotinaPedidos(prazo: number): Promise<Relatorio[]> {
       (integracoes.melhorEnvio() && config.melhorEnvio.criarEnvios && !meta(p, M.meEnvio) && melhorEnvio.servicoDoPedido(p)) ||
       (config.melhorEnvio.comprarEtiqueta && meta(p, M.meEnvio) && !meta(p, M.meEtiqueta));
     if (faltaEtapa) urgentes.push(p);
-    else if (!meta(p, M.avisoEnviado) && (meta(p, M.meEnvio) || meta(p, M.blingPedido) || codigoRastreioManual(p))) soRastreio.push(p);
+    else if (!meta(p, M.avisoEnviado) && (meta(p, M.meEnvio) || meta(p, M.blingPedido) || codigoRastreioManual(p) || integracoes.melhorEnvio()))
+      soRastreio.push(p);
   }
   soRastreio.sort(() => Math.random() - 0.5);
   // Mais novos primeiro: num pico de vendas, pedidos travados antigos não podem tomar o lugar dos novos.

@@ -234,6 +234,56 @@ export async function rastreio(idEnvio: string): Promise<{ codigo: string | null
   return { codigo: codigoDoEnvio(r), status: r.status };
 }
 
+// ---------------- Rastreio de etiquetas feitas direto no Melhor Envio ----------------
+
+type EnvioListado = EnvioME & { to?: { name?: string; postal_code?: string }; created_at?: string };
+
+const normalizar = (t?: string) =>
+  (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z ]/g, ' ').trim();
+
+let cacheEnvios: { em: number; lista: Promise<EnvioListado[]> } | null = null;
+
+/** Envios já postados ou entregues da conta (até 3 páginas por situação), guardados por 2 minutos. */
+async function enviosPostados(): Promise<EnvioListado[]> {
+  if (cacheEnvios && Date.now() - cacheEnvios.em < 120_000) return cacheEnvios.lista;
+  const buscar = async () => {
+    const todos: EnvioListado[] = [];
+    for (const status of ['posted', 'delivered']) {
+      for (let page = 1; page <= 3; page++) {
+        const r = await me<{ data?: EnvioListado[]; last_page?: number } | EnvioListado[]>(`/me/orders?status=${status}&page=${page}`);
+        const lote = Array.isArray(r) ? r : r?.data || [];
+        todos.push(...lote);
+        if (Array.isArray(r) || !r?.last_page || page >= r.last_page || lote.length === 0) break;
+      }
+    }
+    return todos;
+  };
+  cacheEnvios = { em: Date.now(), lista: buscar() };
+  cacheEnvios.lista.catch(() => (cacheEnvios = null));
+  return cacheEnvios.lista;
+}
+
+/**
+ * Etiqueta gerada direto no Melhor Envio (sem passar pelo site nem pelo Bling): acha o envio postado
+ * com o MESMO CEP e o mesmo primeiro nome do destinatário, criado depois do pedido.
+ * Se houver mais de um, usa o mais antigo depois do pedido. Devolve o código de rastreio ou null.
+ */
+export async function rastreioPorDestinatario(dados: { cep: string; nome: string; criadoEm: number }): Promise<string | null> {
+  const cep = (dados.cep || '').replace(/\D/g, '');
+  const primeiro = normalizar(dados.nome).split(/\s+/)[0];
+  if (cep.length !== 8 || !primeiro) return null;
+  const candidatos = (await enviosPostados())
+    .filter((e) => (e.to?.postal_code || '').replace(/\D/g, '') === cep)
+    .filter((e) => normalizar(e.to?.name).split(/\s+/)[0] === primeiro)
+    .filter((e) => !e.created_at || new Date(e.created_at).getTime() >= dados.criadoEm - 3_600_000)
+    .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+  for (const e of candidatos) {
+    const codigo = codigoDoEnvio(e);
+    if (codigo) return codigo;
+  }
+  return null;
+}
+
 export function linkRastreio(codigo: string): string {
   return `https://www.melhorrastreio.com.br/rastreio/${codigo}`;
 }
