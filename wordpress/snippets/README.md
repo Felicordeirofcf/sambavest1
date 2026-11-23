@@ -9,7 +9,7 @@ voltar ao padrão.
 | `link-pagamento-sem-confirmacao-de-email.php` | O link de pagamento abre direto, sem pedir para o cliente confirmar o e-mail. |
 | `pagina-abre-na-forma-escolhida.php` | A página de pagamento abre na forma escolhida no site (Pix ou cartão). |
 | `estilo-pagamento.php` | Visual da página de pagamento com a cara da loja: abas Pix/Cartão, botão dourado, aviso de recusa com atalho para o Pix. |
-| `parcelas-pagina-do-pedido.php` | Na página de pagamento do pedido, "Nº de parcelas" mostra "À vista" com o total do pedido (o plugin da AppMax calculava pelo carrinho do WordPress e o campo vinha vazio ou errado). |
+| `parcelas-pagina-do-pedido.php` | Na página de pagamento do pedido, "Nº de parcelas" (à vista, 2x, 3x) calculado sobre o total DO PEDIDO com a API da AppMax (o plugin calculava pelo carrinho do WordPress e o campo sumia ou vinha errado). |
 
 Estrutura da página usada pelo estilo (tema Hello Elementor, plugin de pagamentos da AppMax): `body.woocommerce-order-pay`,
 `form#order_review`, `.shop_table`, `#payment`, `li.wc_payment_method`, `.payment_box`, `#place_order`.
