@@ -274,7 +274,11 @@ export default function CheckoutPage() {
   const freteGratisAgora = Boolean(
     shippingQuote &&
       shippingQuote.maisBarato &&
-      ganhaFreteGratis(subtotalComDesconto, activeItems.reduce((acc: number, item: any) => acc + item.quantity, 0))
+      ganhaFreteGratis(
+        subtotalComDesconto,
+        activeItems.reduce((acc: number, item: any) => acc + item.quantity, 0),
+        activeItems.map((item: any) => item.name)
+      )
   );
   const frete = shippingQuote ? (freteGratisAgora ? 0 : shippingQuote.originalPrice ?? shippingQuote.price) : 0;
   const total = subtotalComDesconto + frete;

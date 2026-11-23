@@ -89,6 +89,6 @@ export async function cotarFreteDetalhado(
  * Mesma regra da calculadora: a opção de frete MAIS BARATA sai grátis com 2 camisas ou mais, ou
  * quando os produtos somam R$ 300 ou mais (ganhaFreteGratis em lib/shipping.ts).
  */
-export function freteGratis(cotacao: CotacaoFrete, subtotalProdutos: number, pecas: number): boolean {
-  return ganhaFreteGratis(subtotalProdutos, pecas) && Boolean(cotacao.maisBarato);
+export function freteGratis(cotacao: CotacaoFrete, subtotalProdutos: number, pecas: number, nomes: string[] = []): boolean {
+  return ganhaFreteGratis(subtotalProdutos, pecas, nomes) && Boolean(cotacao.maisBarato);
 }

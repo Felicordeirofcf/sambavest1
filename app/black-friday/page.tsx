@@ -139,7 +139,7 @@ function Cartao({ p, fase, destaque }: { p: ProdutoBF; fase: ReturnType<typeof f
               Economize {brl(de - preco)}
             </p>
           )}
-          <p className="mt-1 text-xs text-white/50"><b className="text-emerald-300">Frete grátis levando 2</b> · {p.modelos?.length ? `${p.modelos.join(' e ')}, ` : ''}{tamanhos}</p>
+          <p className="mt-1 text-xs text-white/50"><b className="text-emerald-300">{apelido(p) === 'retro' ? 'Frete grátis' : 'Frete grátis levando 2'}</b> · {p.modelos?.length ? `${p.modelos.join(' e ')}, ` : ''}{tamanhos}</p>
         </div>
 
         {fase === 'durante' && !href ? (

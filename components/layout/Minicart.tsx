@@ -103,7 +103,7 @@ export default function Minicart() {
                 <span>Subtotal</span>
                 <span>R$ {subtotal.toFixed(2).replace('.', ',')}</span>
               </div>
-              {ganhaFreteGratis(subtotal, pecas) ? (
+              {ganhaFreteGratis(subtotal, pecas, items.map((i) => i.name)) ? (
                 <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200">
                   ✅ Você ganhou FRETE GRÁTIS (a opção mais barata, no checkout)
                 </p>

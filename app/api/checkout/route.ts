@@ -211,7 +211,7 @@ export async function POST(request: Request) {
       );
     }
     const pecas = [...quantidades.values()].reduce((s, q) => s + q, 0);
-    const gratis = freteGratis(cotacao, subtotalProdutos, pecas);
+    const gratis = freteGratis(cotacao, subtotalProdutos, pecas, produtos.map((p) => p.name));
     const valorFrete = gratis ? 0 : centavos(cotacao.price);
 
     // 🛍️ PEDIDO CRIADO COMO CONVIDADO (Garante acesso direto à chave de pagamento sem login)

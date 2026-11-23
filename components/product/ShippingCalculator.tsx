@@ -35,7 +35,7 @@ export default function ShippingCalculator({ subtotal, onQuote, productContext, 
   const cepCotado = useRef('');
   // Camisas consideradas: as da sacola; com a sacola vazia (página do produto), 1 camisa
   const pecas = items.length > 0 ? items.reduce((s, i) => s + i.quantity, 0) : 1;
-  const gratis = ganhaFreteGratis(subtotal, pecas);
+  const gratis = ganhaFreteGratis(subtotal, pecas, items.length > 0 ? items.map((i) => i.name) : [productContext?.name || '']);
 
   const handleCalculate = async (cepInformado?: string) => {
     const cepLimpo = (cepInformado ?? cep).replace(/\D/g, '');
