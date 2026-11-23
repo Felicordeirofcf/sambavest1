@@ -11,7 +11,7 @@ function caminhos(obj: unknown, prefixo = '', saida: string[] = [], prof = 0): s
     if (v && typeof v === 'object') caminhos(v, c, saida, prof + 1);
     else if (/rastre|tracking|codigo|objeto|etiqueta|logistic|volume|servico|id$/i.test(c)) {
       const s = String(v ?? '');
-      const pareceCodigo = /^[A-Z0-9]{8,30}$/i.test(s.trim());
+      const pareceCodigo = /^[A-Z0-9](?:[A-Z0-9-]{6,38})[A-Z0-9]$/i.test(s.trim());
       saida.push(`${c} = ${pareceCodigo ? `${s.slice(0, 2)}***${s.slice(-2)}` : s === '' ? '(vazio)' : typeof v === 'number' ? String(v) : '(texto)'}`);
     }
   }

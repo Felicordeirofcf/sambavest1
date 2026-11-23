@@ -544,7 +544,7 @@ export function acharCodigoRastreio(obj: unknown, profundidade = 0): string | nu
   for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
     if (typeof v === 'string' && /rastre/i.test(k)) {
       const codigo = v.trim().toUpperCase();
-      if (/^[A-Z0-9]{8,30}$/.test(codigo)) return codigo;
+      if (/^[A-Z0-9](?:[A-Z0-9-]{6,38})[A-Z0-9]$/.test(codigo)) return codigo; // aceita o hífen da Loggi (LGI-ME...)
     } else if (v && typeof v === 'object') {
       const achado = acharCodigoRastreio(v, profundidade + 1);
       if (achado) return achado;

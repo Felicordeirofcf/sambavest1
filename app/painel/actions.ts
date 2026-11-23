@@ -63,7 +63,7 @@ export async function informarRastreio(formData: FormData) {
   await exigirLogin();
   const id = idPedido(formData);
   const codigo = txt(formData, 'codigo').toUpperCase().replace(/\s/g, '');
-  if (!/^[A-Z0-9]{8,30}$/.test(codigo)) voltarPedido(id, 'Código de rastreio inválido.', 'erro');
+  if (!/^[A-Z0-9](?:[A-Z0-9-]{6,38})[A-Z0-9]$/.test(codigo)) voltarPedido(id, 'Código de rastreio inválido.', 'erro');
   try {
     const pedido = await obterPedido(id);
     await salvarNoPedido(pedido, { _sv_rastreio: codigo });
