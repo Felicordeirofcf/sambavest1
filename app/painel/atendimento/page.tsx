@@ -88,7 +88,7 @@ const RAPIDAS = [
       .map(([t, [l, a]]) => `${t} ${l}x${a}`)
       .join(' | ')}. Dica: mede uma camisa sua deitada na mesa, de axila a axila, e compara com a largura 😉`,
   },
-  { rotulo: '💳 Pagamento', texto: `Você pode pagar por Pix (aprovação na hora) ou no cartão de crédito, direto no site (para parcelar, eu te mando um link de pagamento parcelado): ${config.siteUrl}` },
+  { rotulo: '💳 Pagamento', texto: `Você pode pagar por Pix (aprovação na hora) ou no cartão de crédito à vista ou em até 3x (com juros do cartão), direto no site: ${config.siteUrl}` },
   { rotulo: '🚚 Frete', texto: 'Enviamos para todo o Brasil! O frete é calculado no site com o seu CEP, na página da camisa ou na sacola.' },
   { rotulo: '🔁 Troca', texto: 'Fazemos a troca de tamanho, sim, e o frete é por nossa conta! Me manda o número do seu pedido e o tamanho que você quer 🙂' },
   { rotulo: '🙏 Obrigado', texto: 'Obrigado pela compra! Qualquer dúvida é só chamar aqui 💛' },
