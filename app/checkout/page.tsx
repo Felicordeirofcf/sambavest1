@@ -622,6 +622,15 @@ export default function CheckoutPage() {
                 )}
               </button>
 
+              {/* Confiança: só o que é verdade (empresa com CNPJ, NF-e automática, troca paga pela loja, rastreio) */}
+              <ul className="mt-4 grid grid-cols-2 gap-2 text-[11px] font-semibold leading-snug text-[#0B1B34]">
+                <li className="rounded-lg bg-white p-2 ring-1 ring-black/5">🔒 Pagamento seguro pela AppMax</li>
+                <li className="rounded-lg bg-white p-2 ring-1 ring-black/5">🧾 Nota fiscal em todos os pedidos</li>
+                <li className="rounded-lg bg-white p-2 ring-1 ring-black/5">🔄 Troca de tamanho grátis</li>
+                <li className="rounded-lg bg-white p-2 ring-1 ring-black/5">📦 Rastreio pelo WhatsApp</li>
+              </ul>
+              <p className="mt-2 text-center text-[10px] text-gray-500">Samba Vest Comércio Ltda · CNPJ 54.923.089/0001-97</p>
+
               <Link href="/" className="block text-center mt-6 text-xs text-gray-400 uppercase tracking-widest hover:text-[#0B1B34] underline">
                 Continuar Comprando
               </Link>
