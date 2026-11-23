@@ -125,6 +125,6 @@ export async function montarLinkCompra(itens: PedidoItemIA[]): Promise<Record<st
     total_produtos: brl(total),
     problemas: problemas.length ? problemas : undefined,
     instrucao:
-      'Mande o link ao cliente com o resumo dos itens e o total dos produtos. Diga que é só abrir, colocar o CEP (o frete aparece lá) e pagar por Pix ou cartão em até 3x. O link vale 7 dias.',
+      'Mande o link ao cliente com o resumo dos itens e o total dos produtos. Diga que é só abrir, colocar o CEP (o frete aparece lá) e pagar por Pix ou cartão de crédito. O link vale 7 dias.',
   };
 }
