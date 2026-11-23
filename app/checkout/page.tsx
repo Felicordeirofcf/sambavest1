@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '../../store/cartStore';
 import ShippingCalculator from '../../components/product/ShippingCalculator';
 import { ganhaFreteGratis, type ShippingQuote } from '../../lib/shipping';
@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { podeOtimizar } from '../../lib/imagem';
 import { descontoPixAtual } from '../../lib/pix';
 import { marcarEtapa, origemAtual } from '../../components/analytics/Etapa';
+import { rastrear, dadosItens } from '../../lib/pixel';
 
 /** ID único da compra para o Meta Ads (gravado no pedido e usado na API de Conversões). */
 function novoEventId(): string {
@@ -33,6 +34,16 @@ export default function CheckoutPage() {
       useCartStore.persist.rehydrate();
     }
   }, []);
+
+  // Pixel da Meta: "Iniciar finalização" ao abrir o checkout com itens (uma vez por visita à página).
+  // Antes só disparava pelo botão da sacola lateral; o "Comprar agora" vem direto para cá, e a
+  // campanha COMPRA (que otimiza esse evento) ficava sem o sinal.
+  const iniciouCheckout = useRef(false);
+  useEffect(() => {
+    if (!isMounted || iniciouCheckout.current || items.length === 0) return;
+    iniciouCheckout.current = true;
+    rastrear('InitiateCheckout', dadosItens(items.map((i) => ({ id: i.id, quantidade: i.quantity, preco: i.price }))));
+  }, [isMounted, items]);
 
   // Link do e-mail de carrinho abandonado (?recuperar=...): remonta a sacola se ela estiver vazia
   useEffect(() => {

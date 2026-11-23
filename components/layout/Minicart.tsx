@@ -5,7 +5,6 @@ import { useCartStore } from '../../store/cartStore';
 import Link from 'next/link';
 import Image from 'next/image';
 import { podeOtimizar } from '../../lib/imagem';
-import { rastrear, dadosItens } from '../../lib/pixel';
 import { FRETE_GRATIS_PECAS, ganhaFreteGratis } from '../../lib/shipping';
 
 export default function Minicart() {
@@ -117,13 +116,8 @@ export default function Minicart() {
               {/* Botão que direciona para a página completa de checkout/endereço */}
               <Link
                 href="/checkout"
-                onClick={() => {
-                  rastrear(
-                    'InitiateCheckout',
-                    dadosItens(items.map((i) => ({ id: i.id, quantidade: i.quantity, preco: i.price })))
-                  );
-                  closeCart();
-                }}
+                // O "Iniciar finalização" do pixel dispara na própria página do checkout
+                onClick={closeCart}
                 className="block w-full py-4 bg-[#C9A227] text-[#0B1B34] text-center font-bold uppercase tracking-widest text-xs hover:bg-[#0B1B34] hover:text-white transition-colors shadow-md"
               >
                 Ir para o Checkout
