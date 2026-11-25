@@ -31,7 +31,7 @@ const ITENS: { href: string; rotulo: string; icone: string }[] = [
   { href: '/painel', rotulo: 'Início', icone: 'geral' },
   { href: '/painel/pedidos', rotulo: 'Pedidos', icone: 'pedidos' },
   { href: '/painel/clientes', rotulo: 'Clientes', icone: 'clientes' },
-  { href: '/painel/atendimento', rotulo: 'WhatsApp', icone: 'crm' },
+  { href: '/painel/crm', rotulo: 'WhatsApp', icone: 'crm' },
   { href: '/painel/anuncios', rotulo: 'Anúncios', icone: 'anuncios' },
   { href: '/painel/produtos', rotulo: 'Estoque', icone: 'produtos' },
   { href: '/painel/financeiro', rotulo: 'Financeiro', icone: 'financeiro' },
@@ -51,8 +51,8 @@ export default function Menu() {
   const caminho = usePathname() || '';
   const ativo = (href: string) => {
     if (href === '/painel') return caminho === '/painel';
-    // O CRM (contatos) faz parte do WhatsApp
-    if (href === '/painel/atendimento' && caminho.startsWith('/painel/crm')) return true;
+    // WhatsApp abre no CRM; as conversas (atendimento) fazem parte dele
+    if (href === '/painel/crm' && caminho.startsWith('/painel/atendimento')) return true;
     return caminho === href || caminho.startsWith(`${href}/`);
   };
   const naConfig = TELAS_CONFIG.some((t) => caminho === t || caminho.startsWith(`${t}/`));

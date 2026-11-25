@@ -13,8 +13,8 @@ export default function AbasWhatsapp({ atual }: { atual: 'conversas' | 'crm' }) 
   );
   return (
     <nav aria-label="WhatsApp" className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-white p-0.5">
-      {aba('conversas', '/painel/atendimento', '💬 Conversas')}
       {aba('crm', '/painel/crm', '📋 CRM')}
+      {aba('conversas', '/painel/atendimento', '💬 Conversas')}
     </nav>
   );
 }
