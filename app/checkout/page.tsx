@@ -10,6 +10,8 @@ import { podeOtimizar } from '../../lib/imagem';
 import { descontoPixAtual } from '../../lib/pix';
 import { marcarEtapa, origemAtual } from '../../components/analytics/Etapa';
 import { rastrear, dadosItens } from '../../lib/pixel';
+import { faseBF, PERIODO_BF } from '../../lib/blackfridayPeriodo';
+import ContagemCurta from '../../components/blackfriday/ContagemCurta';
 
 /** ID único da compra para o Meta Ads (gravado no pedido e usado na API de Conversões). */
 function novoEventId(): string {
@@ -422,6 +424,13 @@ export default function CheckoutPage() {
         <h1 className="font-heading text-3xl font-extrabold uppercase tracking-widest text-[#0B1B34] mb-10 text-center md:text-left">
           Finalizar Pedido
         </h1>
+        {/* Black Friday: lembra que o preço acaba (urgência ajuda a fechar) */}
+        {faseBF() === 'durante' && (
+          <p className="-mt-6 mb-8 rounded-xl bg-[#0B1B34] px-4 py-2.5 text-center text-sm font-bold text-white md:text-left">
+            ⏰ Preço de Black Friday garantido só até 30/11 · acaba em{' '}
+            <ContagemCurta alvo={PERIODO_BF.fim.toISOString()} className="font-black text-[#C9A227]" />
+          </p>
+        )}
 
         <div className="flex flex-col lg:flex-row gap-10">
           <div className="flex-1 space-y-6">

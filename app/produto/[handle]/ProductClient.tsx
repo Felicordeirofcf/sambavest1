@@ -1,5 +1,6 @@
 'use client';
 
+import ContagemCurta from '../../../components/blackfriday/ContagemCurta';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useCartStore } from '../../../store/cartStore';
 import ShippingCalculator from '../../../components/product/ShippingCalculator';
@@ -516,6 +517,11 @@ export default function ProductClient({ product, modeloUrl = null, black }: { pr
               <p className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-[#C9A227] px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] text-black">Black Friday</span>
                 <span className="text-xs text-white/60">até {new Date(black.fim).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })} · enredo: {black.enredo}</span>
+              </p>
+            )}
+            {black && (
+              <p className="mb-3 inline-flex w-fit items-center gap-2 rounded-lg border border-red-400/40 bg-red-500/15 px-3 py-1.5 text-xs font-bold text-red-200">
+                ⏰ Preço Black acaba em <ContagemCurta alvo={black.fim} className="font-black text-white" />
               </p>
             )}
             <h1 className={`font-heading text-2xl md:text-3xl font-extrabold uppercase tracking-widest mb-2 ${T.titulo}`}>
